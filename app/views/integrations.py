@@ -6,7 +6,7 @@ from ..auth import login_required
 from ..db import execute, one, rows
 from ..samsara import SamsaraError
 from ..security import mask_token
-from ..sync import connect, disconnect, get_integration, import_vehicles, sync_company
+from ..sync import connect, disconnect, get_integration, import_drivers, import_vehicles, sync_company
 from ..tenancy import active_trucks, role_required
 
 bp = Blueprint("integrations", __name__)
@@ -100,6 +100,23 @@ def samsara_import():
         )
     else:
         flash("Every Samsara vehicle is already linked to a truck.", "info")
+    return redirect("/integrations")
+
+
+@bp.post("/integrations/samsara/drivers")
+@login_required
+@role_required("admin")
+def samsara_drivers():
+    result = import_drivers(g.company["id"])
+    audit("integration.drivers_imported", "integration", "samsara", result)
+    if result["created"] or result["assigned"]:
+        flash(
+            f"Added {result['created']} drivers from the Samsara vehicle names"
+            + (f" and assigned {result['assigned']} to their trucks" if result["assigned"] else "") + ".",
+            "ok",
+        )
+    else:
+        flash("No new driver names found in the Samsara vehicle names.", "info")
     return redirect("/integrations")
 
 

@@ -9,6 +9,94 @@ from .security import decrypt, encrypt
 STAT_TYPES = ["obdOdometerMeters", "gpsOdometerMeters", "faultCodes", "engineStates", "gps", "fuelPercents"]
 
 UNIT_PATTERN = re.compile(r"#\s*(\d+[A-Za-z]?)")
+NAME_PREFIXES = re.compile(r"^\s*(bmg|llap|unit|truck)\b[\s.:#-]*", re.I)
+PAREN_PATTERN = re.compile(r"\([^)]*\)")
+SERIAL_PATTERN = re.compile(r"^[A-Z0-9]{3,}(-[A-Z0-9]{2,}){1,}$")
+HONORIFICS = {"aka", "\u0430\u043a\u0430", "opa", "jr", "sr"}
+NOT_NAMES = {
+    "inactive", "spare", "shop", "sold", "available", "unassigned", "rental",
+    "rented", "empty", "none", "new", "old", "trailer", "truck", "unit", "test",
+    "oo", "o", "cd", "c", "d", "team", "solo", "driver",
+}
+
+
+def _name_words(part):
+    part = re.sub(r"[^A-Za-z\u0400-\u04ff' .-]", " ", part)
+    part = re.sub(r"\s+", " ", part).strip(" .-'")
+    words = []
+    for word in part.split():
+        bare = word.strip(".-'").lower()
+        if not bare or bare in HONORIFICS or bare in NOT_NAMES:
+            continue
+        if len(bare) < 2 and not words:
+            continue
+        words.append(word.strip(".-'"))
+    return words
+
+
+def driver_names(vehicle_name):
+    if not vehicle_name:
+        return []
+    text = PAREN_PATTERN.sub(" ", vehicle_name)
+    text = UNIT_PATTERN.sub(" ", text)
+    for _ in range(3):
+        stripped = NAME_PREFIXES.sub("", text)
+        if stripped == text:
+            break
+        text = stripped
+    if SERIAL_PATTERN.match(text.strip().upper()):
+        return []
+    text = re.sub(r"\bO\s*/\s*O\b", " ", text, flags=re.I)
+    text = re.sub(r"[&/]| and ", "|", text)
+    found = []
+    for part in text.split("|"):
+        words = _name_words(part)
+        if not words:
+            continue
+        if len(words) == 1 and len(words[0]) < 3:
+            continue
+        pretty = " ".join(w if (w[:1].isupper() and not w.isupper()) else w.title() for w in words)
+        if pretty.lower() in NOT_NAMES:
+            continue
+        found.append(pretty)
+    return found
+
+
+def import_drivers(company_id):
+    links = rows(
+        """select v.external_name, v.truck_id, t.driver_id
+           from vehicle_links v join trucks t on t.id = v.truck_id
+           where v.company_id = %s and v.truck_id is not null""",
+        (company_id,),
+    )
+    created = 0
+    assigned = 0
+    for link in links:
+        names = driver_names(link["external_name"])
+        if not names:
+            continue
+        primary = None
+        for name in names:
+            existing = one(
+                "select id from drivers where company_id = %s and lower(name) = lower(%s)",
+                (company_id, name),
+            )
+            if existing:
+                driver_id = existing["id"]
+            else:
+                driver = insert(
+                    """insert into drivers (company_id, name, status, notes)
+                       values (%s, %s, 'active', %s) returning id""",
+                    (company_id, name, f"Imported from the Samsara vehicle name: {link['external_name']}"),
+                )
+                driver_id = driver["id"]
+                created += 1
+            if primary is None:
+                primary = driver_id
+        if primary and not link["driver_id"]:
+            execute("update trucks set driver_id = %s, updated_at = now() where id = %s", (primary, link["truck_id"]))
+            assigned += 1
+    return {"created": created, "assigned": assigned}
 
 
 def unit_from_name(name):

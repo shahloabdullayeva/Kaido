@@ -19,6 +19,11 @@
         <input type="hidden" name="csrf" value="{{ session.csrf }}">
         <button class="btn" type="submit" data-busy="Syncing…">Sync now</button>
       </form>
+      <form method="post" action="/integrations/samsara/drivers" class="inline"
+            data-confirm="Read driver names out of the Samsara vehicle names and add them as drivers?">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}">
+        <button class="btn ghost" type="submit" data-busy="Reading…">Import drivers from names</button>
+      </form>
       {% if counts.unlinked %}
       <form method="post" action="/integrations/samsara/import" class="inline"
             data-confirm="Create trucks for the {{ counts.unlinked }} Samsara vehicles that are not linked yet?">
