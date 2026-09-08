@@ -11,6 +11,13 @@ IP=$(curl -s -m 10 https://api.ipify.org)
 
 RESOLVED=$(dig +short A "$DOMAIN" | tail -1)
 if [ -z "$RESOLVED" ]; then
+  AUTH_NS=$(dig +short NS "${DOMAIN#*.}" | head -1)
+  if [ -n "$AUTH_NS" ]; then
+    RESOLVED=$(dig +short A "$DOMAIN" "@${AUTH_NS}" | tail -1)
+    [ -n "$RESOLVED" ] && echo "DNS: public resolvers are still caching, but $AUTH_NS answers authoritatively"
+  fi
+fi
+if [ -z "$RESOLVED" ]; then
   echo "DNS: $DOMAIN does not resolve yet. Add an A record pointing to $IP, then run this again." >&2
   exit 1
 fi
