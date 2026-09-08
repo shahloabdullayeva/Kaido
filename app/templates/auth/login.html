@@ -9,5 +9,5 @@
   {{ field('Password', 'password', '', type='password', required=True, attrs='autocomplete="current-password" maxlength="200"') }}
   <button class="btn" type="submit" data-busy="Checking…">Continue</button>
 </form>
-<p class="auth-note">New devices need a one-time code sent to your Telegram. Trusted devices stay signed in for {{ app_config.TRUST_DAYS }} days.</p>
+<p class="auth-note">New devices need a one-time code sent to your Telegram. Trusted devices stay signed in for {{ app_config.TRUST_DAYS }} day{{ '' if app_config.TRUST_DAYS == 1 else 's' }}.</p>
 {% endblock %}

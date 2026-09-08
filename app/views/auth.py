@@ -213,7 +213,7 @@ def verify_submit():
     send_telegram(user["telegram_chat_id"], "\n".join([
         "<b>Kaido sign-in confirmed</b>",
         f"{device_label()} from {client_ip()}",
-        f"This device is trusted for {config.TRUST_DAYS} days." if device_id else "This device was not trusted.",
+        f"This device is trusted for {config.TRUST_DAYS} day" + ("" if config.TRUST_DAYS == 1 else "s") + "." if device_id else "This device was not trusted.",
     ]))
 
     response = redirect(safe_next(request.cookies.get(NEXT_COOKIE)))
