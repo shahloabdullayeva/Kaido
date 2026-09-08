@@ -1,0 +1,15 @@
+[Unit]
+Description=Kaido Telegram linking bot
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/kaido
+ExecStart=/root/kaido/venv/bin/python /root/kaido/manage.py telegram-bot
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

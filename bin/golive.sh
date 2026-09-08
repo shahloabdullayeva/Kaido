@@ -49,7 +49,18 @@ sed -i \
 echo "Config: production mode, APP_URL=https://$DOMAIN, trusting the proxy"
 
 caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1 && echo "Caddy: config valid"
-systemctl reload caddy
+
+LOGFILE="/var/log/caddy/kaido-access.log"
+if [ ! -f "$LOGFILE" ]; then
+  CADDY_USER=$(ps -o user= -p "$(pgrep -f 'caddy run' | head -1)" 2>/dev/null || echo caddy)
+  touch "$LOGFILE" && chown "$CADDY_USER":"$CADDY_USER" "$LOGFILE"
+  echo "Caddy: created $LOGFILE owned by $CADDY_USER"
+fi
+
+if ! systemctl reload caddy; then
+  echo "Caddy: reload failed — the old config is still serving. See journalctl -u caddy" >&2
+  echo "Kaido: restarting anyway so app config matches .env" >&2
+fi
 systemctl restart kaido
 sleep 3
 
