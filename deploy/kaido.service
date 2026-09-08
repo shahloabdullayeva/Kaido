@@ -7,7 +7,6 @@ Wants=postgresql.service
 Type=simple
 User=root
 WorkingDirectory=/root/kaido
-Environment=APP_ENV=production
 ExecStart=/root/kaido/bin/serve.sh
 Restart=always
 RestartSec=5
