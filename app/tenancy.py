@@ -4,15 +4,12 @@ from flask import g, render_template
 
 from .db import execute, one, rows
 
-ROLES = ["admin", "manager", "dispatcher", "mechanic", "viewer"]
+ROLES = ["admin", "viewer"]
 ROLE_LABELS = {
     "admin": "Admin",
-    "manager": "Manager",
-    "dispatcher": "Dispatcher",
-    "mechanic": "Mechanic",
-    "viewer": "Viewer",
+    "viewer": "Read only",
 }
-RANK = {"admin": 5, "manager": 4, "dispatcher": 3, "mechanic": 2, "viewer": 1}
+RANK = {"admin": 2, "viewer": 1}
 
 
 def at_least(role, minimum):

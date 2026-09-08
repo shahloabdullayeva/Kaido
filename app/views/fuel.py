@@ -43,7 +43,7 @@ def index():
 
 @bp.get("/fuel/new")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def new():
     return render_template("fuel/form.html", title="Log fuel", active="/fuel",
                            trucks=active_trucks(), drivers=active_drivers(), fuel_types=FUEL_TYPES,
@@ -52,7 +52,7 @@ def new():
 
 @bp.post("/fuel")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def create():
     truck_id = forms.integer(request.form.get("truck_id"))
     truck = one("select * from trucks where id = %s and company_id = %s", (truck_id, g.company["id"]))

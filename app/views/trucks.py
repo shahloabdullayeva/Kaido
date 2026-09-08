@@ -52,7 +52,7 @@ def index():
 
 @bp.get("/trucks/new")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def new():
     return render_template(
         "trucks/form.html", title="Add truck", active="/trucks",
@@ -63,7 +63,7 @@ def new():
 
 @bp.post("/trucks")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def create():
     values = form_values(request.form)
     if not values["unit_number"]:
@@ -133,7 +133,7 @@ def detail(truck_id):
 
 @bp.get("/trucks/<int:truck_id>/edit")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def edit(truck_id):
     truck = scoped_truck(truck_id)
     if not truck:
@@ -146,7 +146,7 @@ def edit(truck_id):
 
 @bp.post("/trucks/<int:truck_id>")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def update(truck_id):
     truck = scoped_truck(truck_id)
     if not truck:
@@ -169,7 +169,7 @@ def update(truck_id):
 
 @bp.post("/trucks/<int:truck_id>/odometer")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def odometer(truck_id):
     truck = scoped_truck(truck_id)
     if not truck:

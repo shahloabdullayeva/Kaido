@@ -36,7 +36,7 @@ def index():
 
 @bp.post("/faults/<int:fault_id>/acknowledge")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def acknowledge(fault_id):
     execute(
         """update fault_events set acknowledged_at = now(), acknowledged_by = %s
@@ -50,7 +50,7 @@ def acknowledge(fault_id):
 
 @bp.post("/faults/<int:fault_id>/clear")
 @login_required
-@role_required("mechanic")
+@role_required("admin")
 def clear(fault_id):
     execute(
         "update fault_events set cleared_at = now() where id = %s and company_id = %s and cleared_at is null",

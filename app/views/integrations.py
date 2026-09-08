@@ -14,7 +14,7 @@ bp = Blueprint("integrations", __name__)
 
 @bp.get("/integrations")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def index():
     company_id = g.company["id"]
     integration = get_integration(company_id)
@@ -37,7 +37,7 @@ def index():
 
 @bp.post("/integrations/samsara/connect")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def samsara_connect():
     token = forms.text(request.form.get("token"), 200)
     if not token:
@@ -65,7 +65,7 @@ def samsara_disconnect():
 
 @bp.post("/integrations/samsara/sync")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def samsara_sync():
     result = sync_company(g.company["id"])
     audit("integration.sync", "integration", "samsara", result)
@@ -83,7 +83,7 @@ def samsara_sync():
 
 @bp.post("/integrations/samsara/import")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def samsara_import():
     try:
         result = import_vehicles(g.company["id"], g.session["user_id"])
@@ -105,7 +105,7 @@ def samsara_import():
 
 @bp.post("/integrations/samsara/vehicles/<int:link_id>")
 @login_required
-@role_required("manager")
+@role_required("admin")
 def link_vehicle(link_id):
     truck_id = forms.integer(request.form.get("truck_id"))
     if truck_id:

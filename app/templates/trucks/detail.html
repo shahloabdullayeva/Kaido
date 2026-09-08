@@ -9,12 +9,12 @@
       {% if link %}· Samsara: {{ link.external_name or link.external_id }}{% endif %}</p>
   </div>
   <div class="actions-row">
-    {% if at_least(role, 'dispatcher') %}
+    {% if at_least(role, 'admin') %}
     <a class="btn ghost" href="/fuel/new?truck_id={{ truck.id }}">Log fuel</a>
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
     <a class="btn ghost" href="/breakdowns/new?truck_id={{ truck.id }}">Breakdown</a>
     {% endif %}
-    {% if at_least(role, 'manager') %}<a class="btn" href="/trucks/{{ truck.id }}/edit">Edit</a>{% endif %}
+    {% if at_least(role, 'admin') %}<a class="btn" href="/trucks/{{ truck.id }}/edit">Edit</a>{% endif %}
   </div>
 </div>
 
@@ -37,7 +37,7 @@
   {% endif %}
 </div>
 
-{% if at_least(role, 'dispatcher') %}
+{% if at_least(role, 'admin') %}
 <section class="panel">
   <div class="panel-head"><h2>Record odometer</h2></div>
   <form method="post" action="/trucks/{{ truck.id }}/odometer">

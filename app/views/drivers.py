@@ -42,7 +42,7 @@ def index():
 
 @bp.get("/drivers/new")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def new():
     return render_template("drivers/form.html", title="Add driver", active="/drivers",
                            driver={"status": "active"}, statuses=STATUSES, mode="new")
@@ -50,7 +50,7 @@ def new():
 
 @bp.post("/drivers")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def create():
     values = form_values(request.form)
     if not values["name"]:
@@ -82,7 +82,7 @@ def detail(driver_id):
 
 @bp.post("/drivers/<int:driver_id>")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def update(driver_id):
     driver = one("select * from drivers where id = %s and company_id = %s", (driver_id, g.company["id"]))
     if not driver:

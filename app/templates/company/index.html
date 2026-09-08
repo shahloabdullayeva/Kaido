@@ -60,7 +60,7 @@
       {{ field('Name', 'name', '', required=True, attrs='maxlength="120"') }}
       {{ field('Email', 'email', '', type='email', required=True, attrs='maxlength="200"') }}
       <label class="field"><span>Role</span>
-        <select name="role">{% for value in roles %}<option value="{{ value }}" {% if value == 'dispatcher' %}selected{% endif %}>{{ role_labels[value] }}</option>{% endfor %}</select>
+        <select name="role">{% for value in roles %}<option value="{{ value }}" {% if value == 'viewer' %}selected{% endif %}>{{ role_labels[value] }}</option>{% endfor %}</select>
       </label>
     </div>
     <div class="form-actions"><button class="btn" type="submit">Add person</button>

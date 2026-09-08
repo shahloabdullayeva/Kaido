@@ -33,7 +33,7 @@
   </div>
 </section>
 
-{% if at_least(role, 'mechanic') and item.status != 'resolved' %}
+{% if at_least(role, 'admin') and item.status != 'resolved' %}
 <div class="grid-2">
   <section class="panel">
     <div class="panel-head"><h2>Add an update</h2></div>

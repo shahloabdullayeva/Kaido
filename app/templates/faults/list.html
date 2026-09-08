@@ -4,7 +4,7 @@
   <div><h1>Fault codes</h1>
     <p>{% if integration and integration.status == 'connected' %}Samsara connected · last sync {{ integration.last_sync_at|ago }}{% else %}Samsara is not connected — nothing will appear here until it is.{% endif %}</p>
   </div>
-  {% if at_least(role, 'manager') %}<a class="btn ghost" href="/integrations">Integrations</a>{% endif %}
+  {% if at_least(role, 'admin') %}<a class="btn ghost" href="/integrations">Integrations</a>{% endif %}
 </div>
 <section class="panel">
   <div class="panel-head">
@@ -36,7 +36,7 @@
         <td class="right">
           {% if not fault.cleared_at %}
           <div class="actions-row">
-            {% if not fault.acknowledged_at and at_least(role, 'dispatcher') %}
+            {% if not fault.acknowledged_at and at_least(role, 'admin') %}
             <form method="post" action="/faults/{{ fault.id }}/acknowledge" class="inline">
               <input type="hidden" name="csrf" value="{{ session.csrf }}">
               <button class="btn ghost small" type="submit">Acknowledge</button>
@@ -44,7 +44,7 @@
             {% elif fault.acknowledged_at %}
             <span class="subtle">seen by {{ fault.acknowledged_name or 'someone' }}</span>
             {% endif %}
-            {% if at_least(role, 'mechanic') %}
+            {% if at_least(role, 'admin') %}
             <form method="post" action="/faults/{{ fault.id }}/clear" class="inline" data-confirm="Mark this fault cleared?">
               <input type="hidden" name="csrf" value="{{ session.csrf }}">
               <button class="btn danger small" type="submit">Clear</button>

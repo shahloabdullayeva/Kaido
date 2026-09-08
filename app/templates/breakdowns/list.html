@@ -2,7 +2,7 @@
 {% block body %}
 <div class="page-head">
   <div><h1>Breakdowns</h1><p>{{ items|length }} shown</p></div>
-  {% if at_least(role, 'dispatcher') %}<a class="btn" href="/breakdowns/new">Report breakdown</a>{% endif %}
+  {% if at_least(role, 'admin') %}<a class="btn" href="/breakdowns/new">Report breakdown</a>{% endif %}
 </div>
 <section class="panel">
   <div class="panel-head">

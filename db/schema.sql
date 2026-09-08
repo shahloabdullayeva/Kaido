@@ -35,7 +35,7 @@ create table if not exists memberships (
   id serial primary key,
   user_id int not null references users(id) on delete cascade,
   company_id int not null references companies(id) on delete cascade,
-  role text not null default 'viewer' check (role in ('admin','manager','dispatcher','mechanic','viewer')),
+  role text not null default 'viewer' check (role in ('admin','viewer')),
   created_at timestamptz not null default now(),
   unique (user_id, company_id)
 );

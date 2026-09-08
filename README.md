@@ -58,10 +58,7 @@ the account, and signs out every session and trusted device.
 
 | Role | Can |
 |---|---|
-| admin | everything in the company, including people and integrations |
-| manager | trucks, drivers, all records, connect Samsara |
-| dispatcher | log fuel, work orders, breakdowns, odometer |
-| mechanic | update and close work orders and breakdowns |
+| admin | everything in the company: trucks, drivers, fuel, work orders, breakdowns, people, integrations |
 | viewer | read only |
 
 Platform staff (`platform_role`) see and administer every company.

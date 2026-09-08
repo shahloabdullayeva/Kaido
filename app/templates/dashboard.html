@@ -39,11 +39,14 @@
             </div>
           </td>
           <td>
-            {% for item in truck.statuses %}
-              {% if item.tone in ['bad', 'warn'] %}
+            {% set flagged = truck.statuses | selectattr('tone', 'in', ['bad', 'warn']) | list %}
+            {% if flagged %}
+              {% for item in flagged %}
               <div class="subtle"><span class="badge {{ item.tone }}">{{ item.label }}</span> {{ item.detail }}</div>
-              {% endif %}
-            {% endfor %}
+              {% endfor %}
+            {% else %}
+              <span class="subtle">No service on record</span>
+            {% endif %}
           </td>
           <td class="right">{{ truck.odometer|miles }}</td>
         </tr>

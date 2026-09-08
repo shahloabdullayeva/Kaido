@@ -38,7 +38,7 @@ def index():
 
 @bp.get("/breakdowns/new")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def new():
     return render_template("breakdowns/form.html", title="Report breakdown", active="/breakdowns",
                            trucks=active_trucks(), drivers=active_drivers(), severities=SEVERITIES,
@@ -47,7 +47,7 @@ def new():
 
 @bp.post("/breakdowns")
 @login_required
-@role_required("dispatcher")
+@role_required("admin")
 def create():
     truck_id = forms.integer(request.form.get("truck_id"))
     truck = one("select * from trucks where id = %s and company_id = %s", (truck_id, g.company["id"]))
@@ -102,7 +102,7 @@ def detail(breakdown_id):
 
 @bp.post("/breakdowns/<int:breakdown_id>/update")
 @login_required
-@role_required("mechanic")
+@role_required("admin")
 def add_update(breakdown_id):
     item = one("select * from breakdowns where id = %s and company_id = %s", (breakdown_id, g.company["id"]))
     if not item:
@@ -130,7 +130,7 @@ def add_update(breakdown_id):
 
 @bp.post("/breakdowns/<int:breakdown_id>/resolve")
 @login_required
-@role_required("mechanic")
+@role_required("admin")
 def resolve(breakdown_id):
     item = one("select * from breakdowns where id = %s and company_id = %s", (breakdown_id, g.company["id"]))
     if not item:
