@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head"><div><h1>{{ company.name }}</h1><p>Company settings, people and activity</p></div></div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Details</h2></div>
+  <form method="post" action="/company">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      {{ field('Company name', 'name', company.name, required=True, attrs='maxlength="160"') }}
+      {{ field('Legal name', 'legal_name', company.legal_name, attrs='maxlength="160"') }}
+      {{ field('DOT number', 'dot_number', company.dot_number, attrs='maxlength="20"') }}
+      {{ field('MC number', 'mc_number', company.mc_number, attrs='maxlength="20"') }}
+      {{ field('Contact name', 'contact_name', company.contact_name, attrs='maxlength="120"') }}
+      {{ field('Contact phone', 'contact_phone', company.contact_phone, type='tel', attrs='maxlength="40"') }}
+      {{ field('Contact email', 'contact_email', company.contact_email, type='email', attrs='maxlength="200"') }}
+      {{ field('Timezone', 'timezone', company.timezone, attrs='maxlength="60"') }}
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Save details</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>People</h2><span class="muted">{{ members|length }} with access</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Email</th><th>Telegram</th><th>Last sign-in</th><th>Role</th><th class="right"></th></tr></thead>
+    <tbody>
+      {% for member in members %}
+      <tr>
+        <td>{{ member.name }}{% if member.id == session.user_id %} <span class="badge info">you</span>{% endif %}</td>
+        <td class="mono">{{ member.email }}</td>
+        <td>{% if member.telegram_chat_id %}<span class="badge ok">linked</span>{% else %}<span class="badge warn">not linked</span>{% endif %}</td>
+        <td>{{ member.last_login_at|ago }}</td>
+        <td>
+          {% if member.id != session.user_id %}
+          <form method="post" action="/company/members/{{ member.id }}/role" class="inline" data-autosubmit>
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <select name="role">
+              {% for value in roles %}<option value="{{ value }}" {% if member.role == value %}selected{% endif %}>{{ role_labels[value] }}</option>{% endfor %}
+            </select>
+          </form>
+          {% else %}{{ role_labels[member.role] }}{% endif %}
+        </td>
+        <td class="right">
+          {% if member.id != session.user_id %}
+          <form method="post" action="/company/members/{{ member.id }}/remove" class="inline" data-confirm="Remove {{ member.name }} from {{ company.name }}?">
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <button class="btn danger small" type="submit">Remove</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  <form method="post" action="/company/members">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      {{ field('Name', 'name', '', required=True, attrs='maxlength="120"') }}
+      {{ field('Email', 'email', '', type='email', required=True, attrs='maxlength="200"') }}
+      <label class="field"><span>Role</span>
+        <select name="role">{% for value in roles %}<option value="{{ value }}" {% if value == 'dispatcher' %}selected{% endif %}>{{ role_labels[value] }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Add person</button>
+      <span class="muted">A temporary password is shown once — they change it on first sign-in.</span></div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Activity</h2><span class="muted">Last 50 events</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Who</th><th>Action</th><th>Detail</th><th>IP</th></tr></thead>
+    <tbody>
+      {% for entry in log %}
+      <tr>
+        <td>{{ entry.created_at|stamp }}</td>
+        <td>{{ entry.user_name or entry.actor or 'system' }}</td>
+        <td class="mono">{{ entry.action }}</td>
+        <td class="subtle">{{ entry.entity or '' }} {{ entry.entity_id or '' }} {{ (entry.detail or '')|string if entry.detail else '' }}</td>
+        <td class="mono">{{ entry.ip or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

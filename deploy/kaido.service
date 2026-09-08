@@ -1,0 +1,16 @@
+[Unit]
+Description=Kaido
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/kaido
+Environment=APP_ENV=production
+ExecStart=/root/kaido/bin/serve.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

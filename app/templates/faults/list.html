@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Fault codes</h1>
+    <p>{% if integration and integration.status == 'connected' %}Samsara connected · last sync {{ integration.last_sync_at|ago }}{% else %}Samsara is not connected — nothing will appear here until it is.{% endif %}</p>
+  </div>
+  {% if at_least(role, 'manager') %}<a class="btn ghost" href="/integrations">Integrations</a>{% endif %}
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/faults" class="filters" data-autosubmit>
+      <label class="field"><span>Show</span>
+        <select name="scope">
+          <option value="active" {% if scope == 'active' %}selected{% endif %}>Active</option>
+          <option value="cleared" {% if scope == 'cleared' %}selected{% endif %}>Cleared</option>
+          <option value="all" {% if scope == 'all' %}selected{% endif %}>Everything</option>
+        </select>
+      </label>
+    </form>
+  </div>
+  {% if items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Code</th><th>Description</th><th>Lamp</th><th>Severity</th><th>First seen</th><th>Last seen</th><th class="right"></th></tr></thead>
+    <tbody>
+      {% for fault in items %}
+      <tr>
+        <td><a class="rowlink" href="/trucks/{{ fault.truck_id }}">{{ fault.unit_number }}</a>
+          <div class="subtle">{{ fault.make or '' }} {{ fault.model or '' }}</div></td>
+        <td><span class="mono">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ ' / FMI ' ~ fault.fmi) }}</span>
+          <div class="subtle">{{ fault.protocol }}{% if fault.occurrence_count %} · {{ fault.occurrence_count }}×{% endif %}</div></td>
+        <td>{{ (fault.description or '—')[:80] }}</td>
+        <td>{{ fault.lamp or '—' }}</td>
+        <td><span class="badge {{ fault.severity|tone }}">{{ fault.severity }}</span></td>
+        <td>{{ fault.first_seen_at|ago }}</td>
+        <td>{% if fault.cleared_at %}<span class="badge ok">cleared {{ fault.cleared_at|ago }}</span>{% else %}{{ fault.last_seen_at|ago }}{% endif %}</td>
+        <td class="right">
+          {% if not fault.cleared_at %}
+          <div class="actions-row">
+            {% if not fault.acknowledged_at and at_least(role, 'dispatcher') %}
+            <form method="post" action="/faults/{{ fault.id }}/acknowledge" class="inline">
+              <input type="hidden" name="csrf" value="{{ session.csrf }}">
+              <button class="btn ghost small" type="submit">Acknowledge</button>
+            </form>
+            {% elif fault.acknowledged_at %}
+            <span class="subtle">seen by {{ fault.acknowledged_name or 'someone' }}</span>
+            {% endif %}
+            {% if at_least(role, 'mechanic') %}
+            <form method="post" action="/faults/{{ fault.id }}/clear" class="inline" data-confirm="Mark this fault cleared?">
+              <input type="hidden" name="csrf" value="{{ session.csrf }}">
+              <button class="btn danger small" type="submit">Clear</button>
+            </form>
+            {% endif %}
+          </div>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No fault codes{{ ' active right now' if scope == 'active' else '' }}.</p>{% endif %}
+</section>
+{% endblock %}

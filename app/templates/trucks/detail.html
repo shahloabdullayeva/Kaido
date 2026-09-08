@@ -1,0 +1,141 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Unit {{ truck.unit_number }}</h1>
+    <p>{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}
+      {% if truck.vin %}· <span class="mono">{{ truck.vin }}</span>{% endif %}
+      {% if link %}· Samsara: {{ link.external_name or link.external_id }}{% endif %}</p>
+  </div>
+  <div class="actions-row">
+    {% if at_least(role, 'dispatcher') %}
+    <a class="btn ghost" href="/fuel/new?truck_id={{ truck.id }}">Log fuel</a>
+    <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
+    <a class="btn ghost" href="/breakdowns/new?truck_id={{ truck.id }}">Breakdown</a>
+    {% endif %}
+    {% if at_least(role, 'manager') %}<a class="btn" href="/trucks/{{ truck.id }}/edit">Edit</a>{% endif %}
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Status</div><div class="stat-value" style="font-size:20px">
+    <span class="badge {{ truck.status|tone }}">{{ truck.status|label }}</span></div>
+    <div class="stat-hint">{{ truck.driver_name or 'No driver assigned' }}</div></div>
+  <div class="stat"><div class="stat-label">Odometer</div><div class="stat-value">{{ truck.odometer|number }}</div>
+    <div class="stat-hint">{{ truck.odometer_at|ago if truck.odometer_at else 'never updated' }}</div></div>
+  {% for item in statuses %}
+  <div class="stat {{ item.tone if item.tone in ['bad','warn'] else '' }}">
+    <div class="stat-label">{{ item.label }}</div>
+    <div class="stat-value" style="font-size:20px"><span class="badge {{ item.tone }}">{{ item.detail }}</span></div>
+    <div class="stat-hint">{% if item.due is not none %}{% if item.label == 'Oil service' %}due at {{ item.due|number }} mi{% else %}due {{ item.due|day }}{% endif %}{% else %}no baseline yet{% endif %}</div>
+  </div>
+  {% endfor %}
+  {% if economy %}
+  <div class="stat"><div class="stat-label">Fuel economy</div><div class="stat-value">{{ economy.latest|number(1) }}</div>
+    <div class="stat-hint">recent MPG · {{ economy.average|number(1) }} average</div></div>
+  {% endif %}
+</div>
+
+{% if at_least(role, 'dispatcher') %}
+<section class="panel">
+  <div class="panel-head"><h2>Record odometer</h2></div>
+  <form method="post" action="/trucks/{{ truck.id }}/odometer">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      {{ field('Current miles', 'miles', '', type='number', required=True, attrs='min="0" placeholder="' ~ truck.odometer ~ '"') }}
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Save reading</button>
+      <span class="muted">Samsara updates this automatically once the truck is linked.</span></div>
+  </form>
+</section>
+{% endif %}
+
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Service history</h2><a class="btn ghost small" href="/maintenance?status=all">All work orders</a></div>
+    {% if history %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Work</th><th class="right">Odometer</th><th class="right">Cost</th></tr></thead>
+      <tbody>
+        {% for order in history %}
+        <tr>
+          <td>{{ (order.performed_on or order.scheduled_for)|day }}
+            <div class="subtle"><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></div></td>
+          <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.kind|label }}</a>
+            <div class="subtle">{{ (order.description or '')[:60] }}</div></td>
+          <td class="right">{{ order.odometer|number }}</td>
+          <td class="right">{{ order.cost|money }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <p class="empty">No service recorded. Oil-change reminders start once one oil service is on file.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Fault codes</h2><a class="btn ghost small" href="/faults">All faults</a></div>
+    {% if faults %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Code</th><th>Severity</th><th>Seen</th><th>State</th></tr></thead>
+      <tbody>
+        {% for fault in faults %}
+        <tr>
+          <td><span class="mono">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ '/' ~ fault.fmi) }}</span>
+            <div class="subtle">{{ (fault.description or '')[:60] }}</div></td>
+          <td><span class="badge {{ fault.severity|tone }}">{{ fault.severity }}</span></td>
+          <td>{{ fault.last_seen_at|ago }}</td>
+          <td>{% if fault.cleared_at %}<span class="badge ok">cleared</span>{% else %}<span class="badge bad">active</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <p class="empty">No fault codes recorded for this truck.</p>
+    {% endif %}
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Recent fuel</h2></div>
+    {% if fuel %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Where</th><th class="right">Gallons</th><th class="right">Total</th></tr></thead>
+      <tbody>
+        {% for entry in fuel %}
+        <tr><td>{{ entry.purchased_at|day }}</td><td>{{ entry.location or '—' }}</td>
+          <td class="right">{{ entry.gallons|number(1) }}</td><td class="right">{{ entry.total|money }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="empty">No fuel logged for this truck.</p>{% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Breakdowns</h2></div>
+    {% if breakdowns %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>When</th><th>What</th><th>Status</th><th class="right">Cost</th></tr></thead>
+      <tbody>
+        {% for item in breakdowns %}
+        <tr><td>{{ item.occurred_at|day }}</td>
+          <td><a class="rowlink" href="/breakdowns/{{ item.id }}">{{ (item.description or '')[:50] }}</a></td>
+          <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
+          <td class="right">{{ ((item.repair_cost or 0) + (item.towing_cost or 0))|money }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="empty">No breakdowns recorded. Good.</p>{% endif %}
+  </section>
+</div>
+
+{% if truck.notes %}
+<section class="panel">
+  <div class="panel-head"><h2>Notes</h2></div>
+  <p class="pad">{{ truck.notes }}</p>
+</section>
+{% endif %}
+{% endblock %}

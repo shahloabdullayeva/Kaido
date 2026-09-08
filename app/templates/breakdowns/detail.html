@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>Unit {{ item.unit_number }} · breakdown #{{ item.id }}</h1>
+    <p>{{ item.year or '' }} {{ item.make or '' }} {{ item.model or '' }} · reported {{ item.occurred_at|stamp }}</p>
+  </div>
+  <div class="pill-row">
+    <span class="badge {{ item.status|tone }}">{{ item.status|label }}</span>
+    <span class="badge {{ item.severity|tone }}">{{ item.severity }} severity</span>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Driver</div><div class="stat-value" style="font-size:18px">{{ item.driver_name or '—' }}</div>
+    <div class="stat-hint">{{ item.driver_phone or 'no phone on file' }}</div></div>
+  <div class="stat"><div class="stat-label">Location</div><div class="stat-value" style="font-size:18px">{{ item.location or '—' }}</div>
+    <div class="stat-hint">{{ 'load ' ~ item.load_number if item.load_number else 'no load number' }}</div></div>
+  <div class="stat"><div class="stat-label">Down time</div><div class="stat-value" style="font-size:18px">
+    {% if item.resolved_at %}{{ ((item.resolved_at - item.occurred_at).total_seconds() / 3600)|round(1) }}h{% else %}{{ item.occurred_at|ago }}{% endif %}</div>
+    <div class="stat-hint">{{ 'resolved ' ~ item.resolved_at|stamp if item.resolved_at else 'still open' }}</div></div>
+  <div class="stat"><div class="stat-label">Cost</div><div class="stat-value">{{ ((item.repair_cost or 0) + (item.towing_cost or 0))|money }}</div>
+    <div class="stat-hint">{{ item.towing_cost|money }} towing</div></div>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>What happened</h2></div>
+  <div class="pad">
+    <p>{{ item.description }}</p>
+    {% if item.cause %}<p><strong>Cause:</strong> {{ item.cause }}</p>{% endif %}
+    {% if item.resolution %}<p><strong>Resolution:</strong> {{ item.resolution }}</p>{% endif %}
+  </div>
+</section>
+
+{% if at_least(role, 'mechanic') and item.status != 'resolved' %}
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Add an update</h2></div>
+    <form method="post" action="/breakdowns/{{ item.id }}/update">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <div class="form-grid">
+        <label class="field"><span>Change status</span>
+          <select name="status">
+            <option value="">Leave as {{ item.status|label }}</option>
+            {% for value in statuses %}{% if value != item.status %}<option value="{{ value }}">{{ value|label }}</option>{% endif %}{% endfor %}
+          </select>
+        </label>
+        {{ field('Note', 'note', '', type='textarea', full=True, hint='Tow booked, shop ETA, parts on order…') }}
+      </div>
+      <div class="form-actions"><button class="btn" type="submit">Add update</button></div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Resolve</h2></div>
+    <form method="post" action="/breakdowns/{{ item.id }}/resolve" data-confirm="Mark this breakdown resolved?">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <div class="form-grid">
+        {{ field('Cause', 'cause', '', attrs='maxlength="500"') }}
+        {{ field('Towing cost', 'towing_cost', '', type='number', attrs='step="0.01" min="0"') }}
+        {{ field('Repair cost', 'repair_cost', '', type='number', attrs='step="0.01" min="0"') }}
+        {{ field('What fixed it', 'resolution', '', type='textarea', full=True) }}
+        <label class="checkbox field"><input type="checkbox" name="return_to_service" value="1" checked> <span>Return truck to active</span></label>
+        <label class="checkbox field"><input type="checkbox" name="create_work_order" value="1" checked> <span>Create a repair work order</span></label>
+      </div>
+      <div class="form-actions"><button class="btn" type="submit">Resolve breakdown</button></div>
+    </form>
+  </section>
+</div>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head"><h2>Timeline</h2></div>
+  {% if updates %}
+  <ul class="timeline">
+    {% for update in updates %}
+    <li>
+      <div class="when">{{ update.created_at|stamp }} · {{ update.author or 'system' }}{% if update.status %} · moved to {{ update.status|label }}{% endif %}</div>
+      <div>{{ update.note }}</div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="empty">No updates yet.</p>{% endif %}
+</section>
+{% endblock %}

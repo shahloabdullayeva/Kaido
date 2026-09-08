@@ -1,0 +1,14 @@
+kaido.example.com {
+	reverse_proxy 127.0.0.1:8790
+	encode gzip
+	header {
+		-Server
+	}
+	log {
+		output file /var/log/caddy/kaido-access.log {
+			roll_size 10mb
+			roll_keep 10
+		}
+		format json
+	}
+}

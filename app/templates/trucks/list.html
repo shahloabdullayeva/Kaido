@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Trucks</h1><p>{{ fleet|length }} shown</p></div>
+  <div class="actions-row">
+    {% if at_least(role, 'manager') %}<a class="btn" href="/trucks/new">Add truck</a>{% endif %}
+  </div>
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <div class="filters">
+      <form method="get" action="/trucks" class="filters" data-autosubmit>
+        <label class="field"><span>Status</span>
+          <select name="status">
+            <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+            {% for value in statuses %}
+            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ value|label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </form>
+      <label class="field"><span>Find</span><input data-filter="#truck-table" placeholder="Unit, VIN, driver"></label>
+    </div>
+  </div>
+  {% if fleet %}
+  <div class="table-wrap"><table id="truck-table">
+    <thead><tr><th>Unit</th><th>Vehicle</th><th>Driver</th><th>Status</th><th>Service</th><th class="right">Odometer</th></tr></thead>
+    <tbody>
+      {% for truck in fleet %}
+      <tr>
+        <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a>
+          {% if truck.samsara_id %}<div class="subtle">Samsara linked</div>{% endif %}</td>
+        <td>{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}
+          <div class="subtle mono">{{ truck.vin or '' }}</div></td>
+        <td>{{ truck.driver_name or '—' }}</td>
+        <td>
+          <div class="pill-row">
+            <span class="badge {{ truck.status|tone }}">{{ truck.status|label }}</span>
+            {% if truck.open_breakdowns %}<span class="badge bad">{{ truck.open_breakdowns }}</span>{% endif %}
+            {% if truck.active_faults %}<span class="badge warn">{{ truck.active_faults }} fault</span>{% endif %}
+          </div>
+        </td>
+        <td>
+          {% for item in truck.statuses %}
+          <div class="subtle"><span class="badge {{ item.tone }}">{{ item.label }}</span> {{ item.detail }}</div>
+          {% endfor %}
+        </td>
+        <td class="right">{{ truck.odometer|miles }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No trucks yet. {% if at_least(role, 'manager') %}<a href="/trucks/new">Add the first one</a>.{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

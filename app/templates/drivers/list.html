@@ -1,0 +1,28 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Drivers</h1><p>{{ drivers|length }} on file</p></div>
+  {% if at_least(role, 'dispatcher') %}<a class="btn" href="/drivers/new">Add driver</a>{% endif %}
+</div>
+<section class="panel">
+  <div class="panel-head"><label class="field"><span>Find</span><input data-filter="#driver-table" placeholder="Name, phone, licence"></label></div>
+  {% if drivers %}
+  <div class="table-wrap"><table id="driver-table">
+    <thead><tr><th>Name</th><th>Contact</th><th>Trucks</th><th>Licence</th><th>Medical</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for driver in drivers %}
+      <tr>
+        <td><a class="rowlink" href="/drivers/{{ driver.id }}">{{ driver.name }}</a>
+          {% if driver.telegram_username %}<div class="subtle">@{{ driver.telegram_username }}</div>{% endif %}</td>
+        <td>{{ driver.phone or '—' }}<div class="subtle">{{ driver.email or '' }}</div></td>
+        <td>{{ driver.units or '—' }}</td>
+        <td>{{ driver.license_expires|day }}<div class="subtle mono">{{ driver.license_number or '' }}</div></td>
+        <td>{{ driver.medical_expires|day }}</td>
+        <td><span class="badge {{ driver.status|tone }}">{{ driver.status }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No drivers yet.</p>{% endif %}
+</section>
+{% endblock %}

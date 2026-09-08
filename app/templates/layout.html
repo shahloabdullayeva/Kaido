@@ -1,0 +1,60 @@
+{% set nav_items = [
+  ('/', 'Dashboard', none),
+  ('/trucks', 'Trucks', none),
+  ('/fuel', 'Fuel', none),
+  ('/maintenance', 'Maintenance', none),
+  ('/breakdowns', 'Breakdowns', none),
+  ('/drivers', 'Drivers', none),
+  ('/faults', 'Faults', none),
+  ('/integrations', 'Integrations', 'manager'),
+  ('/company', 'Company', 'admin')
+] %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="same-origin">
+<title>{{ title }} · Kaido</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="/static/favicon.svg">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="/">Kai<span>do</span></a>
+  {% if companies|length > 1 %}
+  <form method="post" action="/company/switch" class="switcher" data-autosubmit>
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <select name="company_id">
+      {% for item in companies %}
+      <option value="{{ item.id }}" {% if company and item.id == company.id %}selected{% endif %}>{{ item.name }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% elif company %}
+  <span class="switcher-static">{{ company.name }}</span>
+  {% endif %}
+  <nav>
+    {% for href, text, minimum in nav_items %}
+      {% if not minimum or at_least(role, minimum) %}
+      <a href="{{ href }}" {% if href == active %}class="on"{% endif %}>{{ text }}</a>
+      {% endif %}
+    {% endfor %}
+    {% if is_platform %}<a href="/platform" {% if active == '/platform' %}class="on"{% endif %}>Platform</a>{% endif %}
+  </nav>
+  <div class="who">
+    <a href="/account">{{ session.name }}<span class="role">{{ 'platform ' + session.platform_role if session.platform_role else (role or '') }}</span></a>
+    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="link">Sign out</button></form>
+  </div>
+</header>
+<main class="{{ 'wide' if wide else '' }}">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+  <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+{% block body %}{% endblock %}
+</main>
+<script src="/static/app.js"></script>
+</body>
+</html>

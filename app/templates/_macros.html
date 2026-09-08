@@ -1,0 +1,38 @@
+{% macro field(label, name, value='', type='text', hint='', required=False, attrs='', full=False) %}
+<label class="field{% if full %} full{% endif %}">
+  <span>{{ label }}</span>
+  {% if type == 'textarea' %}
+  <textarea name="{{ name }}" {% if required %}required{% endif %} {{ attrs|safe }}>{{ value or '' }}</textarea>
+  {% else %}
+  <input type="{{ type }}" name="{{ name }}" value="{{ value if value is not none else '' }}" {% if required %}required{% endif %} {{ attrs|safe }}>
+  {% endif %}
+  {% if hint %}<em>{{ hint }}</em>{% endif %}
+</label>
+{% endmacro %}
+
+{% macro select(label, name, options, selected='', hint='', full=False, attrs='') %}
+<label class="field{% if full %} full{% endif %}">
+  <span>{{ label }}</span>
+  <select name="{{ name }}" {{ attrs|safe }}>
+    {% for option in options %}
+    <option value="{{ option.value }}" {% if option.value|string == selected|string %}selected{% endif %}>{{ option.label }}</option>
+    {% endfor %}
+  </select>
+  {% if hint %}<em>{{ hint }}</em>{% endif %}
+</label>
+{% endmacro %}
+
+{% macro badge(value, text='') %}
+<span class="badge {{ value|tone }}">{{ text or value|label }}</span>
+{% endmacro %}
+
+{% macro panel_open(title, actions='') %}
+<section class="panel">
+  <div class="panel-head"><h2>{{ title }}</h2>{{ actions|safe }}</div>
+{% endmacro %}
+
+{% macro empty(message) %}
+<p class="empty">{{ message }}</p>
+{% endmacro %}
+
+{% macro csrf(token) %}<input type="hidden" name="csrf" value="{{ token }}">{% endmacro %}

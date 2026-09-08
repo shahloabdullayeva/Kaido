@@ -1,0 +1,7 @@
+{% extends "auth_layout.html" %}
+{% set title = "Not allowed" %}
+{% block body %}
+<h1>Not allowed</h1>
+<p class="auth-note">This needs {{ needed }} access. Your role does not have it.</p>
+<p><a class="btn ghost" href="/">Back to dashboard</a></p>
+{% endblock %}

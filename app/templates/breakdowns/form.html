@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head"><div><h1>Report a breakdown</h1><p>Log it now, add detail as it develops.</p></div>
+  <a class="btn ghost" href="/breakdowns">Back</a></div>
+<section class="panel">
+  <form method="post" action="/breakdowns">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      <label class="field"><span>Truck</span>
+        <select name="truck_id" required autofocus>
+          <option value="">Select a truck</option>
+          {% for truck in trucks %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Driver</span>
+        <select name="driver_id"><option value="">—</option>
+          {% for driver in drivers %}<option value="{{ driver.id }}">{{ driver.name }}</option>{% endfor %}
+        </select>
+      </label>
+      {{ field('When', 'occurred_at', '', type='datetime-local') }}
+      <label class="field"><span>Severity</span>
+        <select name="severity">
+          {% for value in severities %}<option value="{{ value }}" {% if value == 'medium' %}selected{% endif %}>{{ value }}</option>{% endfor %}
+        </select>
+      </label>
+      {{ field('Location', 'location', '', attrs='maxlength="200" placeholder="I-40 mile marker 128, eastbound"') }}
+      {{ field('Load number', 'load_number', '', attrs='maxlength="40"') }}
+      {{ field('What happened', 'description', '', type='textarea', required=True, full=True) }}
+      <label class="checkbox field full"><input type="checkbox" name="take_out_of_service" value="1"> <span>Mark the truck out of service</span></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Log breakdown</button><a class="btn ghost" href="/breakdowns">Cancel</a></div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Platform</h1><p>Every company managed here</p></div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Companies</div><div class="stat-value">{{ totals.companies }}</div><div class="stat-hint">active</div></div>
+  <div class="stat"><div class="stat-label">Trucks</div><div class="stat-value">{{ totals.trucks }}</div><div class="stat-hint">across all carriers</div></div>
+  <div class="stat {{ 'bad' if totals.breakdowns else '' }}"><div class="stat-label">Open breakdowns</div><div class="stat-value">{{ totals.breakdowns }}</div><div class="stat-hint">fleet-wide</div></div>
+  <div class="stat {{ 'warn' if totals.faults else '' }}"><div class="stat-label">Active faults</div><div class="stat-value">{{ totals.faults }}</div><div class="stat-hint">fleet-wide</div></div>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Companies</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Company</th><th class="right">Trucks</th><th class="right">Drivers</th><th class="right">People</th><th>Samsara</th><th>Open work</th><th>Status</th><th class="right"></th></tr></thead>
+    <tbody>
+      {% for item in companies %}
+      <tr>
+        <td>{{ item.name }}{% if item.is_house %} <span class="badge info">own fleet</span>{% endif %}
+          <div class="subtle">{{ 'DOT ' ~ item.dot_number if item.dot_number else '' }}</div></td>
+        <td class="right">{{ item.truck_count }}</td>
+        <td class="right">{{ item.driver_count }}</td>
+        <td class="right">{{ item.member_count }}</td>
+        <td>{% if item.samsara_status %}<span class="badge {{ item.samsara_status|tone }}">{{ item.samsara_status }}</span>
+          <div class="subtle">{{ item.last_sync_at|ago }}</div>{% else %}<span class="badge muted">not set up</span>{% endif %}</td>
+        <td>
+          {% if item.open_breakdowns %}<span class="badge bad">{{ item.open_breakdowns }} breakdown</span>{% endif %}
+          {% if item.active_faults %}<span class="badge warn">{{ item.active_faults }} fault</span>{% endif %}
+          {% if not item.open_breakdowns and not item.active_faults %}<span class="subtle">clear</span>{% endif %}
+        </td>
+        <td><span class="badge {{ item.status|tone }}">{{ item.status }}</span></td>
+        <td class="right">
+          <form method="post" action="/platform/companies/{{ item.id }}/status" class="inline"
+                data-confirm="{{ 'Suspend ' ~ item.name ~ '? Everyone in it is signed out.' if item.status == 'active' else 'Reactivate ' ~ item.name ~ '?' }}">
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <input type="hidden" name="status" value="{{ 'suspended' if item.status == 'active' else 'active' }}">
+            <button class="btn {{ 'danger' if item.status == 'active' else 'ghost' }} small" type="submit">{{ 'Suspend' if item.status == 'active' else 'Reactivate' }}</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  <form method="post" action="/platform/companies">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      {{ field('Company name', 'name', '', required=True, attrs='maxlength="160"') }}
+      {{ field('DOT number', 'dot_number', '', attrs='maxlength="20"') }}
+      {{ field('MC number', 'mc_number', '', attrs='maxlength="20"') }}
+      {{ field('Contact name', 'contact_name', '', attrs='maxlength="120"') }}
+      {{ field('Contact phone', 'contact_phone', '', type='tel', attrs='maxlength="40"') }}
+      {{ field('Timezone', 'timezone', 'America/Chicago', attrs='maxlength="60"') }}
+      <label class="checkbox field"><input type="checkbox" name="is_house" value="1"> <span>This is our own fleet</span></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Add company</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Platform staff</h2><span class="muted">See and manage every company</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last sign-in</th></tr></thead>
+    <tbody>
+      {% for person in staff %}
+      <tr><td>{{ person.name }}</td><td class="mono">{{ person.email }}</td>
+        <td><span class="badge info">{{ person.platform_role }}</span></td>
+        <td><span class="badge {{ person.status|tone }}">{{ person.status }}</span></td>
+        <td>{{ person.last_login_at|ago }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% if session.platform_role == 'owner' %}
+  <form method="post" action="/platform/staff">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      {{ field('Name', 'name', '', required=True, attrs='maxlength="120"') }}
+      {{ field('Email', 'email', '', type='email', required=True, attrs='maxlength="200"') }}
+      <label class="field"><span>Platform role</span>
+        <select name="platform_role"><option value="staff">Staff</option><option value="owner">Owner</option></select>
+      </label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Add staff</button></div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

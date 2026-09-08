@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field, select %}
+{% block body %}
+<div class="page-head">
+  <div><h1>{{ 'Add truck' if mode == 'new' else 'Edit unit ' ~ truck.unit_number }}</h1>
+    <p>{{ 'A unit number is all that is required — the rest can come later.' if mode == 'new' else 'Changes are recorded in the audit log.' }}</p></div>
+  {% if mode == 'edit' %}<a class="btn ghost" href="/trucks/{{ truck.id }}">Back to truck</a>{% endif %}
+</div>
+
+<section class="panel">
+  <form method="post" action="{{ '/trucks' if mode == 'new' else '/trucks/' ~ truck.id }}">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      {{ field('Unit number', 'unit_number', truck.unit_number, required=True, attrs='maxlength="40" autofocus') }}
+      {{ field('VIN', 'vin', truck.vin, attrs='maxlength="24"') }}
+      {{ field('Year', 'year', truck.year, type='number', attrs='min="1980" max="2100"') }}
+      {{ field('Make', 'make', truck.make, attrs='maxlength="60"') }}
+      {{ field('Model', 'model', truck.model, attrs='maxlength="60"') }}
+      {{ field('Plate', 'plate', truck.plate, attrs='maxlength="20"') }}
+      {{ field('Plate state', 'plate_state', truck.plate_state, attrs='maxlength="4"') }}
+      <label class="field"><span>Status</span>
+        <select name="status">
+          {% for value in statuses %}<option value="{{ value }}" {% if truck.status == value %}selected{% endif %}>{{ value|label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Duty cycle</span>
+        <select name="duty_cycle">
+          {% for value in duty %}<option value="{{ value }}" {% if truck.duty_cycle == value %}selected{% endif %}>{{ value|label }}</option>{% endfor %}
+        </select>
+        <em>Severe duty shortens the oil interval.</em>
+      </label>
+      <label class="field"><span>Assigned driver</span>
+        <select name="driver_id">
+          <option value="">Unassigned</option>
+          {% for driver in drivers %}<option value="{{ driver.id }}" {% if truck.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
+        </select>
+      </label>
+      {% if mode == 'new' %}{{ field('Odometer', 'odometer', truck.odometer, type='number', attrs='min="0"') }}{% endif %}
+      {{ field('Oil interval (miles)', 'oil_interval_miles', truck.oil_interval_miles, type='number', hint='25,000 standard duty, 15,000 severe.', attrs='min="1000" step="1000"') }}
+      {{ field('Fuel card last 4', 'fuel_card_last4', truck.fuel_card_last4, attrs='maxlength="4"') }}
+      {{ field('Registration expires', 'registration_expires', truck.registration_expires|date_input, type='date') }}
+      {{ field('Insurance expires', 'insurance_expires', truck.insurance_expires|date_input, type='date') }}
+      {{ field('Last DOT annual inspection', 'annual_inspection_on', truck.annual_inspection_on|date_input, type='date', hint='Next one is due 12 months later.') }}
+      {{ field('Notes', 'notes', truck.notes, type='textarea', full=True) }}
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">{{ 'Add truck' if mode == 'new' else 'Save changes' }}</button>
+      <a class="btn ghost" href="/trucks">Cancel</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

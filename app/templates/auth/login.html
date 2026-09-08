@@ -1,0 +1,13 @@
+{% extends "auth_layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<h1>Sign in</h1>
+<form method="post" action="/login">
+  <input type="hidden" name="csrf" value="{{ anon_csrf() }}">
+  <input type="hidden" name="next" value="{{ next }}">
+  {{ field('Work email', 'email', email, type='email', required=True, attrs='autocomplete="username" maxlength="200" autofocus') }}
+  {{ field('Password', 'password', '', type='password', required=True, attrs='autocomplete="current-password" maxlength="200"') }}
+  <button class="btn" type="submit" data-busy="Checking…">Continue</button>
+</form>
+<p class="auth-note">New devices need a one-time code sent to your Telegram. Trusted devices stay signed in for {{ app_config.TRUST_DAYS }} days.</p>
+{% endblock %}

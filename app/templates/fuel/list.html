@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Fuel</h1><p>{{ totals.entries }} purchases this month · {{ totals.gallons|number(1) }} gallons · {{ totals.total|money }}</p></div>
+  {% if at_least(role, 'dispatcher') %}<a class="btn" href="/fuel/new">Log fuel</a>{% endif %}
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/fuel" class="filters" data-autosubmit>
+      <label class="field"><span>Truck</span>
+        <select name="truck_id">
+          <option value="">All trucks</option>
+          {% for truck in trucks %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+        </select>
+      </label>
+    </form>
+    <span class="muted">Card feeds land here automatically once EFS data sharing is switched on.</span>
+  </div>
+  {% if entries %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Unit</th><th>Driver</th><th>Where</th><th>Type</th><th class="right">Gallons</th><th class="right">$/gal</th><th class="right">Total</th><th class="right">Odometer</th></tr></thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td>{{ entry.purchased_at|day }}</td>
+        <td><a class="rowlink" href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
+        <td>{{ entry.driver_name or '—' }}</td>
+        <td>{{ entry.location or '—' }}{% if entry.state %} <span class="subtle">{{ entry.state }}</span>{% endif %}</td>
+        <td><span class="badge muted">{{ entry.fuel_type }}</span></td>
+        <td class="right">{{ entry.gallons|number(1) }}</td>
+        <td class="right">{{ entry.price_per_gallon|money }}</td>
+        <td class="right">{{ entry.total|money }}</td>
+        <td class="right">{{ entry.odometer|number }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No fuel logged yet.</p>{% endif %}
+</section>
+{% endblock %}

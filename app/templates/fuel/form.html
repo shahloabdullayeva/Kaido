@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head"><div><h1>Log fuel</h1><p>Enter either a total or a price per gallon — the other is worked out.</p></div>
+  <a class="btn ghost" href="/fuel">Back to fuel</a></div>
+<section class="panel">
+  <form method="post" action="/fuel">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      <label class="field"><span>Truck</span>
+        <select name="truck_id" required autofocus>
+          <option value="">Select a truck</option>
+          {% for truck in trucks %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Driver</span>
+        <select name="driver_id"><option value="">—</option>
+          {% for driver in drivers %}<option value="{{ driver.id }}">{{ driver.name }}</option>{% endfor %}
+        </select>
+      </label>
+      {{ field('Purchased at', 'purchased_at', '', type='datetime-local') }}
+      <label class="field"><span>Fuel type</span>
+        <select name="fuel_type">{% for value in fuel_types %}<option value="{{ value }}">{{ value }}</option>{% endfor %}</select>
+      </label>
+      {{ field('Gallons', 'gallons', '', type='number', required=True, attrs='step="0.001" min="0"') }}
+      {{ field('Price per gallon', 'price_per_gallon', '', type='number', attrs='step="0.0001" min="0"') }}
+      {{ field('Total', 'total', '', type='number', attrs='step="0.01" min="0"') }}
+      {{ field('Odometer', 'odometer', '', type='number', hint='Needed for MPG.', attrs='min="0"') }}
+      {{ field('Location', 'location', '', attrs='maxlength="160" placeholder="Love\'s, Oklahoma City"') }}
+      {{ field('State', 'state', '', attrs='maxlength="4"') }}
+      {{ field('Card last 4', 'card_last4', '', attrs='maxlength="4"') }}
+      {{ field('Invoice number', 'invoice_no', '', attrs='maxlength="40"') }}
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Save purchase</button><a class="btn ghost" href="/fuel">Cancel</a></div>
+  </form>
+</section>
+{% endblock %}

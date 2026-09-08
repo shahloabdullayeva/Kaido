@@ -1,0 +1,7 @@
+{% extends "auth_layout.html" %}
+{% set title = "No company" %}
+{% block body %}
+<h1>No company yet</h1>
+<p class="auth-note">Your account is not attached to a company. Ask an administrator to add you to one.</p>
+<form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost">Sign out</button></form>
+{% endblock %}

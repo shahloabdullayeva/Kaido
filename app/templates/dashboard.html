@@ -1,0 +1,168 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div>
+    <h1>{{ company.name }}</h1>
+    <p>{{ fleet_size }} trucks on the book · {{ summary.drivers_active }} active drivers</p>
+  </div>
+  <div class="actions-row">
+    <a class="btn ghost" href="/breakdowns/new">Report breakdown</a>
+    <a class="btn" href="/fuel/new">Log fuel</a>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Active</div><div class="stat-value">{{ summary.trucks_active }}</div><div class="stat-hint">running today</div></div>
+  <div class="stat {{ 'warn' if summary.trucks_shop else '' }}"><div class="stat-label">In shop</div><div class="stat-value">{{ summary.trucks_shop }}</div><div class="stat-hint">being worked on</div></div>
+  <div class="stat {{ 'bad' if summary.trucks_down else '' }}"><div class="stat-label">Out of service</div><div class="stat-value">{{ summary.trucks_down }}</div><div class="stat-hint">not earning</div></div>
+  <div class="stat {{ 'bad' if summary.breakdowns_open else '' }}"><div class="stat-label">Open breakdowns</div><div class="stat-value">{{ summary.breakdowns_open }}</div><div class="stat-hint">unresolved</div></div>
+  <div class="stat {{ 'warn' if summary.faults_active else '' }}"><div class="stat-label">Active faults</div><div class="stat-value">{{ summary.faults_active }}</div><div class="stat-hint">from telematics</div></div>
+  <div class="stat"><div class="stat-label">Fuel this month</div><div class="stat-value">{{ summary.fuel_month|money }}</div><div class="stat-hint">{{ summary.maintenance_month|money }} maintenance</div></div>
+</div>
+
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Needs attention</h2><a class="btn ghost small" href="/trucks">All trucks</a></div>
+    {% if attention %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Unit</th><th>Status</th><th>Service</th><th class="right">Odometer</th></tr></thead>
+      <tbody>
+        {% for truck in attention %}
+        <tr>
+          <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a>
+            <div class="subtle">{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}</div></td>
+          <td>
+            <div class="pill-row">
+              <span class="badge {{ truck.status|tone }}">{{ truck.status|label }}</span>
+              {% if truck.open_breakdowns %}<span class="badge bad">{{ truck.open_breakdowns }} breakdown</span>{% endif %}
+              {% if truck.active_faults %}<span class="badge warn">{{ truck.active_faults }} fault</span>{% endif %}
+            </div>
+          </td>
+          <td>
+            {% for item in truck.statuses %}
+              {% if item.tone in ['bad', 'warn'] %}
+              <div class="subtle"><span class="badge {{ item.tone }}">{{ item.label }}</span> {{ item.detail }}</div>
+              {% endif %}
+            {% endfor %}
+          </td>
+          <td class="right">{{ truck.odometer|miles }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <p class="empty">Nothing overdue, no open breakdowns, no active faults.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Open breakdowns</h2><a class="btn ghost small" href="/breakdowns">All</a></div>
+    {% if breakdowns %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Unit</th><th>Status</th><th>Where</th><th>When</th></tr></thead>
+      <tbody>
+        {% for item in breakdowns %}
+        <tr>
+          <td><a class="rowlink" href="/breakdowns/{{ item.id }}">{{ item.unit_number }}</a>
+            <div class="subtle">{{ item.driver_name or 'No driver' }}</div></td>
+          <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
+          <td>{{ item.location or '—' }}</td>
+          <td>{{ item.occurred_at|ago }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <p class="empty">No open breakdowns.</p>
+    {% endif %}
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Active faults</h2><a class="btn ghost small" href="/faults">All faults</a></div>
+    {% if faults %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Unit</th><th>Code</th><th>Severity</th><th>Seen</th></tr></thead>
+      <tbody>
+        {% for fault in faults %}
+        <tr>
+          <td><a class="rowlink" href="/trucks/{{ fault.truck_id }}">{{ fault.unit_number }}</a></td>
+          <td><span class="mono">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ ' FMI ' ~ fault.fmi) }}</span>
+            <div class="subtle">{{ (fault.description or '')[:60] }}</div></td>
+          <td><span class="badge {{ fault.severity|tone }}">{{ fault.severity }}</span></td>
+          <td>{{ fault.last_seen_at|ago }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <p class="empty">No active fault codes.{% if not summary.faults_active %} Connect Samsara to see engine faults here.{% endif %}</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Expiring soon</h2></div>
+    {% if documents %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Document</th><th>Who</th><th>Expires</th></tr></thead>
+      <tbody>
+        {% for doc in documents %}
+        <tr>
+          <td>{{ doc.kind }}</td>
+          <td><a class="rowlink" href="{{ doc.href }}">{{ doc.who }}</a></td>
+          <td>{{ doc.on|day }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <p class="empty">Nothing expiring in the next 45 days.</p>
+    {% endif %}
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Work in progress</h2><a class="btn ghost small" href="/maintenance">All work orders</a></div>
+    {% if upcoming %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Unit</th><th>Work</th><th>Status</th><th>Due</th></tr></thead>
+      <tbody>
+        {% for order in upcoming %}
+        <tr>
+          <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.unit_number }}</a></td>
+          <td>{{ (order.description or '')[:50] }}</td>
+          <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
+          <td>{{ order.scheduled_for|day }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <p class="empty">No scheduled or in-progress work.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Recent fuel</h2><a class="btn ghost small" href="/fuel">All fuel</a></div>
+    {% if fuel %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Unit</th><th>When</th><th class="right">Gallons</th><th class="right">Total</th></tr></thead>
+      <tbody>
+        {% for entry in fuel %}
+        <tr>
+          <td><a class="rowlink" href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
+          <td>{{ entry.purchased_at|ago }}</td>
+          <td class="right">{{ entry.gallons|number(1) }}</td>
+          <td class="right">{{ entry.total|money }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}
+    <p class="empty">No fuel logged yet.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="same-origin">
+<title>{{ title }} · Kaido</title>
+<link rel="stylesheet" href="/static/app.css">
+<link rel="icon" href="/static/favicon.svg">
+</head>
+<body class="auth">
+<div class="auth-card">
+  <div class="auth-brand">Kai<span>do</span></div>
+  {% if error %}<div class="flash bad">{{ error }}</div>{% endif %}
+  {% if notice %}<div class="flash info">{{ notice }}</div>{% endif %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+  {% endwith %}
+  {% block body %}{% endblock %}
+</div>
+</body>
+</html>

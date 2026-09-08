@@ -1,0 +1,107 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Integrations</h1><p>{{ company.name }}</p></div>
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Samsara</h2>
+    <span class="badge {{ (integration.status if integration else 'disconnected')|tone }}">{{ (integration.status if integration else 'disconnected')|label }}</span>
+  </div>
+  <div class="pad">
+    {% if integration and integration.status == 'connected' %}
+    <p style="margin-top:0">Last sync {{ integration.last_sync_at|ago if integration.last_sync_at else 'never' }} ·
+      {{ counts.linked }} of {{ counts.trucks }} trucks linked{% if counts.unlinked %} · {{ counts.unlinked }} Samsara vehicles not matched to a truck{% endif %}.</p>
+    <div class="actions-row">
+      <form method="post" action="/integrations/samsara/sync" class="inline">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}">
+        <button class="btn" type="submit" data-busy="Syncing…">Sync now</button>
+      </form>
+      {% if counts.unlinked %}
+      <form method="post" action="/integrations/samsara/import" class="inline"
+            data-confirm="Create trucks for the {{ counts.unlinked }} Samsara vehicles that are not linked yet?">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}">
+        <button class="btn ghost" type="submit" data-busy="Importing…">Import {{ counts.unlinked }} as trucks</button>
+      </form>
+      {% endif %}
+      {% if at_least(role, 'admin') %}
+      <form method="post" action="/integrations/samsara/disconnect" class="inline" data-confirm="Disconnect Samsara? Syncing stops, stored data stays.">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}">
+        <button class="btn danger" type="submit">Disconnect</button>
+      </form>
+      {% endif %}
+    </div>
+    {% if integration.last_error %}<p class="flash bad" style="margin-top:14px">{{ integration.last_error }}</p>{% endif %}
+    {% else %}
+    <p style="margin-top:0">Paste an API token from the carrier's Samsara account: <strong>Settings → API Tokens</strong>, with read scopes for Vehicles, Vehicle Statistics and DVIRs. The token is encrypted before it is stored and never shown again.</p>
+    <form method="post" action="/integrations/samsara/connect">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <div class="form-grid">
+        {{ field('API token', 'token', '', type='password', required=True, attrs='maxlength="200" autocomplete="off"') }}
+      </div>
+      <div class="form-actions"><button class="btn" type="submit" data-busy="Checking…">Connect Samsara</button></div>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+{% if links %}
+<section class="panel">
+  <div class="panel-head"><h2>Vehicle mapping</h2><span class="muted">Matched automatically by VIN, then by unit number</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Samsara vehicle</th><th>VIN</th><th>Last seen</th><th>Truck</th></tr></thead>
+    <tbody>
+      {% for link in links %}
+      <tr>
+        <td>{{ link.external_name or link.external_id }}<div class="subtle mono">{{ link.external_id }}</div></td>
+        <td class="mono">{{ link.external_vin or '—' }}</td>
+        <td>{{ link.last_seen_at|ago }}</td>
+        <td>
+          <form method="post" action="/integrations/samsara/vehicles/{{ link.id }}" class="inline" data-autosubmit>
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <select name="truck_id">
+              <option value="">Not linked</option>
+              {% for truck in trucks %}<option value="{{ truck.id }}" {% if link.truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+            </select>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% if runs %}
+<section class="panel">
+  <div class="panel-head"><h2>Recent syncs</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Started</th><th>Status</th><th class="right">Vehicles</th><th class="right">Odometer</th><th class="right">Faults opened</th><th class="right">Faults cleared</th><th>Error</th></tr></thead>
+    <tbody>
+      {% for run in runs %}
+      <tr>
+        <td>{{ run.started_at|stamp }}</td>
+        <td><span class="badge {{ run.status|tone }}">{{ run.status }}</span></td>
+        <td class="right">{{ run.vehicles_seen }}</td>
+        <td class="right">{{ run.odometer_rows }}</td>
+        <td class="right">{{ run.faults_opened }}</td>
+        <td class="right">{{ run.faults_cleared }}</td>
+        <td class="subtle">{{ (run.error or '')[:70] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head"><h2>Not connected yet</h2></div>
+  <div class="pad">
+    <p style="margin-top:0"><strong>EFS fuel cards</strong> — transaction feeds come through the eManager data-sharing settings on the parent account. Once a feed is switched on for a carrier, purchases land in Fuel automatically.</p>
+    <p><strong>Google Maps</strong> — nearby shops and truck stops on the breakdown screen.</p>
+    <p style="margin-bottom:0"><strong>AI fault triage</strong> — plain-English explanations of fault codes with a recommended action.</p>
+  </div>
+</section>
+{% endblock %}

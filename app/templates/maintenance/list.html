@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Maintenance</h1><p>{{ spend.month_orders }} completed this month · {{ spend.month_cost|money }}</p></div>
+  {% if at_least(role, 'dispatcher') %}<a class="btn" href="/maintenance/new">New work order</a>{% endif %}
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/maintenance" class="filters" data-autosubmit>
+      <label class="field"><span>Show</span>
+        <select name="status">
+          <option value="open" {% if status == 'open' %}selected{% endif %}>Open work</option>
+          <option value="all" {% if status == 'all' %}selected{% endif %}>Everything</option>
+          {% for value in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ value|label }}</option>{% endfor %}
+        </select>
+      </label>
+    </form>
+  </div>
+  {% if orders %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Work</th><th>Status</th><th>Date</th><th>Vendor</th><th class="right">Odometer</th><th class="right">Cost</th></tr></thead>
+    <tbody>
+      {% for order in orders %}
+      <tr>
+        <td><a class="rowlink" href="/trucks/{{ order.truck_id }}">{{ order.unit_number }}</a></td>
+        <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ kind_labels.get(order.kind, order.kind) }}</a>
+          <div class="subtle">{{ (order.description or '')[:70] }}</div></td>
+        <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
+        <td>{{ (order.performed_on or order.scheduled_for)|day }}</td>
+        <td>{{ order.vendor or '—' }}</td>
+        <td class="right">{{ order.odometer|number }}</td>
+        <td class="right">{{ order.cost|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">Nothing here. {% if at_least(role, 'dispatcher') %}<a href="/maintenance/new">Open a work order</a>.{% endif %}</p>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Breakdowns</h1><p>{{ items|length }} shown</p></div>
+  {% if at_least(role, 'dispatcher') %}<a class="btn" href="/breakdowns/new">Report breakdown</a>{% endif %}
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/breakdowns" class="filters" data-autosubmit>
+      <label class="field"><span>Show</span>
+        <select name="status">
+          <option value="open_all" {% if status == 'open_all' %}selected{% endif %}>Unresolved</option>
+          <option value="all" {% if status == 'all' %}selected{% endif %}>Everything</option>
+          {% for value in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ value|label }}</option>{% endfor %}
+        </select>
+      </label>
+    </form>
+  </div>
+  {% if items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>What happened</th><th>Where</th><th>Severity</th><th>Status</th><th>When</th><th class="right">Cost</th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td><a class="rowlink" href="/breakdowns/{{ item.id }}">{{ item.unit_number }}</a>
+          <div class="subtle">{{ item.driver_name or 'no driver' }}</div></td>
+        <td>{{ (item.description or '')[:70] }}</td>
+        <td>{{ item.location or '—' }}</td>
+        <td><span class="badge {{ item.severity|tone }}">{{ item.severity }}</span></td>
+        <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
+        <td>{{ item.occurred_at|ago }}</td>
+        <td class="right">{{ ((item.repair_cost or 0) + (item.towing_cost or 0))|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No breakdowns to show.</p>{% endif %}
+</section>
+{% endblock %}
