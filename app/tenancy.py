@@ -96,7 +96,10 @@ def scoped_truck(truck_id):
 
 def active_trucks():
     return rows(
-        "select id, unit_number, status from trucks where company_id = %s and status <> 'sold' order by lower(unit_number)",
+        """select t.id, t.unit_number, t.status, t.odometer, t.driver_id,
+                  d.name as driver_name, t.make, t.model, t.year
+           from trucks t left join drivers d on d.id = t.driver_id
+           where t.company_id = %s and t.status <> 'sold' order by lower(t.unit_number)""",
         (g.company["id"],),
     )
 

@@ -34,8 +34,9 @@ def index():
         clause = " and m.status = %s"
         params.append(status)
     orders = rows(
-        f"""select m.*, t.unit_number from maintenance_orders m
+        f"""select m.*, t.unit_number, d.name as driver_name from maintenance_orders m
             join trucks t on t.id = m.truck_id
+            left join drivers d on d.id = m.driver_id
             where m.company_id = %s{clause}
             order by coalesce(m.performed_on, m.scheduled_for) desc nulls first, m.id desc limit 200""",
         tuple(params),
@@ -77,11 +78,11 @@ def create():
     performed_on = forms.day(request.form.get("performed_on"))
     odometer = forms.integer(request.form.get("odometer"))
     order = insert(
-        """insert into maintenance_orders (company_id, truck_id, kind, status, scheduled_for, performed_on,
+        """insert into maintenance_orders (company_id, truck_id, driver_id, kind, status, scheduled_for, performed_on,
              odometer, vendor, invoice_no, cost, description, next_due_on, next_due_odometer, created_by)
-           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
+           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
         (
-            g.company["id"], truck_id, kind, status,
+            g.company["id"], truck_id, truck["driver_id"], kind, status,
             forms.day(request.form.get("scheduled_for")), performed_on, odometer,
             forms.text(request.form.get("vendor"), 160), forms.text(request.form.get("invoice_no"), 40),
             forms.decimal(request.form.get("cost")), description,
@@ -115,7 +116,9 @@ def apply_completion(order, truck):
 @company_required
 def detail(order_id):
     order = one(
-        """select m.*, t.unit_number from maintenance_orders m join trucks t on t.id = m.truck_id
+        """select m.*, t.unit_number, d.name as driver_name from maintenance_orders m
+           join trucks t on t.id = m.truck_id
+           left join drivers d on d.id = m.driver_id
            where m.id = %s and m.company_id = %s""",
         (order_id, g.company["id"]),
     )
@@ -135,12 +138,14 @@ def update(order_id):
         return render_template("errors/404.html"), 404
     status = forms.pick(request.form.get("status"), STATUSES, order["status"])
     performed_on = forms.day(request.form.get("performed_on"))
+    truck = one("select * from trucks where id = %s and company_id = %s", (order["truck_id"], g.company["id"]))
     updated = insert(
-        """update maintenance_orders set kind = %s, status = %s, scheduled_for = %s, performed_on = %s,
+        """update maintenance_orders set driver_id = %s, kind = %s, status = %s, scheduled_for = %s, performed_on = %s,
              odometer = %s, vendor = %s, invoice_no = %s, cost = %s, description = %s,
              next_due_on = %s, next_due_odometer = %s, updated_at = now()
            where id = %s and company_id = %s returning *""",
         (
+            (truck or {}).get("driver_id"),
             forms.pick(request.form.get("kind"), KINDS, order["kind"]), status,
             forms.day(request.form.get("scheduled_for")), performed_on,
             forms.integer(request.form.get("odometer")), forms.text(request.form.get("vendor"), 160),
@@ -150,7 +155,6 @@ def update(order_id):
             order_id, g.company["id"],
         ),
     )
-    truck = one("select * from trucks where id = %s", (order["truck_id"],))
     apply_completion(updated, truck)
     audit("maintenance.updated", "maintenance_order", order_id, {"status": status})
     flash("Work order updated.", "ok")

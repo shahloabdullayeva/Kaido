@@ -218,6 +218,7 @@ create table if not exists maintenance_orders (
   id bigserial primary key,
   company_id int not null references companies(id) on delete cascade,
   truck_id int not null references trucks(id) on delete cascade,
+  driver_id int references drivers(id) on delete set null,
   kind text not null default 'repair' check (kind in ('oil','pm_a','pm_b','repair','tire','annual_inspection','recall')),
   status text not null default 'scheduled' check (status in ('scheduled','in_progress','done')),
   scheduled_for date,
@@ -359,3 +360,6 @@ create table if not exists sync_runs (
   error text
 );
 create index if not exists sync_runs_idx on sync_runs (company_id, started_at desc);
+
+alter table maintenance_orders add column if not exists driver_id int references drivers(id) on delete set null;
+create index if not exists maint_driver_idx on maintenance_orders (driver_id, performed_on desc);

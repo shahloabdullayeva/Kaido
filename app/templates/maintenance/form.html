@@ -8,14 +8,23 @@
   <a class="btn ghost" href="/maintenance">Back</a>
 </div>
 <section class="panel">
-  <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}">
+  <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}" data-truck-fill>
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <div class="form-grid">
       <label class="field"><span>Truck</span>
         <select name="truck_id" required {% if editing %}disabled{% endif %}>
           <option value="">Select a truck</option>
-          {% for truck in trucks %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+          {% for truck in trucks %}<option value="{{ truck.id }}"
+            data-driver="{{ truck.driver_name or '' }}"
+            data-odometer="{{ truck.odometer or '' }}"
+            data-truck="{{ [truck.year, truck.make, truck.model]|select|join(' ') }}"
+            {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
         </select>
+      </label>
+      <label class="field"><span>Driver</span>
+        <input type="text" id="truck-driver" value="{{ order.driver_name or '' if editing else '' }}"
+               readonly tabindex="-1" placeholder="Pick a truck first">
+        <em id="truck-summary" class="subtle">Filled in from whoever is assigned to the truck.</em>
       </label>
       <label class="field"><span>Work type</span>
         <select name="kind">
@@ -29,7 +38,7 @@
       </label>
       {{ field('Scheduled for', 'scheduled_for', (order.scheduled_for|date_input) if editing else '', type='date') }}
       {{ field('Performed on', 'performed_on', (order.performed_on|date_input) if editing else '', type='date') }}
-      {{ field('Odometer', 'odometer', order.odometer if editing else '', type='number', attrs='min="0"') }}
+      {{ field('Odometer', 'odometer', order.odometer if editing else '', type='number', attrs='min="0"', hint='Last reading from the truck, edit if the shop wrote a different one.') }}
       {{ field('Vendor / shop', 'vendor', order.vendor if editing else '', attrs='maxlength="160"') }}
       {{ field('Invoice number', 'invoice_no', order.invoice_no if editing else '', attrs='maxlength="40"') }}
       {{ field('Cost', 'cost', order.cost if editing else '', type='number', attrs='step="0.01" min="0"') }}

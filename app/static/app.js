@@ -31,6 +31,31 @@ for (const input of document.querySelectorAll('input[data-filter]')) {
   });
 }
 
+for (const form of document.querySelectorAll('form[data-truck-fill]')) {
+  const trucks = form.querySelector('select[name=truck_id]');
+  const driver = form.querySelector('#truck-driver');
+  const summary = form.querySelector('#truck-summary');
+  const odometer = form.querySelector('input[name=odometer]');
+  if (!trucks || !driver) continue;
+  const fill = (touchOdometer) => {
+    const option = trucks.selectedOptions[0];
+    const name = option ? option.dataset.driver : '';
+    driver.value = name || '';
+    driver.placeholder = option && option.value ? 'No driver assigned to this truck' : 'Pick a truck first';
+    if (summary) {
+      const label = option ? option.dataset.truck : '';
+      summary.textContent = label
+        ? label + ' — driver comes from the truck, it cannot be changed here.'
+        : 'Filled in from whoever is assigned to the truck.';
+    }
+    if (touchOdometer && odometer && option && option.dataset.odometer && !odometer.value) {
+      odometer.value = option.dataset.odometer;
+    }
+  };
+  trucks.addEventListener('change', () => fill(true));
+  fill(false);
+}
+
 for (const form of document.querySelectorAll('form[data-autosubmit]')) {
   for (const control of form.querySelectorAll('select')) {
     control.addEventListener('change', () => form.requestSubmit());
