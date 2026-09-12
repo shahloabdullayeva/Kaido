@@ -25,7 +25,7 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       advisor.py      the Claude calls: a line per shop and which one to pick
       views/          one blueprint per section
       templates/      Jinja templates
-      static/         app.css, app.js, favicon, vendor/leaflet
+      static/         app.css, app.js, fleet.js, shops.js, favicon, vendor/leaflet
     bin/              run, serve, sync, backup
     db/schema.sql     the whole schema
     manage.py         CLI
@@ -86,6 +86,16 @@ closed automatically. Run it from the Integrations page, or on a schedule:
     manage.py telegram-bot                link Telegram accounts
     manage.py demo --company              sample trucks, fuel and a breakdown
     manage.py ai-spend                    what the AI notes have cost so far
+
+## The fleet map
+
+The dashboard opens on a map of every truck that has reported a position, drawn
+from the same Samsara sync. A dot is red when the truck has an open breakdown or
+is overdue for service, amber when it has an active fault or is due soon, green
+when there is nothing outstanding. Hovering names the unit and its driver;
+clicking opens the driver, the truck, where it is, how long ago it said so, the
+odometer, anything wrong with it, and a link into the truck's page. A company
+with no telematics sees a line saying so instead of an empty map.
 
 ## Where to send it
 

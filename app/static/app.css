@@ -223,3 +223,18 @@ body.auth {
   font-family: var(--sans); font-size: 13px;
 }
 .shop-origin { padding: 0 10px 8px; margin: 0; }
+
+#fleet-map {
+  height: 400px; margin: 0 10px 8px;
+  border: 1px solid var(--face-dark); background: var(--shade);
+}
+.map-legend { padding: 0 10px 10px; margin: 0; }
+.dot { display: inline-block; width: 9px; height: 9px; border: 1px solid var(--ink); margin: 0 2px 0 8px; vertical-align: middle; }
+.dot.bad { background: #dd8888; }
+.dot.warn { background: #ccaa66; }
+.dot.ok { background: #66aa66; }
+.map-popup { font-family: var(--sans); font-size: 12px; min-width: 170px; }
+.map-popup-unit { font-family: var(--serif); font-weight: bold; font-size: 15px; }
+.map-popup-driver { font-weight: bold; }
+.map-popup-flags { color: var(--bad); margin-top: 3px; }
+.map-popup a { display: inline-block; margin-top: 5px; }

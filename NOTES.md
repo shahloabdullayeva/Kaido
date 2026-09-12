@@ -75,6 +75,14 @@ $5 of credit on it, and the app is built to make that last:
 - `./venv/bin/python manage.py ai-spend` prints the whole picture: per day, all
   time, cost each, and how many lookups the remaining credit buys.
 
+## Also on 12 Sep — the dashboard map
+
+The dashboard now opens on a map of the whole fleet: 35 LLAP trucks, each dot
+coloured by whether anything is wrong with it, hover for unit and driver, click
+for the driver, position, age of the reading, faults and a link to the truck.
+Companies with no telematics (the two demo ones) get a line explaining that
+rather than an empty map.
+
 ## Next, in the order worth doing
 
 1. **The reminder engine.** The app computes oil and DOT-annual due dates but tells

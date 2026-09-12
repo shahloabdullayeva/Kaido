@@ -1,4 +1,7 @@
 {% extends "layout.html" %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script src="/static/fleet.js"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
@@ -19,6 +22,23 @@
   <div class="stat {{ 'warn' if summary.faults_active else '' }}"><div class="stat-label">Active faults</div><div class="stat-value">{{ summary.faults_active }}</div><div class="stat-hint">from telematics</div></div>
   <div class="stat"><div class="stat-label">Fuel this month</div><div class="stat-value">{{ summary.fuel_month|money }}</div><div class="stat-hint">{{ summary.maintenance_month|money }} maintenance</div></div>
 </div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Where the trucks are</h2>
+    <span class="subtle">{{ pins|length }} of {{ fleet_size }} reporting a position</span></div>
+  {% if pins %}
+  <div id="fleet-map" data-trucks='{{ pins|json_attr }}'></div>
+  <p class="subtle map-legend">
+    <span class="dot bad"></span> breakdown or overdue service
+    <span class="dot warn"></span> fault or due soon
+    <span class="dot ok"></span> nothing outstanding
+    — positions come from Samsara on the 15-minute sync. Click a truck for its driver.
+  </p>
+  {% else %}
+  <p class="empty">No truck here has reported a position yet. Positions arrive with the Samsara sync —
+    connect it on the Integrations page and this map fills itself in.</p>
+  {% endif %}
+</section>
 
 <div class="grid-2">
   <section class="panel">

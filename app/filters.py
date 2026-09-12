@@ -79,6 +79,10 @@ def label(value):
     return str(value or "").replace("_", " ")
 
 
+def json_attr(value):
+    return Markup(escape(json.dumps(value)))
+
+
 def shop_pins(found):
     pins = [{"name": shop["name"], "lat": shop["latitude"], "lon": shop["longitude"],
              "miles": shop["miles"], "open": shop["open_state"]} for shop in found or []]
@@ -97,4 +101,5 @@ def register(app):
         "tone": tone,
         "label": label,
         "shop_pins": shop_pins,
+        "json_attr": json_attr,
     })
