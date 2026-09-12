@@ -18,7 +18,7 @@
 {% if problem %}<p class="empty">{{ problem }}</p>{% endif %}
 <div id="shop-map"
      {% if origin %}data-lat="{{ origin.latitude }}" data-lon="{{ origin.longitude }}"
-     data-label="{{ truck.unit_number if origin.source == 'samsara' else 'Looking here' }} — {{ origin.label }}"
+     data-label="{% if origin.source == 'samsara' %}{{ truck.unit_number }}{% if truck.driver_name %}, {{ truck.driver_name }}{% endif %}{% else %}Looking here{% endif %} — {{ origin.label }}"
      data-kind="{{ origin.source }}"{% endif %}
      data-shops='{{ found|shop_pins }}'></div>
 {% if origin and not problem %}
