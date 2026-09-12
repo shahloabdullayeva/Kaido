@@ -85,6 +85,7 @@ closed automatically. Run it from the Integrations page, or on a schedule:
     manage.py sync --all                  pull from Samsara for every connected company
     manage.py telegram-bot                link Telegram accounts
     manage.py demo --company              sample trucks, fuel and a breakdown
+    manage.py ai-spend                    what the AI notes have cost so far
 
 ## Where to send it
 
@@ -111,6 +112,15 @@ line per shop and names the one to send the truck to. It is told to use nothing
 but the data above — no invented hours, prices or reviews — and past invoices from
 this fleet outrank everything else. Without the key the list works exactly the
 same, minus those lines.
+
+Spending is capped. Every call is priced and written to `ai_usage`; once the day's
+total reaches `AI_DAILY_USD` (20 cents) the notes stop until tomorrow and the list
+carries on without them. Answers are also cached for seven days, so opening the
+same truck in the same place again costs nothing. A lookup is about a quarter of a
+cent.
+
+    manage.py ai-spend                    what it has cost, per day and all time
+    manage.py ai-spend --credit 5         how far a given amount of credit goes
 
 ## Maintenance intervals
 

@@ -101,6 +101,31 @@ def cmd_sync(args):
     return 0
 
 
+def cmd_ai_spend(args):
+    from app.advisor import MODEL, spent_today, spent_total
+    from app.config import config
+    total, calls = spent_total()
+    today = spent_today()
+    days = rows(
+        """select date_trunc('day', created_at)::date as day, count(*) as calls,
+                  sum(cost_usd) as cost from ai_usage
+           group by 1 order by 1 desc limit %s""",
+        (args.days,),
+    )
+    print(f"Model {MODEL}, daily cap ${config.AI_DAILY_USD:.2f}")
+    for day in days:
+        print(f"  {day['day']}  {day['calls']:>4} lookups  ${float(day['cost']):.4f}")
+    print(f"Today ${today:.4f} of ${config.AI_DAILY_USD:.2f}")
+    print(f"All time ${total:.4f} over {calls} lookups")
+    if calls:
+        each = total / calls
+        print(f"About ${each:.4f} each — ${args.credit:.2f} of credit is roughly {int(args.credit / each)} lookups")
+        print(f"At the cap every day, ${args.credit:.2f} lasts {int(args.credit / config.AI_DAILY_USD)} days")
+    cached = one("select count(*) as n from ai_cache where fetched_at > now() - make_interval(days => 7)")
+    print(f"{cached['n']} answers cached and free to serve again")
+    return 0
+
+
 def cmd_telegram(args):
     from app.telegram import enabled, get_updates, send
     if not enabled():
@@ -246,6 +271,11 @@ def main():
     sync.add_argument("--company")
     sync.add_argument("--all", action="store_true")
     sync.set_defaults(func=cmd_sync)
+
+    spend = sub.add_parser("ai-spend", help="what the AI notes have cost so far")
+    spend.add_argument("--days", type=int, default=14)
+    spend.add_argument("--credit", type=float, default=5.0)
+    spend.set_defaults(func=cmd_ai_spend)
 
     sub.add_parser("telegram-bot", help="link Telegram accounts").set_defaults(func=cmd_telegram)
 

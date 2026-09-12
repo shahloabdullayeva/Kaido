@@ -198,10 +198,11 @@ def shops(truck_id):
     advice = advisor.shop_advice(truck, found, fleet_average)
     notes = {}
     if advice:
-        notes = {note.name: note.note for note in advice.notes}
+        notes = {note.number: note.note for note in advice.notes}
     return render_template("maintenance/_shops.html", truck=truck, found=found, meta=meta,
                            notes=notes, advice=advice, fleet_average=fleet_average,
-                           ai_on=advisor.available(), problem=None)
+                           ai_on=advisor.available(), ai_paused=advisor.over_budget(),
+                           problem=None)
 
 
 @bp.get("/maintenance/<int:order_id>")

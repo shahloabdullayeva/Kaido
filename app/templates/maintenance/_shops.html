@@ -35,7 +35,7 @@
     <div class="shop-history">You have used this shop {{ shop.history.visits }}×, average
       {{ shop.history.average|money }}, last {{ shop.history.last }}.</div>
     {% endif %}
-    {% if notes.get(shop.name) %}<div class="shop-note">{{ notes[shop.name] }}</div>{% endif %}
+    {% if notes.get(loop.index) %}<div class="shop-note">{{ notes[loop.index] }}</div>{% endif %}
     <button type="button" class="btn ghost small" data-pick-vendor="{{ shop.name }}">Use as vendor</button>
   </li>
   {% endfor %}
@@ -43,5 +43,6 @@
 <p class="subtle">Shops from OpenStreetMap{% if meta.cached %}, cached{% endif %}.
   {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
   {% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.
+  {% elif ai_paused and not notes %}AI notes are paused — today's budget is spent. They come back tomorrow.
   {% elif not notes %}AI notes did not come back this time.{% endif %}</p>
 {% endif %}

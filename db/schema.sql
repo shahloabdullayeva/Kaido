@@ -382,3 +382,21 @@ create table if not exists shop_lookups (
   unique (cell, radius_m)
 );
 create index if not exists shop_lookups_age_idx on shop_lookups (fetched_at);
+
+create table if not exists ai_usage (
+  id bigserial primary key,
+  model text not null,
+  input_tokens int not null default 0,
+  output_tokens int not null default 0,
+  cost_usd numeric(10,6) not null default 0,
+  created_at timestamptz not null default now()
+);
+create index if not exists ai_usage_day_idx on ai_usage (created_at desc);
+
+create table if not exists ai_cache (
+  cache_key text primary key,
+  model text not null,
+  payload jsonb not null,
+  fetched_at timestamptz not null default now()
+);
+create index if not exists ai_cache_age_idx on ai_cache (fetched_at);

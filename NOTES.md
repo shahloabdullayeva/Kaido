@@ -54,9 +54,19 @@ plus a billing account; OpenStreetMap is free and answers the same question. Wha
 OSM is worse at is opening hours — most big truck stops carry no hours tag at all,
 and those read "hours not listed" rather than a guess.
 
-**The AI line for each shop is written but switched off**: no `ANTHROPIC_API_KEY`
-in `.env`, so the list renders without it. Add the key and it starts working;
-`AI_MODEL` picks the model (Haiku 4.5 by default, about a cent a lookup).
+**The AI line for each shop is on** — her own key went into `.env` on 12 Sep with
+$5 of credit on it, and the app is built to make that last:
+
+- A lookup costs about **$0.0025** (Haiku 4.5, ~1,200 tokens in, ~280 out), so $5
+  is roughly **2,000 lookups**.
+- `AI_DAILY_USD=0.20` is a hard daily cap. Spend is priced and recorded in
+  `ai_usage` on every call; at the cap the notes stop for the day and the shop
+  list carries on without them. **Worst case the $5 lasts 25 days**, and only if
+  she runs ~80 lookups every single day.
+- Answers are cached seven days, so reopening the same truck in the same place is
+  free.
+- `./venv/bin/python manage.py ai-spend` prints the whole picture: per day, all
+  time, cost each, and how many lookups the remaining credit buys.
 
 ## Next, in the order worth doing
 
