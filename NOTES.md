@@ -2,12 +2,17 @@
 
 ## Live
 
-- **https://kaido.shahlo.blog** — main address, Let's Encrypt cert, renews itself
-- **https://kaido.89.39.94.118.sslip.io** — same app, second hostname. Useful when a
-  DNS cache has not caught up; sslip.io resolves any name with an IP in it.
+- **https://kaido.shahlo.blog** — the address, Let's Encrypt cert, renews itself
 
-Both stay live. When kaidofleet.com is bought: `./bin/golive.sh kaidofleet.com`
-(add A records for `@` and `www` to 89.39.94.118 first), then the other two can go.
+The second hostname, `kaido.89.39.94.118.sslip.io`, was **removed on 12 Sep** at
+her request; its Caddy block is gone and the name no longer answers. It had been
+the way in while her ISP's DNS cache still held a negative answer for
+kaido.shahlo.blog. If that ever happens again, the block can be pasted back from
+`/etc/caddy/Caddyfile.bak.20260912-053830` and reloaded — sslip.io resolves any
+name with an IP in it, so it needs no DNS of its own.
+
+When kaidofleet.com is bought: `./bin/golive.sh kaidofleet.com` (add A records for
+`@` and `www` to 89.39.94.118 first).
 
 ## Running by itself
 
