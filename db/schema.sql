@@ -400,3 +400,11 @@ create table if not exists ai_cache (
   fetched_at timestamptz not null default now()
 );
 create index if not exists ai_cache_age_idx on ai_cache (fetched_at);
+
+create table if not exists geocodes (
+  query text primary key,
+  lat numeric(9,6) not null,
+  lon numeric(9,6) not null,
+  label text,
+  fetched_at timestamptz not null default now()
+);

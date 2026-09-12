@@ -42,7 +42,9 @@ be deleted whenever.
 
 ## Built on 12 Sep — where to send a truck
 
-The work-order form now finds shops near the truck. Positions come from Samsara on
+The work-order form now finds shops near the truck — or near any address you
+type or point you click on the map, which is what the 9 demo-company trucks need
+since only the 35 LLAP trucks have a Samsara feed. Positions come from Samsara on
 every sync (35 of 35 trucks are reporting one), shops from OpenStreetMap, and the
 map is Leaflet served from `static/vendor` — nothing from Google, nothing to pay
 for. Distance, diesel cost of the round trip, opening hours and what this company

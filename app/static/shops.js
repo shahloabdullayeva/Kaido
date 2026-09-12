@@ -26,11 +26,11 @@ const askFirst = () => {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'btn ghost';
-  button.textContent = 'Find shops near ' + unitLabel();
+  button.textContent = 'Find a shop for ' + unitLabel();
   button.addEventListener('click', () => load(trucks.value));
   const note = document.createElement('p');
   note.className = 'subtle';
-  note.textContent = 'Uses the last position Samsara reported for this truck.';
+  note.textContent = 'Starts from the last position Samsara reported. If there is none, type where the truck is.';
   wrap.append(button, note);
   body.append(wrap);
   panel.hidden = false;
@@ -63,26 +63,36 @@ const drawMap = () => {
   if (!node || typeof L === 'undefined') return;
   const lat = parseFloat(node.dataset.lat);
   const lon = parseFloat(node.dataset.lon);
-  if (!isFinite(lat) || !isFinite(lon)) return;
+  const placed = isFinite(lat) && isFinite(lon);
   map = L.map(node, { scrollWheelZoom: false });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 17,
     attribution: '© OpenStreetMap contributors',
   }).addTo(map);
-  const bounds = [[lat, lon]];
-  L.marker([lat, lon]).addTo(map).bindPopup(node.dataset.label || 'Truck');
-  let pins = [];
-  try { pins = JSON.parse(node.dataset.shops || '[]'); } catch (err) { pins = []; }
-  for (const pin of pins) {
-    const marker = L.circleMarker([pin.lat, pin.lon], {
-      radius: 6, weight: 2, fillOpacity: 0.85, ...pinStyle(pin.open),
-    }).addTo(map);
-    const label = document.createElement('div');
-    label.textContent = pin.name + ' — ' + pin.miles + ' mi';
-    marker.bindPopup(label);
-    bounds.push([pin.lat, pin.lon]);
+  if (placed) {
+    const bounds = [[lat, lon]];
+    L.marker([lat, lon]).addTo(map).bindPopup(node.dataset.label || 'Here');
+    let pins = [];
+    try { pins = JSON.parse(node.dataset.shops || '[]'); } catch (err) { pins = []; }
+    for (const pin of pins) {
+      const marker = L.circleMarker([pin.lat, pin.lon], {
+        radius: 6, weight: 2, fillOpacity: 0.85, ...pinStyle(pin.open),
+      }).addTo(map);
+      const label = document.createElement('div');
+      label.textContent = pin.name + ' — ' + pin.miles + ' mi';
+      marker.bindPopup(label);
+      bounds.push([pin.lat, pin.lon]);
+    }
+    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 11 });
+  } else {
+    map.setView([39.5, -98.35], 4);
   }
-  map.fitBounds(bounds, { padding: [24, 24], maxZoom: 11 });
+  map.on('click', (event) => {
+    load(trucks.value, {
+      lat: event.latlng.lat.toFixed(5),
+      lon: event.latlng.lng.toFixed(5),
+    });
+  });
 };
 
 const wireVendorPicks = () => {
@@ -97,18 +107,33 @@ const wireVendorPicks = () => {
   }
 };
 
-const load = async (truckId) => {
+const wireSearch = () => {
+  const input = body.querySelector('#shop-where');
+  const button = body.querySelector('[data-shop-search]');
+  if (!input || !button) return;
+  const go = () => {
+    const asked = input.value.trim();
+    if (asked) load(trucks.value, { q: asked });
+  };
+  button.addEventListener('click', go);
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); go(); }
+  });
+};
+
+const load = async (truckId, params) => {
   if (!truckId) return;
   dropMap();
   setStatus('Looking…');
   body.textContent = '';
   const waiting = document.createElement('p');
   waiting.className = 'empty';
-  waiting.textContent = 'Asking OpenStreetMap what is near the truck. This can take a few seconds.';
+  waiting.textContent = 'Asking OpenStreetMap what is nearby. This can take a few seconds.';
   body.append(waiting);
+  const query = new URLSearchParams(params || {}).toString();
   let markup = '';
   try {
-    const response = await fetch('/maintenance/shops/' + encodeURIComponent(truckId), {
+    const response = await fetch('/maintenance/shops/' + encodeURIComponent(truckId) + (query ? '?' + query : ''), {
       headers: { 'X-Requested-With': 'fetch' },
       credentials: 'same-origin',
     });
@@ -123,6 +148,7 @@ const load = async (truckId) => {
   body.innerHTML = markup;
   drawMap();
   wireVendorPicks();
+  wireSearch();
 };
 
 if (panel && body && trucks) {

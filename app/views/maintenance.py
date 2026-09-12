@@ -164,6 +164,31 @@ def detour_for(miles):
             "spell": spell}
 
 
+def origin_for(truck):
+    latitude, longitude = request.args.get("lat"), request.args.get("lon")
+    if latitude and longitude:
+        try:
+            return {"latitude": float(latitude), "longitude": float(longitude),
+                    "label": "the spot you picked on the map", "source": "picked"}, None
+        except ValueError:
+            return None, "That point on the map did not make sense."
+    asked = (request.args.get("q") or "").strip()
+    if asked:
+        try:
+            place = shop_search.geocode(asked)
+        except Exception as err:
+            return None, f"Could not look that address up just now ({str(err)[:80]})."
+        if not place:
+            return None, f"Nothing found for “{asked}”. Try a city and state, or the name of a truck stop."
+        place["source"] = "typed"
+        return place, None
+    if truck["latitude"] is not None and truck["longitude"] is not None:
+        return {"latitude": truck["latitude"], "longitude": truck["longitude"],
+                "label": truck["location"] or "a position without a street address",
+                "at": truck["located_at"], "source": "samsara"}, None
+    return None, None
+
+
 @bp.get("/maintenance/shops/<int:truck_id>")
 @login_required
 @role_required("admin")
@@ -176,14 +201,17 @@ def shops(truck_id):
     )
     if not truck:
         return render_template("errors/404.html"), 404
-    if truck["latitude"] is None or truck["longitude"] is None:
-        return render_template("maintenance/_shops.html", truck=truck, found=[],
-                               problem="No position for this truck yet — Samsara has not reported one.")
+    asked = (request.args.get("q") or "").strip()
+    origin, problem = origin_for(truck)
+    if origin is None:
+        return render_template("maintenance/_shops.html", truck=truck, found=[], origin=None,
+                               query=asked, problem=problem)
     try:
-        found, meta = shop_search.nearby(truck["latitude"], truck["longitude"],
+        found, meta = shop_search.nearby(origin["latitude"], origin["longitude"],
                                          radius_miles=config.SHOP_RADIUS_MILES)
     except Exception as err:
-        return render_template("maintenance/_shops.html", truck=truck, found=[],
+        return render_template("maintenance/_shops.html", truck=truck, found=[], origin=origin,
+                               query=asked,
                                problem=f"Could not reach OpenStreetMap just now ({str(err)[:90]}).")
     history = vendor_history(g.company["id"])
     for shop in found:
@@ -195,14 +223,14 @@ def shops(truck_id):
         (g.company["id"],),
     )
     fleet_average = float(average["average"]) if average and average["average"] else None
-    advice = advisor.shop_advice(truck, found, fleet_average)
+    advice = advisor.shop_advice(dict(truck, location=origin["label"]), found, fleet_average)
     notes = {}
     if advice:
         notes = {note.number: note.note for note in advice.notes}
     return render_template("maintenance/_shops.html", truck=truck, found=found, meta=meta,
-                           notes=notes, advice=advice, fleet_average=fleet_average,
-                           ai_on=advisor.available(), ai_paused=advisor.over_budget(),
-                           problem=None)
+                           origin=origin, query=asked, notes=notes, advice=advice,
+                           fleet_average=fleet_average, ai_on=advisor.available(),
+                           ai_paused=advisor.over_budget(), problem=None)
 
 
 @bp.get("/maintenance/<int:order_id>")

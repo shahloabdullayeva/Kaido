@@ -1,22 +1,36 @@
-{% if problem %}
-<p class="empty">{{ problem }}</p>
-{% elif not found %}
-<p class="empty">Nothing within {{ meta.radius_miles if meta else 50 }} miles is tagged as taking trucks.
-  OpenStreetMap coverage is thin in rural areas — try the driver's own judgement here.</p>
-{% else %}
-<div class="shop-head">
-  <p><strong>{{ truck.unit_number }}</strong> is at {{ truck.location or 'a position without a street address' }}{% if truck.located_at %},
-    reported {{ truck.located_at|ago }}{% endif %}.
-    Local time there is about {{ meta.local_time.strftime('%H:%M') }}.</p>
+<div class="shop-where">
+  <input type="text" id="shop-where" value="{{ query or '' }}" maxlength="160"
+         placeholder="Address, city and state, or the name of a truck stop">
+  <button type="button" class="btn" data-shop-search>Look here</button>
 </div>
-<div id="shop-map" data-lat="{{ truck.latitude }}" data-lon="{{ truck.longitude }}"
-     data-label="{{ truck.unit_number }} — {{ truck.location or '' }}"
+<p class="subtle shop-origin">
+  {%- if origin and origin.source == 'samsara' %}
+  <strong>{{ truck.unit_number }}</strong> is at {{ origin.label }}{% if origin.at %}, reported {{ origin.at|ago }}{% endif %}.
+  Local time there is about {{ meta.local_time.strftime('%H:%M') if meta else '—' }}. Type an address above to look somewhere else.
+  {%- elif origin and origin.source == 'typed' %}
+  Looking around <strong>{{ origin.label }}</strong>. Click the map to move the search.
+  {%- elif origin %}
+  Looking around the spot you picked on the map.
+  {%- else %}
+  Samsara has not reported a position for <strong>{{ truck.unit_number }}</strong>. Type where it is, or click the map.
+  {%- endif %}
+</p>
+{% if problem %}<p class="empty">{{ problem }}</p>{% endif %}
+<div id="shop-map"
+     {% if origin %}data-lat="{{ origin.latitude }}" data-lon="{{ origin.longitude }}"
+     data-label="{{ truck.unit_number if origin.source == 'samsara' else 'Looking here' }} — {{ origin.label }}"
+     data-kind="{{ origin.source }}"{% endif %}
      data-shops='{{ found|shop_pins }}'></div>
-{% if advice and advice.pick %}
+{% if origin and not problem %}
+  {% if not found %}
+<p class="empty">Nothing within {{ meta.radius_miles if meta else 50 }} miles is tagged as taking trucks.
+  OpenStreetMap coverage is thin in rural areas — try a nearby town, or the driver's own judgement.</p>
+  {% else %}
+    {% if advice and advice.pick %}
 <p class="shop-pick"><strong>Send it to {{ advice.pick }}.</strong> {{ advice.why }}</p>
-{% elif advice and advice.why %}
+    {% elif advice and advice.why %}
 <p class="shop-pick">{{ advice.why }}</p>
-{% endif %}
+    {% endif %}
 <ol class="shop-list">
   {% for shop in found %}
   <li>
@@ -40,9 +54,10 @@
   </li>
   {% endfor %}
 </ol>
-<p class="subtle">Shops from OpenStreetMap{% if meta.cached %}, cached{% endif %}.
+<p class="subtle">Shops from OpenStreetMap{% if meta and meta.cached %}, cached{% endif %}.
   {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
   {% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.
   {% elif ai_paused and not notes %}AI notes are paused — today's budget is spent. They come back tomorrow.
   {% elif not notes %}AI notes did not come back this time.{% endif %}</p>
+  {% endif %}
 {% endif %}

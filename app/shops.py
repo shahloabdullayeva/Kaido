@@ -14,8 +14,10 @@ class OverpassBusy(Exception):
 
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 USER_AGENT = "Kaido fleet maintenance (https://kaido.shahlo.blog)"
 CACHE_DAYS = 7
+GEOCODE_DAYS = 90
 EARTH_MILES = 3958.7613
 
 QUERY = """[out:json][timeout:50];
@@ -199,6 +201,42 @@ def raw_elements(latitude, longitude, radius_m):
         (cell, radius_m, json.dumps(elements)),
     )
     return elements, False
+
+
+def geocode(text):
+    cleaned = " ".join((text or "").split())[:160]
+    if not cleaned:
+        return None
+    key = cleaned.lower()
+    row = one(
+        "select lat, lon, label from geocodes where query = %s and fetched_at > now() - make_interval(days => %s)",
+        (key, GEOCODE_DAYS),
+    )
+    if row:
+        return {"latitude": float(row["lat"]), "longitude": float(row["lon"]), "label": row["label"]}
+    response = requests.get(
+        NOMINATIM_URL,
+        params={"q": cleaned, "format": "jsonv2", "limit": 1, "countrycodes": "us,ca,mx"},
+        headers={"User-Agent": USER_AGENT},
+        timeout=25,
+    )
+    response.raise_for_status()
+    found = response.json() or []
+    if not found:
+        return None
+    best = found[0]
+    place = {
+        "latitude": float(best["lat"]),
+        "longitude": float(best["lon"]),
+        "label": best.get("display_name") or cleaned,
+    }
+    execute(
+        """insert into geocodes (query, lat, lon, label, fetched_at) values (%s, %s, %s, %s, now())
+           on conflict (query) do update set lat = excluded.lat, lon = excluded.lon,
+             label = excluded.label, fetched_at = now()""",
+        (key, place["latitude"], place["longitude"], place["label"]),
+    )
+    return place
 
 
 def _brand(name):

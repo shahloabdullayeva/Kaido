@@ -90,7 +90,11 @@ closed automatically. Run it from the Integrations page, or on a schedule:
 ## Where to send it
 
 Pick a truck on a work order and the form offers to look for shops near it. The
-truck's position comes from Samsara on every sync. Shops come from OpenStreetMap
+truck's position comes from Samsara on every sync, and the map shows where the
+driver is. **A truck with no Samsara feed is not a dead end**: type an address,
+a city and state, or the name of a truck stop into the box, or click anywhere on
+the map, and the search runs from there. Addresses are resolved by Nominatim and
+cached for 90 days. Shops come from OpenStreetMap
 through Overpass — truck repair, truck stops, tyre and car repair, and HGV fuel —
 sorted so the ones that take a Class 8 tractor come first, then the ones that are
 open, then by distance. If fewer than three confirmed truck shops are within
