@@ -254,6 +254,22 @@ def record_odometer(company_id, truck, miles, read_at):
     return 1
 
 
+def record_position(truck, gps):
+    if not isinstance(gps, dict):
+        return 0
+    latitude = gps.get("latitude")
+    longitude = gps.get("longitude")
+    if latitude is None or longitude is None:
+        return 0
+    reverse = gps.get("reverseGeo") or {}
+    execute(
+        """update trucks set latitude = %s, longitude = %s, location = %s,
+             located_at = coalesce(%s, now()), updated_at = now() where id = %s""",
+        (latitude, longitude, reverse.get("formattedLocation"), gps.get("time"), truck["id"]),
+    )
+    return 1
+
+
 def sync_faults(company_id, truck, faults):
     opened = 0
     current_keys = {fault["code_key"] for fault in faults}
@@ -335,7 +351,7 @@ def sync_company(company_id):
         "insert into sync_runs (company_id, provider) values (%s, 'samsara') returning *",
         (company_id,),
     )
-    counters = {"vehicles": 0, "odometer": 0, "faults_opened": 0, "faults_cleared": 0, "defects": 0, "unlinked": 0}
+    counters = {"vehicles": 0, "odometer": 0, "positions": 0, "faults_opened": 0, "faults_cleared": 0, "defects": 0, "unlinked": 0}
     try:
         client, _integration = client_for(company_id)
         counters["vehicles"] = link_vehicles(company_id, client)
@@ -355,6 +371,7 @@ def sync_company(company_id):
             odometer_block = stat.get("obdOdometerMeters") or stat.get("gpsOdometerMeters") or {}
             miles = meters_to_miles(odometer_block.get("value"))
             counters["odometer"] += record_odometer(company_id, truck, miles, odometer_block.get("time"))
+            counters["positions"] += record_position(truck, stat.get("gps"))
             faults = parse_fault_codes(stat.get("faultCodes"))
             opened, cleared = sync_faults(company_id, truck, faults)
             counters["faults_opened"] += opened

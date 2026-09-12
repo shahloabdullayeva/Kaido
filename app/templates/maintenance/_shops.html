@@ -1,0 +1,47 @@
+{% if problem %}
+<p class="empty">{{ problem }}</p>
+{% elif not found %}
+<p class="empty">Nothing within {{ meta.radius_miles if meta else 50 }} miles is tagged as taking trucks.
+  OpenStreetMap coverage is thin in rural areas — try the driver's own judgement here.</p>
+{% else %}
+<div class="shop-head">
+  <p><strong>{{ truck.unit_number }}</strong> is at {{ truck.location or 'a position without a street address' }}{% if truck.located_at %},
+    reported {{ truck.located_at|ago }}{% endif %}.
+    Local time there is about {{ meta.local_time.strftime('%H:%M') }}.</p>
+</div>
+<div id="shop-map" data-lat="{{ truck.latitude }}" data-lon="{{ truck.longitude }}"
+     data-label="{{ truck.unit_number }} — {{ truck.location or '' }}"
+     data-shops='{{ found|shop_pins }}'></div>
+{% if advice and advice.pick %}
+<p class="shop-pick"><strong>Send it to {{ advice.pick }}.</strong> {{ advice.why }}</p>
+{% elif advice and advice.why %}
+<p class="shop-pick">{{ advice.why }}</p>
+{% endif %}
+<ol class="shop-list">
+  {% for shop in found %}
+  <li>
+    <div class="shop-row">
+      <span class="shop-name">{{ shop.name }}</span>
+      <span class="badge {{ 'ok' if shop.open_state == 'open' else ('warn' if shop.open_state == 'unknown' else 'bad') }}">{{ shop.hours_text }}</span>
+      {% if shop.truck_fit != 'yes' %}<span class="badge warn">truck fit unconfirmed — phone ahead</span>{% endif %}
+    </div>
+    <div class="subtle">
+      {{ shop.miles }} mi away · detour about {{ shop.detour.cost|money }} and {{ shop.detour.spell }} round trip
+      {%- if shop.address %} · {{ shop.address }}{% endif %}
+      {%- if shop.phone %} · <a href="tel:{{ shop.phone }}">{{ shop.phone }}</a>{% endif %}
+      {%- if shop.website %} · <a href="{{ shop.website }}" rel="noreferrer noopener">website</a>{% endif %}
+    </div>
+    {% if shop.history %}
+    <div class="shop-history">You have used this shop {{ shop.history.visits }}×, average
+      {{ shop.history.average|money }}, last {{ shop.history.last }}.</div>
+    {% endif %}
+    {% if notes.get(shop.name) %}<div class="shop-note">{{ notes[shop.name] }}</div>{% endif %}
+    <button type="button" class="btn ghost small" data-pick-vendor="{{ shop.name }}">Use as vendor</button>
+  </li>
+  {% endfor %}
+</ol>
+<p class="subtle">Shops from OpenStreetMap{% if meta.cached %}, cached{% endif %}.
+  {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
+  {% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.
+  {% elif not notes %}AI notes did not come back this time.{% endif %}</p>
+{% endif %}

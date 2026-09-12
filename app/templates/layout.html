@@ -18,6 +18,7 @@
 <title>{{ title }} · Kaido</title>
 <link rel="stylesheet" href="/static/app.css">
 <link rel="icon" href="/static/favicon.svg">
+{% block head %}{% endblock %}
 </head>
 <body>
 <header class="topbar">
@@ -56,5 +57,6 @@
 {% block body %}{% endblock %}
 </main>
 <script src="/static/app.js"></script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

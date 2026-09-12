@@ -47,7 +47,8 @@ def create_app():
     @app.after_request
     def finish(response):
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; "
+            "default-src 'self'; script-src 'self'; style-src 'self'; "
+            "img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
             "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
         )
         response.headers["X-Content-Type-Options"] = "nosniff"

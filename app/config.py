@@ -48,6 +48,12 @@ class Config:
     TIMEZONE = os.environ.get("TIMEZONE", "America/Chicago")
     BEHIND_PROXY = os.environ.get("BEHIND_PROXY", "false").lower() == "true"
     SAMSARA_BASE_URL = os.environ.get("SAMSARA_BASE_URL", "https://api.samsara.com")
+    ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+    AI_MODEL = os.environ.get("AI_MODEL", "claude-haiku-4-5")
+    SHOP_RADIUS_MILES = _int("SHOP_RADIUS_MILES", 50)
+    DIESEL_PRICE = float(os.environ.get("DIESEL_PRICE", "3.85"))
+    TRUCK_MPG = float(os.environ.get("TRUCK_MPG", "6.5"))
+    ROAD_SPEED_MPH = float(os.environ.get("ROAD_SPEED_MPH", "50"))
 
 
 config = Config()

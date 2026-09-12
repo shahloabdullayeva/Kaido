@@ -1,4 +1,7 @@
+import json
 from datetime import date, datetime, timezone
+
+from markupsafe import Markup, escape
 
 TONES = {
     "active": "ok", "done": "ok", "resolved": "ok", "connected": "ok",
@@ -76,6 +79,12 @@ def label(value):
     return str(value or "").replace("_", " ")
 
 
+def shop_pins(found):
+    pins = [{"name": shop["name"], "lat": shop["latitude"], "lon": shop["longitude"],
+             "miles": shop["miles"], "open": shop["open_state"]} for shop in found or []]
+    return Markup(escape(json.dumps(pins)))
+
+
 def register(app):
     app.jinja_env.filters.update({
         "money": money,
@@ -87,4 +96,5 @@ def register(app):
         "ago": ago,
         "tone": tone,
         "label": label,
+        "shop_pins": shop_pins,
     })

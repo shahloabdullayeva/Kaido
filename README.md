@@ -20,10 +20,12 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       tenancy.py      companies, memberships, role checks
       queries.py      service status, PM due dates, dashboard aggregates
       samsara.py      Samsara REST client and fault-code parser
-      sync.py         the sync engine: vehicles, odometer, faults, DVIR defects
+      sync.py         the sync engine: vehicles, odometer, positions, faults, DVIR defects
+      shops.py        OpenStreetMap shop search, opening-hours parser, lookup cache
+      advisor.py      the Claude calls: a line per shop and which one to pick
       views/          one blueprint per section
       templates/      Jinja templates
-      static/         app.css, app.js, favicon
+      static/         app.css, app.js, favicon, vendor/leaflet
     bin/              run, serve, sync, backup
     db/schema.sql     the whole schema
     manage.py         CLI
@@ -84,6 +86,32 @@ closed automatically. Run it from the Integrations page, or on a schedule:
     manage.py telegram-bot                link Telegram accounts
     manage.py demo --company              sample trucks, fuel and a breakdown
 
+## Where to send it
+
+Pick a truck on a work order and the form offers to look for shops near it. The
+truck's position comes from Samsara on every sync. Shops come from OpenStreetMap
+through Overpass — truck repair, truck stops, tyre and car repair, and HGV fuel —
+sorted so the ones that take a Class 8 tractor come first, then the ones that are
+open, then by distance. If fewer than three confirmed truck shops are within
+`SHOP_RADIUS_MILES` (50), it widens to 100.
+
+Each shop shows how far it is, what the round trip costs in diesel
+(`DIESEL_PRICE` ÷ `TRUCK_MPG`) and how long it takes at `ROAD_SPEED_MPH`, its
+opening hours read from the OSM `opening_hours` tag, and what this company has
+paid there before — matched against past oil invoices by name. *Use as vendor*
+fills the vendor field in the form.
+
+Answers are cached per 0.01° cell for seven days, so the same corner of the map
+is only asked for once a week, and a stale answer is served if Overpass is busy.
+The map is Leaflet, served from `static/vendor`; only the tiles come from
+openstreetmap.org.
+
+With `ANTHROPIC_API_KEY` set, Claude (`AI_MODEL`, Haiku 4.5 by default) adds one
+line per shop and names the one to send the truck to. It is told to use nothing
+but the data above — no invented hours, prices or reviews — and past invoices from
+this fleet outrank everything else. Without the key the list works exactly the
+same, minus those lines.
+
 ## Maintenance intervals
 
 Oil is per truck (`oil_interval_miles`), 25,000 miles by default and 15,000 for
@@ -93,4 +121,4 @@ inspection date and warns 30 days out. Completing a work order of kind
 
 ## Not built yet
 
-EFS fuel card feeds, Google Maps nearby search, AI fault triage. See the build map.
+EFS fuel card feeds, AI fault triage, the reminder engine. See the build map.

@@ -1,5 +1,8 @@
 {% extends "layout.html" %}
 {% from "_macros.html" import field %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script src="/static/shops.js"></script>{% endblock %}
 {% block body %}
 {% set editing = order is not none %}
 <div class="page-head">
@@ -49,5 +52,9 @@
     <div class="form-actions"><button class="btn" type="submit">{{ 'Save changes' if editing else 'Save work order' }}</button>
       <a class="btn ghost" href="/maintenance">Cancel</a></div>
   </form>
+</section>
+<section class="panel" id="shop-panel" hidden>
+  <div class="panel-head"><h2>Where to send it</h2><span class="subtle" id="shop-status"></span></div>
+  <div id="shop-body"></div>
 </section>
 {% endblock %}

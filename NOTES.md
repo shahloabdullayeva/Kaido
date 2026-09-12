@@ -1,4 +1,4 @@
-# Where Kaido stands — 9 Sep 2026
+# Where Kaido stands — 12 Sep 2026
 
 ## Live
 
@@ -40,6 +40,24 @@ sync, and the 15-minute job opens and closes them on its own.
 Two demo companies (House Fleet, Bright Line Carriers) hold made-up data and can
 be deleted whenever.
 
+## Built on 12 Sep — where to send a truck
+
+The work-order form now finds shops near the truck. Positions come from Samsara on
+every sync (35 of 35 trucks are reporting one), shops from OpenStreetMap, and the
+map is Leaflet served from `static/vendor` — nothing from Google, nothing to pay
+for. Distance, diesel cost of the round trip, opening hours and what this company
+has paid at that shop before are all on the list. README → *Where to send it* has
+the detail.
+
+**Google Maps was not used.** Places would have been about $32 per 1,000 lookups
+plus a billing account; OpenStreetMap is free and answers the same question. What
+OSM is worse at is opening hours — most big truck stops carry no hours tag at all,
+and those read "hours not listed" rather than a guess.
+
+**The AI line for each shop is written but switched off**: no `ANTHROPIC_API_KEY`
+in `.env`, so the list renders without it. Add the key and it starts working;
+`AI_MODEL` picks the model (Haiku 4.5 by default, about a cent a lookup).
+
 ## Next, in the order worth doing
 
 1. **The reminder engine.** The app computes oil and DOT-annual due dates but tells
@@ -50,8 +68,7 @@ be deleted whenever.
 3. **EFS fuel feeds.** They are the parent account over 6 carriers and data sharing
    is available — needs the eManager switch and one sample file to write the parser.
 4. **AI fault triage.** Plain-English explanation of a fault plus what to do. Deferred
-   on purpose until the basics are solid.
-5. **Google Maps** on the breakdown screen — nearby shops, detour distance, Love's.
+   on purpose until the basics are solid; `advisor.py` is where it would go.
 
 ## Known gaps
 
@@ -64,3 +81,8 @@ be deleted whenever.
   cross-company check passes, but the database itself would still allow a bad query.
   Belongs in the hardening pass.
 - **The Samsara token in use should be rotated** — it went through a chat.
+- **Shop hours are only as good as OpenStreetMap.** A shop with no `opening_hours`
+  tag shows "hours not listed" — phone ahead. Nothing in the app invents them.
+- **Overpass is a free service with no SLA.** Answers are cached for seven days per
+  0.01° map cell, and a stale answer is served when it is busy; if it is down and
+  nothing is cached, the panel says so.

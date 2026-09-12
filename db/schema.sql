@@ -165,6 +165,10 @@ create table if not exists trucks (
   odometer int not null default 0,
   odometer_at timestamptz,
   driver_id int references drivers(id) on delete set null,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  location text,
+  located_at timestamptz,
   fuel_card_last4 text,
   oil_interval_miles int not null default 25000,
   pm_a_interval_miles int not null default 15000,
@@ -363,3 +367,18 @@ create index if not exists sync_runs_idx on sync_runs (company_id, started_at de
 
 alter table maintenance_orders add column if not exists driver_id int references drivers(id) on delete set null;
 create index if not exists maint_driver_idx on maintenance_orders (driver_id, performed_on desc);
+
+alter table trucks add column if not exists latitude numeric(9,6);
+alter table trucks add column if not exists longitude numeric(9,6);
+alter table trucks add column if not exists location text;
+alter table trucks add column if not exists located_at timestamptz;
+
+create table if not exists shop_lookups (
+  id bigserial primary key,
+  cell text not null,
+  radius_m int not null,
+  payload jsonb not null,
+  fetched_at timestamptz not null default now(),
+  unique (cell, radius_m)
+);
+create index if not exists shop_lookups_age_idx on shop_lookups (fetched_at);
