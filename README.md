@@ -111,6 +111,12 @@ is only asked for once a week, and a stale answer is served if Overpass is busy.
 The map is Leaflet, served from `static/vendor`; only the tiles come from
 openstreetmap.org.
 
+`Referrer-Policy` is `strict-origin-when-cross-origin` **because the map depends
+on it**. OpenStreetMap's volunteer tile servers answer requests they cannot
+identify with a 403 "Access blocked" tile, and under `same-origin` the browser
+sends them no referrer at all. Tightening that header back breaks every map on
+the site, silently — the tiles still return 200, they just say Access blocked.
+
 With `ANTHROPIC_API_KEY` set, Claude (`AI_MODEL`, Haiku 4.5 by default) adds one
 line per shop and names the one to send the truck to. It is told to use nothing
 but the data above — no invented hours, prices or reviews — and past invoices from
