@@ -1,4 +1,4 @@
-# Where Kaido stands — 12 Sep 2026
+# Where Kaido stands — 30 Sep 2026
 
 ## Live
 
@@ -83,17 +83,38 @@ for the driver, position, age of the reading, faults and a link to the truck.
 Companies with no telematics (the two demo ones) get a line explaining that
 rather than an empty map.
 
+## Built on 30 Sep
+
+- **Follow-up.** One Telegram message per company per day (default 07:00 company time, set on
+  the Company page): open breakdowns, overdue service, work that was due, reminders due, new
+  fault codes, service due soon, papers expiring. The two demo companies have it switched off.
+  Stop-lamp faults go out the moment the sync sees them. `bin/followup.sh` runs every 5 minutes.
+- **Reminders on everything.** Every truck, driver, work order, breakdown and fault page has a
+  Reminders box: pick a date and time, it arrives on Telegram (just you, or every admin).
+- **Any truck, any driver.** The work order form takes outside trucks and outside drivers,
+  saved with their carrier so they can be picked next time. They stay out of the fleet map and
+  totals and have their own filter on the Trucks page. The driver can be changed on any order.
+- **Reports.** Maintenance, fuel, breakdowns, faults and fleet status, filtered by dates, truck,
+  driver and own/outside, downloadable as PDF, Excel or CSV. Each work order and breakdown has
+  its own PDF.
+- **Oil baselines.** Trucks → Oil baselines: type the last oil-change miles or upload a sheet.
+- **EFS import.** Fuel → Import from EFS takes the eManager Transaction Report (CSV or Excel).
+  Matches by unit, then card last 4; re-importing the same file is safe.
+- **Claude.** Plain-English explanation on every fault page, stored per code so it is paid for
+  once. An oil suggestion on oil work orders from the engine read off the VIN (NHTSA decoder,
+  42 trucks decoded). A chat box on every truck and work order that sees the truck's record.
+  All of it shares the $0.20 daily cap.
+- **Company lock.** Postgres row-level security on every company table: inside a company's
+  pages the database refuses other companies' rows even if a query forgets its filter.
+- **Nightly backup** at 03:30 into /root/backups/fleet, 14 days kept.
+
 ## Next, in the order worth doing
 
-1. **The reminder engine.** The app computes oil and DOT-annual due dates but tells
-   nobody. A morning Telegram digest per company is what turns it from a record
-   book into something that warns you. Biggest single win left.
-2. **Oil baselines.** Every truck says "no service on record", so no oil reminder can
-   fire yet. Needs one real last-oil-change odometer per truck, entered once.
-3. **EFS fuel feeds.** They are the parent account over 6 carriers and data sharing
-   is available — needs the eManager switch and one sample file to write the parser.
-4. **AI fault triage.** Plain-English explanation of a fault plus what to do. Deferred
-   on purpose until the basics are solid; `advisor.py` is where it would go.
+1. **Oil baselines.** 35 trucks still say "no service on record". The page is there; it needs
+   the numbers.
+2. **EFS automatic feed.** The upload works today. For hands-off, ask EFS for a data feed
+   username and password for your own software, then Kaido can pull on a schedule.
+3. **kaidofleet.com** when it is bought — `bin/golive.sh kaidofleet.com`.
 
 ## Known gaps
 
@@ -102,9 +123,6 @@ rather than an empty map.
 - **The Samsara org has no tags,** so per-carrier token scoping is not possible yet.
   BMG and LLAP name prefixes look like two carriers sharing one org — worth deciding
   whether they should be two companies here.
-- **Row-level security** is not on. Scoping is enforced in the query layer, and every
-  cross-company check passes, but the database itself would still allow a bad query.
-  Belongs in the hardening pass.
 - **The Samsara token in use should be rotated** — it went through a chat.
 - **Shop hours are only as good as OpenStreetMap.** A shop with no `opening_hours`
   tag shows "hours not listed" — phone ahead. Nothing in the app invents them.
