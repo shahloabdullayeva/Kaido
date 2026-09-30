@@ -44,7 +44,8 @@ if (node && typeof L !== 'undefined') {
   const map = L.map(node, { scrollWheelZoom: false });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 17,
-    attribution: '© OpenStreetMap contributors',
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    referrerPolicy: 'strict-origin-when-cross-origin',
   }).addTo(map);
   const bounds = [];
   for (const truck of trucks) {

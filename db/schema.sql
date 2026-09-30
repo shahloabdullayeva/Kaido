@@ -507,3 +507,8 @@ begin
       'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
   end loop;
 end $$;
+
+create table if not exists osm_calls (
+  service text primary key,
+  last_at timestamptz not null default 'epoch'
+);

@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from .db import execute, one
+from .db import cursor, execute, one
 
 class OverpassBusy(Exception):
     pass
@@ -15,7 +15,7 @@ class OverpassBusy(Exception):
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
-USER_AGENT = "Kaido fleet maintenance (https://kaido.shahlo.blog)"
+USER_AGENT = "Kaido/1.0 fleet maintenance (+https://kaido.shahlo.blog)"
 CACHE_DAYS = 7
 GEOCODE_DAYS = 90
 EARTH_MILES = 3958.7613
@@ -162,6 +162,21 @@ def _hhmm(minutes):
     return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
+SPACING = {"nominatim": 1.1, "overpass": 2.0}
+
+
+def _polite(service):
+    gap = SPACING[service]
+    with cursor() as cur:
+        cur.execute("insert into osm_calls (service) values (%s) on conflict do nothing", (service,))
+        cur.execute("select extract(epoch from now() - last_at) as since from osm_calls where service = %s for update",
+                    (service,))
+        since = float(cur.fetchone()["since"])
+        if since < gap:
+            time.sleep(gap - since)
+        cur.execute("update osm_calls set last_at = clock_timestamp() where service = %s", (service,))
+
+
 def _cell(latitude, longitude):
     return f"{round(float(latitude), 2):.2f},{round(float(longitude), 2):.2f}"
 
@@ -169,6 +184,7 @@ def _cell(latitude, longitude):
 def _fetch(latitude, longitude, radius_m, attempts=3):
     body = QUERY.format(radius=radius_m, lat=float(latitude), lon=float(longitude))
     for attempt in range(1, attempts + 1):
+        _polite("overpass")
         response = requests.post(OVERPASS_URL, data={"data": body},
                                  headers={"User-Agent": USER_AGENT}, timeout=60)
         if response.status_code in (429, 504) and attempt < attempts:
@@ -214,6 +230,7 @@ def geocode(text):
     )
     if row:
         return {"latitude": float(row["lat"]), "longitude": float(row["lon"]), "label": row["label"]}
+    _polite("nominatim")
     response = requests.get(
         NOMINATIM_URL,
         params={"q": cleaned, "format": "jsonv2", "limit": 1, "countrycodes": "us,ca,mx"},
