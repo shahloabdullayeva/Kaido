@@ -4,7 +4,8 @@ from .. import forms, sheets
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
-from ..queries import fuel_economy, service_status
+from ..queries import attach_last_services, company_intervals, fuel_economy, service_status
+from ..work_types import BASELINE_KINDS, SCHEDULES, SEVERE_FACTOR, label as work_label
 from ..tenancy import active_drivers, company_required, role_required, scoped_truck
 
 bp = Blueprint("trucks", __name__)
@@ -55,58 +56,71 @@ def index():
     return render_template("trucks/list.html", title="Trucks", active="/trucks", fleet=fleet, status=status, statuses=STATUSES)
 
 
-BASELINE_NOTE = "Last oil change before Kaido, entered as a starting point for reminders"
+def baseline_note(kind):
+    return f"Last {work_label(kind).lower()} before Kaido, entered as a starting point for reminders"
 
 
-def baseline_trucks():
+def baseline_trucks(kind):
     return rows(
-        """select t.id, t.unit_number, t.odometer, t.oil_interval_miles, d.name as driver_name,
+        """select t.id, t.unit_number, t.odometer, d.name as driver_name,
              (select max(m.odometer) from maintenance_orders m
-               where m.truck_id = t.id and m.kind = 'oil' and m.status = 'done') as last_oil_odometer,
+               where m.truck_id = t.id and m.kind = %s and m.status = 'done') as last_odometer,
              (select max(m.performed_on) from maintenance_orders m
-               where m.truck_id = t.id and m.kind = 'oil' and m.status = 'done') as last_oil_on
+               where m.truck_id = t.id and m.kind = %s and m.status = 'done') as last_on
            from trucks t left join drivers d on d.id = t.driver_id
            where t.company_id = %s and t.status <> 'sold' and not t.is_outside
            order by lower(t.unit_number)""",
-        (g.company["id"],),
+        (kind, kind, g.company["id"]),
     )
 
 
-def save_baseline(truck, miles, performed_on, vendor):
-    if miles is None or miles <= 0:
+def save_baseline(truck, kind, miles, performed_on, vendor):
+    if (miles is None or miles <= 0) and not performed_on:
         return "no miles"
-    if truck["odometer"] and miles > truck["odometer"] + 1000:
+    if miles and truck["odometer"] and miles > truck["odometer"] + 1000:
         return f"{miles:,} is more than the truck's odometer ({truck['odometer']:,})"
-    duplicate = one(
-        "select id from maintenance_orders where truck_id = %s and kind = 'oil' and status = 'done' and odometer = %s",
-        (truck["id"], miles),
-    )
+    if miles:
+        duplicate = one(
+            "select id from maintenance_orders where truck_id = %s and kind = %s and status = 'done' and odometer = %s",
+            (truck["id"], kind, miles),
+        )
+    else:
+        duplicate = one(
+            "select id from maintenance_orders where truck_id = %s and kind = %s and status = 'done' and performed_on = %s",
+            (truck["id"], kind, performed_on),
+        )
     if duplicate:
         return "already on record"
     insert(
         """insert into maintenance_orders (company_id, truck_id, driver_id, kind, status, performed_on, odometer,
              vendor, description, created_by)
-           values (%s, %s, null, 'oil', 'done', %s, %s, %s, %s, %s) returning id""",
-        (g.company["id"], truck["id"], performed_on, miles, vendor, BASELINE_NOTE, g.session["user_id"]),
+           values (%s, %s, null, %s, 'done', %s, %s, %s, %s, %s) returning id""",
+        (g.company["id"], truck["id"], kind, performed_on, miles or None, vendor, baseline_note(kind), g.session["user_id"]),
     )
     return None
+
+
+def render_baselines(kind, problems):
+    fleet = baseline_trucks(kind)
+    return render_template("trucks/baselines.html", title="Service baselines", active="/trucks",
+                           fleet=fleet, kind=kind, kinds=BASELINE_KINDS, work_label=work_label,
+                           missing=sum(1 for truck in fleet if truck["last_odometer"] is None and truck["last_on"] is None),
+                           problems=problems)
 
 
 @bp.get("/trucks/baselines")
 @login_required
 @role_required("admin")
 def baselines():
-    fleet = baseline_trucks()
-    missing = sum(1 for truck in fleet if truck["last_oil_odometer"] is None)
-    return render_template("trucks/baselines.html", title="Oil baselines", active="/trucks",
-                           fleet=fleet, missing=missing, problems=[])
+    return render_baselines(forms.pick(request.args.get("kind"), BASELINE_KINDS, "oil"), [])
 
 
 @bp.post("/trucks/baselines")
 @login_required
 @role_required("admin")
 def save_baselines():
-    fleet = {truck["id"]: truck for truck in baseline_trucks()}
+    kind = forms.pick(request.form.get("kind"), BASELINE_KINDS, "oil")
+    fleet = {truck["id"]: truck for truck in baseline_trucks(kind)}
     saved, problems = 0, []
     upload = request.files.get("sheet")
     if upload and upload.filename:
@@ -114,14 +128,14 @@ def save_baselines():
             headers, records = sheets.read(upload.filename, upload.read())
         except Exception as err:
             flash(f"Could not read that file: {str(err)[:120]}", "bad")
-            return redirect("/trucks/baselines")
+            return redirect(f"/trucks/baselines?kind={kind}")
         unit_col = sheets.find(headers, "unit", "unit number", "truck", "unit no")
-        miles_col = sheets.find(headers, "odometer", "miles", "mileage", "last oil", "oil odometer")
-        date_col = sheets.find(headers, "date", "oil date", "last oil date", "performed")
+        miles_col = sheets.find(headers, "odometer", "miles", "mileage", "last oil", "oil odometer", "last service")
+        date_col = sheets.find(headers, "date", "oil date", "last oil date", "performed", "service date")
         vendor_col = sheets.find(headers, "shop", "vendor", "where")
-        if not unit_col or not miles_col:
-            flash("The sheet needs a unit column and a miles (odometer) column.", "bad")
-            return redirect("/trucks/baselines")
+        if not unit_col or not (miles_col or date_col):
+            flash("The sheet needs a unit column and a miles (odometer) or date column.", "bad")
+            return redirect(f"/trucks/baselines?kind={kind}")
         by_unit = {sheets.unit_key(truck["unit_number"]): truck for truck in fleet.values()}
         for record in records:
             unit = sheets.value(record, unit_col)
@@ -131,9 +145,9 @@ def save_baselines():
             if not truck:
                 problems.append(f"Unit {unit}: not found in this company")
                 continue
-            miles = sheets.number(sheets.value(record, miles_col))
+            miles = sheets.number(sheets.value(record, miles_col)) if miles_col else None
             moment = sheets.when(sheets.value(record, date_col)) if date_col else None
-            problem = save_baseline(truck, int(miles) if miles else None, moment.date() if moment else None,
+            problem = save_baseline(truck, kind, int(miles) if miles else None, moment.date() if moment else None,
                                     forms.text(sheets.value(record, vendor_col), 160) if vendor_col else None)
             if problem and problem != "no miles":
                 problems.append(f"Unit {truck['unit_number']}: {problem}")
@@ -142,23 +156,50 @@ def save_baselines():
     else:
         for truck_id, truck in fleet.items():
             miles = forms.integer(request.form.get(f"miles_{truck_id}"))
-            if miles is None:
+            performed_on = forms.day(request.form.get(f"date_{truck_id}"))
+            if miles is None and performed_on is None:
                 continue
-            problem = save_baseline(truck, miles, forms.day(request.form.get(f"date_{truck_id}")),
+            problem = save_baseline(truck, kind, miles, performed_on,
                                     forms.text(request.form.get(f"vendor_{truck_id}"), 160))
             if problem and problem != "no miles":
                 problems.append(f"Unit {truck['unit_number']}: {problem}")
             elif not problem:
                 saved += 1
-    audit("truck.oil_baselines", "company", g.company["id"], {"saved": saved, "problems": len(problems)})
+    audit("truck.baselines", "company", g.company["id"], {"kind": kind, "saved": saved, "problems": len(problems)})
+    name = work_label(kind).lower()
     if saved:
-        flash(f"Saved {saved} oil {'baseline' if saved == 1 else 'baselines'}. Reminders will now count from them.", "ok")
+        flash(f"Saved {saved} {name} {'baseline' if saved == 1 else 'baselines'}. Reminders will now count from them.", "ok")
     elif not problems:
-        flash("Nothing to save. Fill in at least one truck's miles.", "bad")
-    fleet_now = baseline_trucks()
-    return render_template("trucks/baselines.html", title="Oil baselines", active="/trucks", fleet=fleet_now,
-                           missing=sum(1 for truck in fleet_now if truck["last_oil_odometer"] is None),
-                           problems=problems)
+        flash("Nothing to save. Fill in at least one truck's miles or date.", "bad")
+    return render_baselines(kind, problems)
+
+
+@bp.get("/trucks/intervals")
+@login_required
+@role_required("admin")
+def intervals():
+    return render_template("trucks/intervals.html", title="Service intervals", active="/trucks",
+                           schedules=SCHEDULES, current=company_intervals(g.company["id"]),
+                           severe=int((1 - SEVERE_FACTOR) * 100))
+
+
+@bp.post("/trucks/intervals")
+@login_required
+@role_required("admin")
+def save_intervals():
+    for item in SCHEDULES:
+        miles = forms.integer(request.form.get(f"miles_{item['kind']}"))
+        months = forms.integer(request.form.get(f"months_{item['kind']}"))
+        miles = miles if miles and miles >= 1000 else None
+        months = months if months and months > 0 else None
+        execute(
+            """insert into service_intervals (company_id, kind, miles, months) values (%s, %s, %s, %s)
+               on conflict (company_id, kind) do update set miles = excluded.miles, months = excluded.months, updated_at = now()""",
+            (g.company["id"], item["kind"], miles, months),
+        )
+    audit("company.service_intervals", "company", g.company["id"], {})
+    flash("Service intervals saved.", "ok")
+    return redirect("/trucks/intervals")
 
 
 @bp.get("/trucks/new")
@@ -230,6 +271,7 @@ def detail(truck_id):
     )
     enriched = dict(truck)
     enriched["last_oil_odometer"] = last_oil["odometer"] if last_oil else None
+    attach_last_services([enriched], g.company["id"])
     fuel = rows("select * from fuel_transactions where truck_id = %s order by purchased_at desc limit 10", (truck_id,))
     faults = rows("select * from fault_events where truck_id = %s order by last_seen_at desc limit 10", (truck_id,))
     breakdowns = rows("select * from breakdowns where truck_id = %s order by occurred_at desc limit 10", (truck_id,))

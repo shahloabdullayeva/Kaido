@@ -4,6 +4,8 @@ from datetime import date, datetime, timezone
 
 from markupsafe import Markup, escape
 
+from . import work_types
+
 TONES = {
     "active": "ok", "done": "ok", "resolved": "ok", "connected": "ok",
     "shop": "warn", "in_progress": "warn", "towing": "warn", "in_shop": "warn",
@@ -115,6 +117,7 @@ def register(app):
         "ago": ago,
         "tone": tone,
         "label": label,
+        "work": work_types.label,
         "shop_pins": shop_pins,
         "json_attr": json_attr,
         "osm_hours": osm_hours,

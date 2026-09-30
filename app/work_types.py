@@ -120,3 +120,18 @@ def label(kind):
 
 def kinds_in(group):
     return [key for key in KINDS if GROUP_OF[key] == group]
+
+
+SCHEDULES = [
+    {"kind": "pm_a", "label": "PM-A", "covered_by": ["pm_a", "pm_b", "pm_c"], "miles": 15000, "months": None},
+    {"kind": "pm_b", "label": "PM-B", "covered_by": ["pm_b", "pm_c"], "miles": 45000, "months": None},
+    {"kind": "pm_c", "label": "PM-C", "covered_by": ["pm_c"], "miles": 150000, "months": None},
+    {"kind": "air_dryer", "label": "Air dryer", "covered_by": ["air_dryer"], "miles": 60000, "months": 12},
+    {"kind": "transmission_service", "label": "Transmission fluid", "covered_by": ["transmission_service"], "miles": 60000, "months": None},
+    {"kind": "differential", "label": "Differential fluid", "covered_by": ["differential"], "miles": 60000, "months": None},
+    {"kind": "coolant_flush", "label": "Coolant", "covered_by": ["coolant_flush"], "miles": 150000, "months": 36},
+    {"kind": "dpf_clean", "label": "DPF cleaning", "covered_by": ["dpf_clean"], "miles": 300000, "months": None},
+]
+SCHEDULE_KINDS = sorted({kind for item in SCHEDULES for kind in item["covered_by"]})
+SEVERE_FACTOR = 0.75
+BASELINE_KINDS = ["oil"] + [item["kind"] for item in SCHEDULES]

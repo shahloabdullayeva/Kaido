@@ -27,7 +27,7 @@
     <div class="stat-hint">{{ truck.driver_name or 'No driver assigned' }}</div></div>
   <div class="stat"><div class="stat-label">Odometer</div><div class="stat-value">{{ truck.odometer|number }}</div>
     <div class="stat-hint">{{ truck.odometer_at|ago if truck.odometer_at else 'never updated' }}</div></div>
-  {% for item in statuses %}
+  {% for item in statuses if item.core %}
   <div class="stat {{ item.tone if item.tone in ['bad','warn'] else '' }}">
     <div class="stat-label">{{ item.label }}</div>
     <div class="stat-value" style="font-size:20px"><span class="badge {{ item.tone }}">{{ item.detail }}</span></div>
@@ -39,6 +39,26 @@
     <div class="stat-hint">recent MPG · {{ economy.average|number(1) }} average</div></div>
   {% endif %}
 </div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Service schedule</h2>
+    {% if at_least(role, 'admin') %}<a class="btn ghost small" href="/trucks/intervals">Intervals</a>{% endif %}</div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Service</th><th>Every</th><th>Last done</th><th>Next due</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for item in statuses if not item.core %}
+      <tr>
+        <td>{{ item.label }}</td>
+        <td>{% if item.interval_miles %}{{ item.interval_miles|number }} mi{% endif %}{% if item.interval_miles and item.interval_months %} or {% endif %}{% if item.interval_months %}{{ item.interval_months }} months{% endif %}{% if truck.duty_cycle == 'severe' %} <span class="subtle">(severe duty)</span>{% endif %}</td>
+        <td>{% if item.last_odometer %}{{ item.last_odometer|number }} mi{% endif %}{% if item.last_on %}<div class="subtle">{{ item.last_on|day }}</div>{% endif %}{% if not item.last_odometer and not item.last_on %}—{% endif %}</td>
+        <td>{% if item.due %}{{ item.due|number }} mi{% endif %}{% if item.due_on %}<div class="subtle">{{ item.due_on|day }}</div>{% endif %}{% if not item.due and not item.due_on %}—{% endif %}</td>
+        <td><span class="badge {{ item.tone }}">{{ item.detail }}</span>
+          {% if item.tone == 'muted' and at_least(role, 'admin') %}<a class="subtle" href="/trucks/baselines?kind={{ item.kind }}">add last one</a>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
 
 {% if at_least(role, 'admin') %}
 <section class="panel">
@@ -65,7 +85,7 @@
         <tr>
           <td>{{ (order.performed_on or order.scheduled_for)|day }}
             <div class="subtle"><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></div></td>
-          <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.kind|label }}</a>
+          <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.kind|work }}</a>
             <div class="subtle">{{ (order.description or '')[:60] }}</div></td>
           <td class="right">{{ order.odometer|number }}</td>
           <td class="right">{{ order.cost|money }}</td>

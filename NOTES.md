@@ -97,7 +97,8 @@ rather than an empty map.
 - **Reports.** Maintenance, fuel, breakdowns, faults and fleet status, filtered by dates, truck,
   driver and own/outside, downloadable as PDF, Excel or CSV. Each work order and breakdown has
   its own PDF.
-- **Oil baselines.** Trucks → Oil baselines: type the last oil-change miles or upload a sheet.
+- **Service baselines.** Trucks → Service baselines: pick a service (oil, PM-A/B/C, air dryer,
+  transmission, differential, coolant, DPF), type the last miles or date, or upload a sheet.
 - **EFS import.** Fuel → Import from EFS takes the eManager Transaction Report (CSV or Excel).
   Matches by unit, then card last 4; re-importing the same file is safe.
 - **Claude.** Plain-English explanation on every fault page, stored per code so it is paid for
@@ -120,10 +121,20 @@ rather than an empty map.
   database no longer checks it, so adding a type is one line there. The Maintenance page
   filters by system and the maintenance report has a System column.
 
+- **Due tracking for 8 more services.** PM-A 15k, PM-B 45k, PM-C 150k, air dryer 60k or 12 mo,
+  transmission fluid 60k, differential 60k, coolant 150k or 36 mo, DPF cleaning 300k. Defaults
+  are the midpoints of published Class 8 schedules; each company can change them on Trucks →
+  Service intervals (`service_intervals` table). Severe-duty trucks are due 25% sooner on miles.
+  A PM-B also counts as a PM-A, a PM-C as both, and a "next due" typed on a work order wins.
+  Nothing is counted for a truck until one of that service is on record — the truck page's
+  Service schedule links to the baseline page for each one. Overdue and due-soon items go into
+  the dashboard, the truck list, the daily follow-up and the fleet report.
+
 ## Next, in the order worth doing
 
-1. **Oil baselines.** 35 trucks still say "no service on record". The page is there; it needs
-   the numbers.
+1. **Service baselines.** 35 trucks still have no oil change on record, and none have the other
+   eight services yet. Trucks → Service baselines takes them one service at a time; it needs
+   the numbers. Check the default intervals against the trucks' OEM manuals too.
 2. **EFS automatic feed.** The upload works today. For hands-off, ask EFS for a data feed
    username and password for your own software, then Kaido can pull on a schedule.
 3. **kaidofleet.com** when it is bought — `bin/golive.sh kaidofleet.com`.

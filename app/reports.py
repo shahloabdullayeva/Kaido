@@ -153,12 +153,15 @@ def fleet(filters):
             "last_oil": truck.get("last_oil_odometer"),
             "oil": status["Oil service"]["detail"],
             "dot": status["DOT annual"]["detail"],
+            "other": "; ".join(f"{item['label']}: {item['detail']}" for item in status.values()
+                               if not item.get("core") and item["tone"] in ("bad", "warn")),
             "faults": truck.get("active_faults"),
             "breakdowns": truck.get("open_breakdowns"),
         })
     columns = [("unit_number", "Unit", "text", 12), ("vehicle", "Vehicle", "text", 28), ("engine", "Engine", "text", 22),
                ("driver", "Driver", "text", 26), ("status", "Status", "text", 12), ("odometer", "Odometer", "int", 14),
                ("last_oil", "Last oil at", "int", 14), ("oil", "Oil service", "text", 22), ("dot", "DOT annual", "text", 20),
+               ("other", "Other service due", "text", 40),
                ("faults", "Active faults", "int", 10), ("breakdowns", "Open breakdowns", "int", 10)]
     return columns, data, {}
 

@@ -3,7 +3,7 @@ from flask import Blueprint, g, jsonify, render_template, request
 from .. import advisor, forms, work_types
 from ..auth import login_required
 from ..db import execute, one, rows
-from ..queries import service_status
+from ..queries import attach_last_services, service_status
 from ..tenancy import company_required
 
 bp = Blueprint("assistant", __name__)
@@ -17,6 +17,7 @@ def truck_context(truck):
         (truck["id"],),
     )
     enriched = dict(truck, last_oil_odometer=last_oil["odometer"] if last_oil else None)
+    attach_last_services([enriched], company_id)
     driver = one("select name, phone from drivers where id = %s", (truck["driver_id"],)) if truck["driver_id"] else None
     faults = rows(
         """select dtc_code, spn, fmi, description, lamp, severity, first_seen_at from fault_events

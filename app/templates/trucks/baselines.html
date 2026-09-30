@@ -1,10 +1,16 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Oil baselines</h1>
-    <p>{{ missing }} of {{ fleet|length }} trucks have no oil change on record. Enter the odometer at each truck's last oil change once, and reminders count from there.</p></div>
+  <div><h1>Service baselines</h1>
+    <p>{{ missing }} of {{ fleet|length }} trucks have no {{ work_label(kind)|lower }} on record. Enter the odometer (or date) of each truck's last one once, and reminders count from there.</p></div>
   <a class="btn ghost" href="/trucks">Back to trucks</a>
 </div>
+<form method="get" action="/trucks/baselines" class="filters" data-autosubmit>
+  <label class="field"><span>Service</span>
+    <select name="kind">{% for value in kinds %}<option value="{{ value }}" {% if value == kind %}selected{% endif %}>{{ work_label(value) }}</option>{% endfor %}</select>
+  </label>
+  <noscript><button class="btn ghost" type="submit">Show</button></noscript>
+</form>
 {% if problems %}
 <div class="flash bad">Some rows were not saved:<ul>{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul></div>
 {% endif %}
@@ -12,9 +18,10 @@
   <div class="panel-head"><h2>Upload a spreadsheet</h2></div>
   <form method="post" action="/trucks/baselines" enctype="multipart/form-data">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
     <div class="form-grid">
       <label class="field"><span>Excel or CSV file</span><input type="file" name="sheet" accept=".xlsx,.csv" required>
-        <em>Columns: <b>Unit</b>, <b>Odometer</b> at the last oil change, and optionally <b>Date</b> and <b>Shop</b>. Extra columns are ignored.</em></label>
+        <em>Columns: <b>Unit</b>, <b>Odometer</b> and/or <b>Date</b> of the last one, and optionally <b>Shop</b>. Extra columns are ignored.</em></label>
     </div>
     <div class="form-actions"><button class="btn" type="submit">Upload</button></div>
   </form>
@@ -23,17 +30,18 @@
   <div class="panel-head"><h2>Or type them in</h2><span class="subtle">Leave a row empty to skip it.</span></div>
   <form method="post" action="/trucks/baselines">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
     <div class="table-wrap"><table>
-      <thead><tr><th>Unit</th><th>Driver</th><th class="right">Odometer now</th><th>On record</th><th>Miles at last oil change</th><th>Date</th><th>Shop</th></tr></thead>
+      <thead><tr><th>Unit</th><th>Driver</th><th class="right">Odometer now</th><th>On record</th><th>Miles at last one</th><th>Date</th><th>Shop</th></tr></thead>
       <tbody>
         {% for truck in fleet %}
         <tr>
           <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a></td>
           <td>{{ truck.driver_name or '—' }}</td>
           <td class="right">{{ truck.odometer|number }}</td>
-          <td>{% if truck.last_oil_odometer %}{{ truck.last_oil_odometer|number }} mi<div class="subtle">{{ truck.last_oil_on|day }}</div>{% else %}<span class="badge warn">none</span>{% endif %}</td>
-          <td><input type="number" name="miles_{{ truck.id }}" min="0" max="{{ (truck.odometer or 0) + 1000 }}" aria-label="Miles at last oil change for unit {{ truck.unit_number }}"></td>
-          <td><input type="date" name="date_{{ truck.id }}" aria-label="Date of last oil change for unit {{ truck.unit_number }}"></td>
+          <td>{% if truck.last_odometer or truck.last_on %}{% if truck.last_odometer %}{{ truck.last_odometer|number }} mi{% endif %}<div class="subtle">{{ truck.last_on|day }}</div>{% else %}<span class="badge warn">none</span>{% endif %}</td>
+          <td><input type="number" name="miles_{{ truck.id }}" min="0" max="{{ (truck.odometer or 0) + 1000 }}" aria-label="Miles at last service for unit {{ truck.unit_number }}"></td>
+          <td><input type="date" name="date_{{ truck.id }}" aria-label="Date of last service for unit {{ truck.unit_number }}"></td>
           <td><input type="text" name="vendor_{{ truck.id }}" maxlength="160" aria-label="Shop for unit {{ truck.unit_number }}"></td>
         </tr>
         {% endfor %}

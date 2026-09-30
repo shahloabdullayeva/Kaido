@@ -1,10 +1,11 @@
 from datetime import date, datetime, timezone
 
 from .db import one, rows
+from .work_types import SCHEDULE_KINDS, SCHEDULES, SEVERE_FACTOR
 
 
 def trucks_with_service(company_id):
-    return rows(
+    trucks = rows(
         """select t.*,
              d.name as driver_name,
              (select max(m.odometer) from maintenance_orders m
@@ -20,6 +21,83 @@ def trucks_with_service(company_id):
            order by lower(t.unit_number)""",
         (company_id,),
     )
+    return attach_last_services(trucks, company_id)
+
+
+def attach_last_services(trucks, company_id):
+    ids = [truck["id"] for truck in trucks]
+    latest = {}
+    if ids:
+        for row in rows(
+            """select distinct on (truck_id, kind) truck_id, kind, odometer, performed_on, next_due_odometer, next_due_on
+               from maintenance_orders
+               where truck_id = any(%s) and status = 'done' and kind = any(%s)
+                 and (odometer is not null or performed_on is not null)
+               order by truck_id, kind, odometer desc nulls last, performed_on desc nulls last, id desc""",
+            (ids, SCHEDULE_KINDS),
+        ):
+            latest.setdefault(row["truck_id"], {})[row["kind"]] = row
+    intervals = company_intervals(company_id)
+    for truck in trucks:
+        truck["last_service"] = latest.get(truck["id"], {})
+        truck["intervals"] = intervals
+    return trucks
+
+
+def company_intervals(company_id):
+    saved = {row["kind"]: row for row in rows("select kind, miles, months from service_intervals where company_id = %s", (company_id,))}
+    out = {}
+    for item in SCHEDULES:
+        row = saved.get(item["kind"])
+        out[item["kind"]] = {
+            "miles": row["miles"] if row else item["miles"],
+            "months": row["months"] if row else item["months"],
+        }
+    return out
+
+
+def add_months(day, months):
+    month = day.month - 1 + months
+    year, month = day.year + month // 12, month % 12 + 1
+    for last in (31, 30, 29, 28):
+        try:
+            return date(year, month, min(day.day, last))
+        except ValueError:
+            continue
+
+
+def schedule_status(truck, item):
+    interval = (truck.get("intervals") or {}).get(item["kind"]) or {"miles": item["miles"], "months": item["months"]}
+    miles = interval["miles"]
+    if miles and truck.get("duty_cycle") == "severe":
+        miles = int(miles * SEVERE_FACTOR)
+    months = interval["months"]
+    done = [row for kind, row in (truck.get("last_service") or {}).items() if kind in item["covered_by"]]
+    base = {"label": item["label"], "kind": item["kind"], "core": False, "interval_miles": miles, "interval_months": months,
+            "last_odometer": None, "last_on": None, "due": None, "due_on": None, "remaining": None, "days": None}
+    if not done:
+        return dict(base, tone="muted", detail="No record yet")
+    last_odometer = max((row["odometer"] for row in done if row["odometer"] is not None), default=None)
+    last_on = max((row["performed_on"] for row in done if row["performed_on"] is not None), default=None)
+    newest = max(done, key=lambda row: ((row["odometer"] or 0), row["performed_on"] or date.min))
+    due = newest["next_due_odometer"] or ((last_odometer + miles) if last_odometer is not None and miles else None)
+    due_on = newest["next_due_on"] or (add_months(last_on, months) if last_on and months else None)
+    remaining = due - (truck.get("odometer") or 0) if due is not None else None
+    days = (due_on - date.today()).days if due_on else None
+    tones = []
+    if remaining is not None:
+        tones.append("bad" if remaining <= 0 else ("warn" if remaining <= max((miles or 0) * 0.1, 1000) else "ok"))
+    if days is not None:
+        tones.append("bad" if days <= 0 else ("warn" if days <= 30 else "ok"))
+    order = {"bad": 0, "warn": 1, "ok": 2}
+    tone = min(tones, key=order.get) if tones else "muted"
+    parts = []
+    if remaining is not None:
+        parts.append(f"{abs(remaining):,} mi overdue" if remaining <= 0 else f"{remaining:,} mi to go")
+    if days is not None and (tone != "ok" or remaining is None):
+        parts.append(f"{abs(days)} days overdue" if days <= 0 else f"{days} days left")
+    return dict(base, tone=tone, detail=" · ".join(parts) or "No miles or date on record",
+                last_odometer=last_odometer, last_on=last_on, due=due, due_on=due_on, remaining=remaining, days=days)
 
 
 def service_status(truck):
@@ -31,13 +109,15 @@ def service_status(truck):
         remaining = due - (truck.get("odometer") or 0)
         items.append({
             "label": "Oil service",
+            "core": True,
+            "unit": "mi",
             "due": due,
             "remaining": remaining,
             "tone": "bad" if remaining <= 0 else ("warn" if remaining <= interval * 0.1 else "ok"),
             "detail": f"{abs(remaining):,} mi overdue" if remaining <= 0 else f"{remaining:,} mi to go",
         })
     else:
-        items.append({"label": "Oil service", "due": None, "remaining": None, "tone": "muted", "detail": "No service on record"})
+        items.append({"label": "Oil service", "core": True, "due": None, "remaining": None, "tone": "muted", "detail": "No service on record"})
 
     inspection = truck.get("annual_inspection_on")
     if inspection:
@@ -47,13 +127,16 @@ def service_status(truck):
         days = (due - date.today()).days
         items.append({
             "label": "DOT annual",
+            "core": True,
             "due": due,
             "remaining": days,
             "tone": "bad" if days <= 0 else ("warn" if days <= 30 else "ok"),
             "detail": f"{abs(days)} days overdue" if days <= 0 else f"{days} days left",
         })
     else:
-        items.append({"label": "DOT annual", "due": None, "remaining": None, "tone": "muted", "detail": "Not recorded"})
+        items.append({"label": "DOT annual", "core": True, "due": None, "remaining": None, "tone": "muted", "detail": "Not recorded"})
+    if "last_service" in truck:
+        items.extend(schedule_status(truck, item) for item in SCHEDULES)
     return items
 
 

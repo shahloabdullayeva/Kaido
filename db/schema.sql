@@ -488,6 +488,15 @@ create table if not exists ai_chats (
 );
 create index if not exists ai_chats_thread_idx on ai_chats (company_id, user_id, truck_id, created_at);
 
+create table if not exists service_intervals (
+  company_id int not null references companies(id) on delete cascade,
+  kind text not null,
+  miles int,
+  months int,
+  updated_at timestamptz not null default now(),
+  primary key (company_id, kind)
+);
+
 do $$
 declare
   tenant text;
@@ -495,7 +504,7 @@ begin
   foreach tenant in array array[
     'drivers','trucks','odometer_readings','fuel_transactions','maintenance_orders','breakdowns',
     'breakdown_updates','integrations','vehicle_links','fault_events','dvir_defects','sync_runs',
-    'reminders','followups','fault_alerts','fuel_imports','ai_chats'
+    'reminders','followups','fault_alerts','fuel_imports','ai_chats','service_intervals'
   ] loop
     execute format('alter table %I enable row level security', tenant);
     execute format('alter table %I force row level security', tenant);

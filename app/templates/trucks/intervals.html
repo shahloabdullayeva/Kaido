@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Service intervals</h1>
+    <p>How often each service is due, for every truck in {{ company.name }}. A truck set to severe duty is due {{ severe }}% sooner on miles. Leave a box empty to not count by it. Oil is set per truck on the truck's own page.</p></div>
+  <a class="btn ghost" href="/trucks">Back to trucks</a>
+</div>
+<section class="panel">
+  <form method="post" action="/trucks/intervals">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="table-wrap"><table>
+      <thead><tr><th>Service</th><th>Every (miles)</th><th>Or every (months)</th><th>Kaido default</th><th>Baselines</th></tr></thead>
+      <tbody>
+        {% for item in schedules %}
+        <tr>
+          <td>{{ item.label }}</td>
+          <td><input type="number" name="miles_{{ item.kind }}" value="{{ current[item.kind].miles or '' }}" min="1000" step="1000" aria-label="{{ item.label }} miles"></td>
+          <td><input type="number" name="months_{{ item.kind }}" value="{{ current[item.kind].months or '' }}" min="1" max="120" aria-label="{{ item.label }} months"></td>
+          <td class="subtle">{{ item.miles|number }} mi{% if item.months %} or {{ item.months }} months{% endif %}</td>
+          <td><a href="/trucks/baselines?kind={{ item.kind }}">enter last ones</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    <div class="form-actions"><button class="btn" type="submit">Save intervals</button>
+      <span class="muted">A PM-B also counts as a PM-A, and a PM-C as both. A "next due" typed on a work order wins over these.</span></div>
+  </form>
+</section>
+{% endblock %}

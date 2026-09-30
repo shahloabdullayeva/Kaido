@@ -3,7 +3,7 @@
 <div class="page-head">
   <div><h1>Trucks</h1><p>{{ fleet|length }} shown</p></div>
   <div class="actions-row">
-    {% if at_least(role, 'admin') %}<a class="btn ghost" href="/trucks/baselines">Oil baselines</a>
+    {% if at_least(role, 'admin') %}<a class="btn ghost" href="/trucks/baselines">Service baselines</a> <a class="btn ghost" href="/trucks/intervals">Service intervals</a>
     <a class="btn" href="/trucks/new">Add truck</a>{% endif %}
   </div>
 </div>
@@ -45,7 +45,7 @@
           </div>
         </td>
         <td>
-          {% for item in truck.statuses %}
+          {% for item in truck.statuses if item.core or item.tone in ['bad', 'warn'] %}
           <div class="subtle"><span class="badge {{ item.tone }}">{{ item.label }}</span> {{ item.detail }}</div>
           {% endfor %}
         </td>
