@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block body %}
+{% set code = fault.dtc_code or ('SPN ' ~ fault.spn ~ ' / FMI ' ~ fault.fmi) %}
+<div class="page-head">
+  <div>
+    <h1>{{ code }} · unit {{ truck.unit_number }}</h1>
+    <p>{{ fault.description or 'No description from the truck' }}</p>
+  </div>
+  <div class="pill-row">
+    <span class="badge {{ fault.severity|tone }}">{{ fault.severity }} severity</span>
+    {% if fault.cleared_at %}<span class="badge ok">cleared {{ fault.cleared_at|ago }}</span>{% else %}<span class="badge bad">active</span>{% endif %}
+    <a class="btn ghost" href="/trucks/{{ truck.id }}">Truck</a>
+    {% if at_least(role, 'admin') %}<a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>{% endif %}
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Lamp</div><div class="stat-value" style="font-size:18px">{{ fault.lamp or '—' }}</div>
+    <div class="stat-hint">{{ fault.protocol|upper }}</div></div>
+  <div class="stat"><div class="stat-label">First seen</div><div class="stat-value" style="font-size:18px">{{ fault.first_seen_at|ago }}</div>
+    <div class="stat-hint">{{ fault.first_seen_at|stamp }}</div></div>
+  <div class="stat"><div class="stat-label">Last seen</div><div class="stat-value" style="font-size:18px">{{ fault.last_seen_at|ago }}</div>
+    <div class="stat-hint">{{ fault.occurrence_count or '?' }} times reported</div></div>
+  <div class="stat"><div class="stat-label">Truck</div><div class="stat-value" style="font-size:18px">{{ truck.unit_number }}</div>
+    <div class="stat-hint">{{ [truck.year, truck.make, truck.model]|select|join(' ') }}</div></div>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>What it means</h2>{% if guide %}<span class="subtle">written by Claude, check with the shop</span>{% endif %}</div>
+  {% if guide %}
+  <div class="pad guide">
+    <p class="guide-urgency {{ guide.urgency }}"><strong>{{ urgency_labels[guide.urgency] }}.</strong> {{ guide.urgency_reason }}</p>
+    <p>{{ guide.meaning }}</p>
+    <p><strong>What a shop usually does:</strong> {{ guide.likely_fix }}</p>
+    {% if guide.driver_check %}<p><strong>Ask the driver:</strong> {{ guide.driver_check }}</p>{% endif %}
+  </div>
+  {% elif not ai_on %}<p class="empty">Explanations are off because no Anthropic key is set.</p>
+  {% elif ai_paused %}<p class="empty">Today's AI budget is used up. The explanation will appear tomorrow.</p>
+  {% else %}<p class="empty">Could not get an explanation just now. Reload the page to try again.</p>{% endif %}
+</section>
+
+{% if history|length > 1 %}
+<section class="panel">
+  <div class="panel-head"><h2>This code on this truck before</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>First seen</th><th>Last seen</th><th>Cleared</th><th class="right">Times</th></tr></thead>
+    <tbody>{% for row in history %}
+      <tr><td>{% if row.id != fault.id %}<a href="/faults/{{ row.id }}">{{ row.first_seen_at|stamp }}</a>{% else %}{{ row.first_seen_at|stamp }} (this one){% endif %}</td>
+        <td>{{ row.last_seen_at|stamp }}</td><td>{{ row.cleared_at|stamp }}</td><td class="right">{{ row.occurrence_count or '—' }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% set reminder_entity, reminder_entity_id = "fault_event", fault.id %}
+{% include "reminders/_panel.html" %}
+{% endblock %}

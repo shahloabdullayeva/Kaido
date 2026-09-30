@@ -9,6 +9,7 @@
   <div class="pill-row">
     <span class="badge {{ item.status|tone }}">{{ item.status|label }}</span>
     <span class="badge {{ item.severity|tone }}">{{ item.severity }} severity</span>
+    <a class="btn ghost" href="/breakdowns/{{ item.id }}/pdf">Download PDF</a>
   </div>
 </div>
 
@@ -83,4 +84,6 @@
   </ul>
   {% else %}<p class="empty">No updates yet.</p>{% endif %}
 </section>
+{% set reminder_entity, reminder_entity_id = "breakdown", item.id %}
+{% include "reminders/_panel.html" %}
 {% endblock %}

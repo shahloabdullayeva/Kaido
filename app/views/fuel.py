@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms
+from .. import forms, fuel_import
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -98,3 +98,39 @@ def create():
     audit("fuel.created", "fuel_transaction", entry["id"], {"unit": truck["unit_number"], "total": float(total)})
     flash(f"Fuel logged for unit {truck['unit_number']}.", "ok")
     return redirect("/fuel")
+
+
+@bp.get("/fuel/import")
+@login_required
+@role_required("admin")
+def import_form():
+    history = rows(
+        """select i.*, u.name as author from fuel_imports i left join users u on u.id = i.created_by
+           where i.company_id = %s order by i.created_at desc limit 10""",
+        (g.company["id"],),
+    )
+    return render_template("fuel/import.html", title="Import fuel", active="/fuel", history=history, report=None)
+
+
+@bp.post("/fuel/import")
+@login_required
+@role_required("admin")
+def import_file():
+    upload = request.files.get("sheet")
+    if not upload or not upload.filename:
+        flash("Choose the file you downloaded from eManager.", "bad")
+        return redirect("/fuel/import")
+    try:
+        report = fuel_import.run(g.company["id"], g.session["user_id"], upload.filename, upload.read())
+    except Exception as err:
+        flash(f"Could not import that file. {str(err)[:400]}", "bad")
+        return redirect("/fuel/import")
+    audit("fuel.imported", "fuel_import", None, {"file": upload.filename, "added": report["added"],
+                                                  "duplicate": report["duplicate"], "unmatched": len(report["unmatched"])})
+    history = rows(
+        """select i.*, u.name as author from fuel_imports i left join users u on u.id = i.created_by
+           where i.company_id = %s order by i.created_at desc limit 10""",
+        (g.company["id"],),
+    )
+    return render_template("fuel/import.html", title="Import fuel", active="/fuel", history=history,
+                           report=report, filename=upload.filename)

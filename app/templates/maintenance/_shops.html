@@ -45,6 +45,7 @@
       {%- if shop.phone %} · <a href="tel:{{ shop.phone }}">{{ shop.phone }}</a>{% endif %}
       {%- if shop.website %} · <a href="{{ shop.website }}" rel="noreferrer noopener">website</a>{% endif %}
     </div>
+    {% if shop.opening_hours %}<div class="shop-hours">Hours: {{ shop.opening_hours|osm_hours }}</div>{% endif %}
     {% if shop.history %}
     <div class="shop-history">You have used this shop {{ shop.history.visits }}×, average
       {{ shop.history.average|money }}, last {{ shop.history.last }}.</div>

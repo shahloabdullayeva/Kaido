@@ -3,7 +3,8 @@
 <div class="page-head">
   <div><h1>Trucks</h1><p>{{ fleet|length }} shown</p></div>
   <div class="actions-row">
-    {% if at_least(role, 'admin') %}<a class="btn" href="/trucks/new">Add truck</a>{% endif %}
+    {% if at_least(role, 'admin') %}<a class="btn ghost" href="/trucks/baselines">Oil baselines</a>
+    <a class="btn" href="/trucks/new">Add truck</a>{% endif %}
   </div>
 </div>
 
@@ -17,6 +18,7 @@
             {% for value in statuses %}
             <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ value|label }}</option>
             {% endfor %}
+            <option value="outside" {% if status == 'outside' %}selected{% endif %}>Outside trucks</option>
           </select>
         </label>
       </form>
@@ -30,7 +32,8 @@
       {% for truck in fleet %}
       <tr>
         <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a>
-          {% if truck.samsara_id %}<div class="subtle">Samsara linked</div>{% endif %}</td>
+          {% if truck.samsara_id %}<div class="subtle">Samsara linked</div>{% endif %}
+          {% if truck.is_outside %}<div class="subtle"><span class="badge info">outside</span> {{ truck.outside_carrier or '' }}</div>{% endif %}</td>
         <td>{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}
           <div class="subtle mono">{{ truck.vin or '' }}</div></td>
         <td>{{ truck.driver_name or '—' }}</td>

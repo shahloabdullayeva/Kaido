@@ -9,8 +9,10 @@ from app.security import hash_password, random_token
 
 
 def cmd_migrate(args):
+    from app.db import cursor
     sql = (ROOT / "db" / "schema.sql").read_text()
-    execute(sql)
+    with cursor() as cur:
+        cur.execute(sql.encode())
     print("schema applied")
 
 
@@ -123,6 +125,32 @@ def cmd_ai_spend(args):
         print(f"At the cap every day, ${args.credit:.2f} lasts {int(args.credit / config.AI_DAILY_USD)} days")
     cached = one("select count(*) as n from ai_cache where fetched_at > now() - make_interval(days => 7)")
     print(f"{cached['n']} answers cached and free to serve again")
+    return 0
+
+
+def cmd_followup(args):
+    from app import followup, reminders
+    if args.show:
+        company = one("select * from companies where lower(name) = lower(%s)", (args.show,))
+        if not company:
+            print(f"No company called {args.show}")
+            return 1
+        from datetime import datetime
+        today = datetime.now(reminders.zone_for(company["timezone"])).date()
+        print(followup.build(company, today))
+        return 0
+    if args.send_now:
+        company = one("select * from companies where lower(name) = lower(%s)", (args.send_now,))
+        if not company:
+            print(f"No company called {args.send_now}")
+            return 1
+        print(followup.run(force_company=company["id"]))
+        return 0
+    reminded = reminders.send_due()
+    alerted = followup.send_fault_alerts()
+    sent = followup.run()
+    if reminded or alerted or sent:
+        print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}")
     return 0
 
 
@@ -276,6 +304,11 @@ def main():
     spend.add_argument("--days", type=int, default=14)
     spend.add_argument("--credit", type=float, default=5.0)
     spend.set_defaults(func=cmd_ai_spend)
+
+    follow = sub.add_parser("followup", help="send due reminders, stop-lamp alerts and the daily follow-up")
+    follow.add_argument("--show", metavar="COMPANY", help="print today's follow-up for a company without sending it")
+    follow.add_argument("--send-now", dest="send_now", metavar="COMPANY", help="send today's follow-up for a company right away")
+    follow.set_defaults(func=cmd_followup)
 
     sub.add_parser("telegram-bot", help="link Telegram accounts").set_defaults(func=cmd_telegram)
 

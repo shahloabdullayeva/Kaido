@@ -2,7 +2,7 @@
 {% block body %}
 <div class="page-head">
   <div><h1>Fault codes</h1>
-    <p>{% if integration and integration.status == 'connected' %}Samsara connected · last sync {{ integration.last_sync_at|ago }}{% else %}Samsara is not connected — nothing will appear here until it is.{% endif %}</p>
+    <p>Click a code for a plain-English explanation. {% if integration and integration.status == 'connected' %}Samsara connected · last sync {{ integration.last_sync_at|ago }}{% else %}Samsara is not connected — nothing will appear here until it is.{% endif %}</p>
   </div>
   {% if at_least(role, 'admin') %}<a class="btn ghost" href="/integrations">Integrations</a>{% endif %}
 </div>
@@ -26,7 +26,7 @@
       <tr>
         <td><a class="rowlink" href="/trucks/{{ fault.truck_id }}">{{ fault.unit_number }}</a>
           <div class="subtle">{{ fault.make or '' }} {{ fault.model or '' }}</div></td>
-        <td><span class="mono">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ ' / FMI ' ~ fault.fmi) }}</span>
+        <td><a class="rowlink mono" href="/faults/{{ fault.id }}">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ ' / FMI ' ~ fault.fmi) }}</a>
           <div class="subtle">{{ fault.protocol }}{% if fault.occurrence_count %} · {{ fault.occurrence_count }}×{% endif %}</div></td>
         <td>{{ (fault.description or '—')[:80] }}</td>
         <td>{{ fault.lamp or '—' }}</td>

@@ -2,7 +2,8 @@
 {% block body %}
 <div class="page-head">
   <div><h1>Fuel</h1><p>{{ totals.entries }} purchases this month · {{ totals.gallons|number(1) }} gallons · {{ totals.total|money }}</p></div>
-  {% if at_least(role, 'admin') %}<a class="btn" href="/fuel/new">Log fuel</a>{% endif %}
+  {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn ghost" href="/fuel/import">Import from EFS</a>
+    <a class="btn" href="/fuel/new">Log fuel</a></div>{% endif %}
 </div>
 <section class="panel">
   <div class="panel-head">

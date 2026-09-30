@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Import fuel from EFS</h1><p>Upload the Transaction Report from eManager. Each purchase is matched to a truck by unit number, then by the last 4 digits of the fuel card.</p></div>
+  <a class="btn ghost" href="/fuel">Back to fuel</a>
+</div>
+
+{% if report %}
+<section class="panel">
+  <div class="panel-head"><h2>{{ filename }}</h2></div>
+  <div class="stats">
+    <div class="stat"><div class="stat-label">Rows read</div><div class="stat-value">{{ report.total }}</div></div>
+    <div class="stat"><div class="stat-label">Added</div><div class="stat-value">{{ report.added }}</div></div>
+    <div class="stat"><div class="stat-label">Already here</div><div class="stat-value">{{ report.duplicate }}</div><div class="stat-hint">skipped, imported before</div></div>
+    <div class="stat {{ 'warn' if report.unmatched else '' }}"><div class="stat-label">No truck found</div><div class="stat-value">{{ report.unmatched|length }}</div></div>
+  </div>
+  {% if report.unmatched %}
+  <p>These purchases were not imported because no truck has that unit number or card. Fix the unit number, or put the card's last 4 digits on the truck (Edit truck → Fuel card), then import the same file again. Rows already imported are skipped.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Unit on the card</th><th>Card</th><th>Item</th><th class="right">Gallons</th><th class="right">Amount</th><th>Where</th></tr></thead>
+    <tbody>{% for row in report.unmatched[:100] %}
+      <tr><td>{{ row.when|stamp }}</td><td>{{ row.unit or '—' }}</td><td class="mono">{{ ('…' ~ (row.card|string)[-4:]) if row.card else '—' }}</td>
+        <td>{{ row.item or '—' }}</td><td class="right">{{ row.qty|number(1) }}</td><td class="right">{{ row.amount|money }}</td><td>{{ row.location or '—' }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+  {% if report.skipped %}
+  <p class="subtle">{{ report.skipped|length }} lines skipped: {{ report.skipped[:5]|map(attribute='why')|unique|join('; ') }}.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head"><h2>Upload</h2></div>
+  <form method="post" action="/fuel/import" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      <label class="field"><span>Transaction Report (.csv or .xlsx)</span><input type="file" name="sheet" accept=".csv,.xlsx" required>
+        <em>Importing the same file twice is safe. Purchases already in Kaido are skipped.</em></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit" data-busy="Importing…">Import</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Getting the file from eManager</h2></div>
+  <div class="pad">
+    <ol>
+      <li>Sign in to eManager at efsllc.com → Customer Logins → EFS eManager.</li>
+      <li>Select Program → <b>Reports/Exports</b> → <b>Transaction Report</b>.</li>
+      <li>Pick the date range and choose <b>CSV</b> as the format. Include unit, driver and odometer if the report offers them.</li>
+      <li>Upload it here.</li>
+    </ol>
+    <p>You can also set the report up as a scheduled report emailed to you every day or week in eManager, then upload each one here.</p>
+    <p><b>About "Data Sharing Preferences":</b> that screen shares your transactions with a partner system. EFS processes the request (up to five business days) and then gives you a <b>Data Feed Username and Password</b>, which are different from your eManager login. If Kaido or "other" cannot be picked as the partner, ask your EFS account manager for a transaction data feed for your own fleet software. Once you have the data feed username and password, Kaido can be set up to pull purchases on its own, and this upload becomes the backup.</p>
+  </div>
+</section>
+
+{% if history %}
+<section class="panel">
+  <div class="panel-head"><h2>Past imports</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>File</th><th>By</th><th class="right">Added</th><th class="right">Duplicates</th><th class="right">No truck</th></tr></thead>
+    <tbody>{% for item in history %}
+      <tr><td>{{ item.created_at|stamp }}</td><td>{{ item.filename }}</td><td>{{ item.author or '—' }}</td>
+        <td class="right">{{ item.rows_added }}</td><td class="right">{{ item.rows_duplicate }}</td><td class="right">{{ item.rows_unmatched }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}

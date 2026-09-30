@@ -1,0 +1,22 @@
+<div class="pad oil">
+  <p class="subtle">
+    {{ [truck.year, truck.make, truck.model]|select|join(' ') or 'Truck' }} ·
+    {% if truck.engine %}engine <strong>{{ truck.engine }}</strong>{% if truck.engine_liters %}, {{ truck.engine_liters }} L{% endif %}
+      ({{ 'from the VIN' if truck.engine_source == 'vin' else 'entered by hand' }})
+    {% else %}engine unknown. {% if not truck.vin %}Add the VIN or the engine on the truck page for a better answer.{% else %}The VIN did not say.{% endif %}{% endif %}
+  </p>
+  {% if advice %}
+  <table class="oil-table">
+    <tr><th>Oil</th><td>{{ advice.oil }}</td></tr>
+    <tr><th>Grade</th><td>{{ advice.viscosity }}</td></tr>
+    <tr><th>How much</th><td>{{ advice.capacity }}</td></tr>
+    <tr><th>Filter</th><td>{{ advice.filter_note }}</td></tr>
+    <tr><th>Interval</th><td>{{ advice.interval_note }}</td></tr>
+  </table>
+  <p class="guide-urgency {{ 'next_service' if advice.confidence == 'engine_known' else 'soon' }}">
+    {% if advice.confidence != 'engine_known' %}<strong>Rough guide only:</strong> the exact engine is not known. {% endif %}{{ advice.caution }}</p>
+  <button type="button" class="btn ghost small" data-oil-note="{{ advice.viscosity }} {{ advice.oil }}">Add to work order notes</button>
+  {% elif not ai_on %}<p class="empty">Oil suggestions are off because no Anthropic key is set.</p>
+  {% elif ai_paused %}<p class="empty">Today's AI budget is used up. Oil suggestions are back tomorrow.</p>
+  {% else %}<p class="empty">No suggestion came back. Try again in a minute.</p>{% endif %}
+</div>

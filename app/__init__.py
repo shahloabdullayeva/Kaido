@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, request, url_for
 
-from . import filters
+from . import filters, reminders
 from .auth import ANON_CSRF_COOKIE, SESSION_COOKIE, load_session
 from .config import IS_PROD, config
 from .security import csrf_matches, random_token
@@ -22,7 +22,7 @@ def create_app():
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=IS_PROD,
-        MAX_CONTENT_LENGTH=1024 * 1024,
+        MAX_CONTENT_LENGTH=12 * 1024 * 1024,
     )
     filters.register(app)
 
@@ -66,6 +66,16 @@ def create_app():
             )
         return response
 
+    def reminder_panel(entity, entity_id):
+        company = getattr(g, "company", None)
+        if not company:
+            return {"rows": [], "default": None, "zone": ""}
+        items = reminders.for_entity(company["id"], entity, entity_id)
+        for item in items:
+            item["local"] = reminders.local(item["remind_at"], company)
+        return {"rows": items, "default": reminders.default_when(company),
+                "zone": company.get("timezone") or config.TIMEZONE}
+
     @app.context_processor
     def context():
         return {
@@ -78,6 +88,8 @@ def create_app():
             "at_least": at_least,
             "anon_csrf": anon_csrf,
             "app_config": config,
+            "reminder_panel": reminder_panel,
+            "audiences": reminders.AUDIENCES,
         }
 
     from .views.auth import bp as auth_bp
@@ -90,11 +102,14 @@ def create_app():
     from .views.integrations import bp as integrations_bp
     from .views.maintenance import bp as maintenance_bp
     from .views.platform import bp as platform_bp
+    from .views.reminders import bp as reminders_bp
+    from .views.assistant import bp as assistant_bp
+    from .views.reports import bp as reports_bp
     from .views.trucks import bp as trucks_bp
 
     for blueprint in (auth_bp, dashboard_bp, trucks_bp, drivers_bp, fuel_bp,
                       maintenance_bp, breakdowns_bp, faults_bp, integrations_bp,
-                      company_bp, platform_bp):
+                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(404)

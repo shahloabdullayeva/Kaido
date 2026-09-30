@@ -22,6 +22,25 @@
 </section>
 
 <section class="panel">
+  <div class="panel-head"><h2>Daily follow-up</h2><span class="subtle">one Telegram message a day to everyone here with Telegram linked</span></div>
+  <form method="post" action="/company/followup">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      <label class="checkbox field"><input type="checkbox" name="followup_enabled" value="1" {% if company.followup_enabled %}checked{% endif %}> <span>Send the follow-up</span></label>
+      <label class="field"><span>Send at</span>
+        <select name="followup_hour">{% for hour in range(4, 22) %}<option value="{{ hour }}" {% if company.followup_hour == hour %}selected{% endif %}>{{ '%02d:00'|format(hour) }}</option>{% endfor %}</select>
+        <em>{{ company.timezone }} time</em></label>
+    </div>
+    <p class="subtle">Lists open breakdowns, overdue service, work that was due, reminders due today, new fault codes, service due soon and papers expiring. Stop-lamp faults and reminders are sent the moment they happen, not saved for the follow-up.</p>
+    <div class="form-actions"><button class="btn" type="submit">Save</button></div>
+  </form>
+  <form method="post" action="/company/followup/preview" class="inline" data-confirm="Send today's follow-up to everyone in {{ company.name }} now?">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-actions"><button class="btn ghost" type="submit">Send today's follow-up now</button></div>
+  </form>
+</section>
+
+<section class="panel">
   <div class="panel-head"><h2>People</h2><span class="muted">{{ members|length }} with access</span></div>
   <div class="table-wrap"><table>
     <thead><tr><th>Name</th><th>Email</th><th>Telegram</th><th>Last sign-in</th><th>Role</th><th class="right"></th></tr></thead>

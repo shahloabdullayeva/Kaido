@@ -3,7 +3,7 @@ from flask import Blueprint, flash, g, redirect, render_template, request
 from .. import forms
 from ..audit import audit
 from ..auth import login_required
-from ..db import execute, insert, one, rows
+from ..db import execute, insert, one, rows, unscoped
 from ..security import hash_password, random_token
 from ..tenancy import platform_required
 
@@ -14,6 +14,11 @@ bp = Blueprint("platform", __name__)
 @login_required
 @platform_required
 def index():
+    with unscoped():
+        return _index()
+
+
+def _index():
     companies = rows(
         """select c.*,
              (select count(*) from trucks t where t.company_id = c.id and t.status <> 'sold') as truck_count,

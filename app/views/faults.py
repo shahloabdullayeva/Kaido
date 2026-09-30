@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms
+from .. import advisor, forms
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, one, rows
@@ -59,3 +59,27 @@ def clear(fault_id):
     audit("fault.cleared", "fault_event", fault_id, {"by": "manual"})
     flash("Fault marked cleared.", "ok")
     return redirect(request.form.get("back") or "/faults")
+
+
+@bp.get("/faults/<int:fault_id>")
+@login_required
+@company_required
+def detail(fault_id):
+    fault = one(
+        """select f.*, u.name as acknowledged_name from fault_events f
+           left join users u on u.id = f.acknowledged_by
+           where f.id = %s and f.company_id = %s""",
+        (fault_id, g.company["id"]),
+    )
+    if not fault:
+        return render_template("errors/404.html"), 404
+    truck = one("select * from trucks where id = %s and company_id = %s", (fault["truck_id"], g.company["id"]))
+    history = rows(
+        """select id, first_seen_at, last_seen_at, cleared_at, occurrence_count from fault_events
+           where truck_id = %s and code_key = %s order by first_seen_at desc limit 12""",
+        (fault["truck_id"], fault["code_key"]),
+    )
+    guide = advisor.fault_guide(fault, truck)
+    return render_template("faults/detail.html", title="Fault", active="/faults", fault=fault, truck=truck,
+                           history=history, guide=guide, urgency_labels=advisor.URGENCY_LABELS,
+                           ai_on=advisor.available(), ai_paused=advisor.over_budget())

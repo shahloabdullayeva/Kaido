@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Reminders</h1><p>Every open reminder in {{ company.name }}. Set a new one from any truck, driver, work order, breakdown or fault.</p></div>
+</div>
+<section class="panel">
+  {% if items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>About</th><th>What</th><th>For</th><th class="right"></th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td class="nowrap">{{ item.local.strftime('%d %b %Y %H:%M') }}
+          <div class="subtle">{% if item.sent_at %}sent {{ item.sent_at|ago }}{% else %}waiting{% endif %}</div></td>
+        <td>{% if item.href %}<a class="rowlink" href="{{ item.href }}#reminders">{{ item.label }}</a>{% else %}{{ item.label }}{% endif %}</td>
+        <td>{{ item.note }}<div class="subtle">set by {{ item.author or 'someone' }}</div></td>
+        <td>{{ audiences[item.audience] }}</td>
+        <td class="right">
+          <form method="post" action="/reminders/{{ item.id }}/done" class="inline">
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <button class="btn ghost small" type="submit">Done</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No open reminders. Open a truck, work order, breakdown or fault and set one at the bottom of the page.</p>{% endif %}
+</section>
+{% endblock %}

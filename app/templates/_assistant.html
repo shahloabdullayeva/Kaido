@@ -1,0 +1,18 @@
+<section class="panel" id="assistant" data-assistant data-truck-id="{{ assistant_truck_id or '' }}" data-csrf="{{ session.csrf }}">
+  <div class="panel-head"><h2>Ask Claude</h2>
+    <button type="button" class="btn ghost small" data-chat-clear>Start over</button></div>
+  <p class="subtle" data-chat-intro>Claude can see this truck's record: service, faults, work orders, breakdowns and reminders. Ask it anything, or have it write a message for the driver or the shop.</p>
+  <div class="chat-log" data-chat-log aria-live="polite"></div>
+  <div class="chat-starters">
+    <button type="button" class="btn ghost small" data-chat-ask="What needs doing on this truck, most urgent first?">What needs doing?</button>
+    <button type="button" class="btn ghost small" data-chat-ask="Explain the active fault codes in plain English. Can it keep driving?">Explain the faults</button>
+    <button type="button" class="btn ghost small" data-chat-ask="Write a short message to the driver to bring the truck in for an oil change.">Message the driver</button>
+    <button type="button" class="btn ghost small" data-chat-ask="What should I ask the shop when I call to book this truck in?">What to ask the shop</button>
+  </div>
+  <form class="chat-form" data-chat-form data-no-busy="1">
+    <label class="field full"><span>Your question</span>
+      <textarea name="question" rows="2" maxlength="2000" placeholder="Ask about this truck…"></textarea></label>
+    <div class="form-actions"><button class="btn" type="submit" data-busy="Asking…">Ask</button>
+      <span class="subtle" data-chat-status></span></div>
+  </form>
+</section>

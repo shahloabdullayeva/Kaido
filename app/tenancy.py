@@ -24,12 +24,12 @@ def is_platform():
 def memberships_for(user_id, platform_role):
     if platform_role:
         return rows(
-            """select c.id, c.name, c.status, c.is_house, 'admin' as role
+            """select c.id, c.name, c.status, c.is_house, c.timezone, 'admin' as role
                from companies c where c.status = 'active'
                order by c.is_house desc, lower(c.name)"""
         )
     return rows(
-        """select c.id, c.name, c.status, c.is_house, m.role
+        """select c.id, c.name, c.status, c.is_house, c.timezone, m.role
            from memberships m join companies c on c.id = m.company_id
            where m.user_id = %s and c.status = 'active'
            order by c.is_house desc, lower(c.name)""",
@@ -96,16 +96,17 @@ def scoped_truck(truck_id):
 
 def active_trucks():
     return rows(
-        """select t.id, t.unit_number, t.status, t.odometer, t.driver_id,
+        """select t.id, t.unit_number, t.status, t.odometer, t.driver_id, t.is_outside, t.outside_carrier,
                   d.name as driver_name, t.make, t.model, t.year
            from trucks t left join drivers d on d.id = t.driver_id
-           where t.company_id = %s and t.status <> 'sold' order by lower(t.unit_number)""",
+           where t.company_id = %s and t.status <> 'sold' order by t.is_outside, lower(t.unit_number)""",
         (g.company["id"],),
     )
 
 
 def active_drivers():
     return rows(
-        "select id, name from drivers where company_id = %s and status = 'active' order by lower(name)",
+        """select id, name, is_outside, outside_carrier from drivers
+           where company_id = %s and status = 'active' order by is_outside, lower(name)""",
         (g.company["id"],),
     )

@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Reports</h1><p>Pick a report, see it below, then download it as PDF, Excel or CSV.</p></div>
+</div>
+<section class="panel">
+  <form method="get" action="/reports" class="report-form">
+    <div class="form-grid">
+      <label class="field"><span>Report</span>
+        <select name="kind">{% for key, label in kinds.items() %}<option value="{{ key }}" {% if filters.kind == key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label class="field"><span>From</span><input type="date" name="start" value="{{ filters.start|date_input }}"></label>
+      <label class="field"><span>To</span><input type="date" name="end" value="{{ filters.end|date_input }}"></label>
+      <label class="field"><span>Truck</span>
+        <select name="truck_id"><option value="">All trucks</option>
+          {% for truck in trucks %}<option value="{{ truck.id }}" {% if filters.truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}{% if truck.is_outside %} (outside){% endif %}</option>{% endfor %}</select></label>
+      <label class="field"><span>Driver</span>
+        <select name="driver_id"><option value="">All drivers</option>
+          {% for driver in drivers %}<option value="{{ driver.id }}" {% if filters.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}{% if driver.is_outside %} (outside){% endif %}</option>{% endfor %}</select></label>
+      <label class="field"><span>Trucks</span>
+        <select name="fleet">
+          <option value="all" {% if filters.fleet == 'all' %}selected{% endif %}>Own and outside</option>
+          <option value="own" {% if filters.fleet == 'own' %}selected{% endif %}>Own fleet only</option>
+          <option value="outside" {% if filters.fleet == 'outside' %}selected{% endif %}>Outside trucks only</option>
+        </select></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit" data-busy="Loading…">Show report</button>
+      <span class="subtle">Quick ranges:
+      {% for label, start, end in presets %}<a href="/reports?kind={{ filters.kind }}&start={{ start|date_input }}&end={{ end|date_input }}&fleet={{ filters.fleet }}">{{ label }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</span></div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div><h2>{{ kinds[filters.kind] }}</h2><div class="subtle">{{ subtitle }} · {{ count }} {{ 'row' if count == 1 else 'rows' }}</div></div>
+    {% set query = 'kind=' ~ filters.kind ~ '&start=' ~ (filters.start|date_input) ~ '&end=' ~ (filters.end|date_input) ~ '&fleet=' ~ filters.fleet ~ ('&truck_id=' ~ filters.truck_id if filters.truck_id else '') ~ ('&driver_id=' ~ filters.driver_id if filters.driver_id else '') %}
+    <div class="actions-row">
+      <a class="btn" href="/reports/download?format=pdf&{{ query }}">Download PDF</a>
+      <a class="btn ghost" href="/reports/download?format=xlsx&{{ query }}">Excel</a>
+      <a class="btn ghost" href="/reports/download?format=csv&{{ query }}">CSV</a>
+    </div>
+  </div>
+  {% if data %}
+  <div class="table-wrap"><table>
+    <thead><tr>{% for key, label, kind, width in columns %}<th {% if kind in ['money','money3','int','num'] %}class="right"{% endif %}>{{ label }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for row in data %}<tr>
+        {% for key, label, kind, width in columns %}<td {% if kind in ['money','money3','int','num'] %}class="right"{% endif %}>{{ (cell(row[key], kind)[:140]) if kind == 'long' else cell(row[key], kind) }}</td>{% endfor %}
+      </tr>{% endfor %}
+      {% if totals %}<tr class="total-row">
+        {% for key, label, kind, width in columns %}<td {% if kind in ['money','money3','int','num'] %}class="right"{% endif %}><strong>{% if loop.first %}Total{% elif key in totals %}{{ cell(totals[key], kind) }}{% endif %}</strong></td>{% endfor %}
+      </tr>{% endif %}
+    </tbody>
+  </table></div>
+  {% if count > data|length %}<p class="subtle">Showing the first {{ data|length }} rows. The download has all {{ count }}.</p>{% endif %}
+  {% else %}<p class="empty">Nothing for these filters. Try a wider date range.</p>{% endif %}
+</section>
+{% endblock %}

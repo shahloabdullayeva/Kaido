@@ -31,4 +31,6 @@
     </div>
   </form>
 </section>
+{% if mode == "edit" %}{% set reminder_entity, reminder_entity_id = "driver", driver.id %}
+{% include "reminders/_panel.html" %}{% endif %}
 {% endblock %}

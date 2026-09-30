@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import date, datetime, timezone
 
 from markupsafe import Markup, escape
@@ -89,6 +90,20 @@ def shop_pins(found):
     return Markup(escape(json.dumps(pins)))
 
 
+OSM_DAYS = {"Mo": "Mon", "Tu": "Tue", "We": "Wed", "Th": "Thu", "Fr": "Fri", "Sa": "Sat", "Su": "Sun", "PH": "holidays"}
+
+
+def osm_hours(value):
+    if not value:
+        return ""
+    text = str(value).strip()
+    if text == "24/7":
+        return "open 24 hours, every day"
+    for short, full in OSM_DAYS.items():
+        text = re.sub(rf"\b{short}\b", full, text)
+    return text.replace(";", " ·").replace(",", ", ").replace("off", "closed")
+
+
 def register(app):
     app.jinja_env.filters.update({
         "money": money,
@@ -102,4 +117,5 @@ def register(app):
         "label": label,
         "shop_pins": shop_pins,
         "json_attr": json_attr,
+        "osm_hours": osm_hours,
     })

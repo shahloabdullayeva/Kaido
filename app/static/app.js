@@ -33,27 +33,44 @@ for (const input of document.querySelectorAll('input[data-filter]')) {
 
 for (const form of document.querySelectorAll('form[data-truck-fill]')) {
   const trucks = form.querySelector('select[name=truck_id]');
-  const driver = form.querySelector('#truck-driver');
+  const drivers = form.querySelector('select[name=driver_id]');
   const summary = form.querySelector('#truck-summary');
   const odometer = form.querySelector('input[name=odometer]');
-  if (!trucks || !driver) continue;
+  const outsideTruck = form.querySelector('#outside-truck');
+  const outsideDriver = form.querySelector('#outside-driver');
+  if (!trucks) continue;
+  let driverTouched = false;
+  if (drivers) drivers.addEventListener('change', () => { driverTouched = true; showOutside(); });
+  const showOutside = () => {
+    if (outsideTruck) {
+      outsideTruck.hidden = trucks.value !== 'outside';
+      const unit = outsideTruck.querySelector('input[name=outside_unit]');
+      if (unit) unit.required = trucks.value === 'outside';
+    }
+    if (outsideDriver && drivers) {
+      outsideDriver.hidden = drivers.value !== 'outside';
+      const name = outsideDriver.querySelector('input[name=outside_driver_name]');
+      if (name) name.required = drivers.value === 'outside';
+    }
+  };
   const fill = (touchOdometer) => {
     const option = trucks.selectedOptions[0];
-    const name = option ? option.dataset.driver : '';
-    driver.value = name || '';
-    driver.placeholder = option && option.value ? 'No driver assigned to this truck' : 'Pick a truck first';
     if (summary) {
-      const label = option ? option.dataset.truck : '';
-      summary.textContent = label
-        ? label + ' — driver comes from the truck, it cannot be changed here.'
-        : 'Filled in from whoever is assigned to the truck.';
+      const label = option && option.dataset.truck;
+      summary.textContent = trucks.value === 'outside'
+        ? 'Fill in the outside truck below. It is saved so you can pick it next time.'
+        : (label || 'Any truck, yours or not.');
+    }
+    if (drivers && !driverTouched && option && option.dataset.driverId !== undefined) {
+      drivers.value = option.dataset.driverId || '';
     }
     if (touchOdometer && odometer && option && option.dataset.odometer && !odometer.value) {
       odometer.value = option.dataset.odometer;
     }
+    showOutside();
   };
   trucks.addEventListener('change', () => fill(true));
-  fill(false);
+  if (!drivers || !drivers.value) fill(false); else showOutside();
 }
 
 for (const form of document.querySelectorAll('form[data-autosubmit]')) {

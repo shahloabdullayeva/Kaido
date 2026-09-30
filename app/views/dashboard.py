@@ -39,7 +39,7 @@ def fleet_pins(fleet):
 def index():
     company_id = g.company["id"]
     summary = company_summary(company_id)
-    fleet = trucks_with_service(company_id)
+    fleet = [truck for truck in trucks_with_service(company_id) if not truck["is_outside"]]
     for truck in fleet:
         truck["statuses"] = service_status(truck)
         truck["score"] = attention_score(truck)

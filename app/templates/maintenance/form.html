@@ -2,13 +2,15 @@
 {% from "_macros.html" import field %}
 {% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">{% endblock %}
 {% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script>
-<script src="/static/shops.js"></script>{% endblock %}
+<script src="/static/shops.js"></script>
+<script src="/static/assistant.js"></script>{% endblock %}
 {% block body %}
 {% set editing = order is not none %}
 <div class="page-head">
   <div><h1>{{ 'Work order #' ~ order.id if editing else 'New work order' }}</h1>
-    <p>{{ 'Marking it done records the odometer and, for a DOT annual, resets the inspection date.' }}</p></div>
-  <a class="btn ghost" href="/maintenance">Back</a>
+    <p>Any truck and any driver, including ones outside your fleet. Marking it done records the odometer and, for a DOT annual, resets the inspection date.</p></div>
+  <div class="actions-row">{% if editing %}<a class="btn ghost" href="/maintenance/{{ order.id }}/pdf">Download PDF</a>{% endif %}
+  <a class="btn ghost" href="/maintenance">Back</a></div>
 </div>
 <section class="panel">
   <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}" data-truck-fill>
@@ -17,18 +19,58 @@
       <label class="field"><span>Truck</span>
         <select name="truck_id" required {% if editing %}disabled{% endif %}>
           <option value="">Select a truck</option>
-          {% for truck in trucks %}<option value="{{ truck.id }}"
-            data-driver="{{ truck.driver_name or '' }}"
+          {% set own = trucks|rejectattr('is_outside')|list %}
+          {% set other = trucks|selectattr('is_outside')|list %}
+          <optgroup label="Your trucks">
+          {% for truck in own %}<option value="{{ truck.id }}"
+            data-driver-id="{{ truck.driver_id or '' }}"
             data-odometer="{{ truck.odometer or '' }}"
             data-truck="{{ [truck.year, truck.make, truck.model]|select|join(' ') }}"
             {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+          </optgroup>
+          {% if other %}<optgroup label="Outside trucks">
+          {% for truck in other %}<option value="{{ truck.id }}"
+            data-driver-id="{{ truck.driver_id or '' }}"
+            data-odometer="{{ truck.odometer or '' }}"
+            data-truck="{{ [truck.make, truck.outside_carrier]|select|join(' · ') }}"
+            {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+          </optgroup>{% endif %}
+          {% if not editing %}<option value="outside">+ Outside truck, not in the list</option>{% endif %}
         </select>
+        <em id="truck-summary" class="subtle">Any truck, yours or not.</em>
       </label>
       <label class="field"><span>Driver</span>
-        <input type="text" id="truck-driver" value="{{ order.driver_name or '' if editing else '' }}"
-               readonly tabindex="-1" placeholder="Pick a truck first">
-        <em id="truck-summary" class="subtle">Filled in from whoever is assigned to the truck.</em>
+        <select name="driver_id">
+          <option value="">No driver</option>
+          <optgroup label="Your drivers">
+          {% for driver in drivers|rejectattr('is_outside') %}<option value="{{ driver.id }}" {% if editing and order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
+          </optgroup>
+          {% set outside_drivers = drivers|selectattr('is_outside')|list %}
+          {% if outside_drivers %}<optgroup label="Outside drivers">
+          {% for driver in outside_drivers %}<option value="{{ driver.id }}" {% if editing and order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}{% if driver.outside_carrier %} · {{ driver.outside_carrier }}{% endif %}</option>{% endfor %}
+          </optgroup>{% endif %}
+          <option value="outside">+ Outside driver, not in the list</option>
+        </select>
+        <em class="subtle">Filled in from the truck. Change it if someone else brought it in.</em>
       </label>
+      <fieldset class="outside full" id="outside-truck" hidden>
+        <legend>Outside truck</legend>
+        <div class="form-grid">
+          {{ field('Unit number or plate', 'outside_unit', '', attrs='maxlength="40"') }}
+          {{ field('Carrier / owner', 'outside_carrier', '', attrs='maxlength="160"', hint='Company or owner-operator it belongs to.') }}
+          {{ field('VIN', 'outside_vin', '', attrs='maxlength="24"', hint='Lets Kaido look up the engine for the oil suggestion.') }}
+          {{ field('Plate', 'outside_plate', '', attrs='maxlength="20"') }}
+          {{ field('Make and model', 'outside_vehicle', '', attrs='maxlength="60"', hint='For example Freightliner Cascadia.') }}
+        </div>
+      </fieldset>
+      <fieldset class="outside full" id="outside-driver" hidden>
+        <legend>Outside driver</legend>
+        <div class="form-grid">
+          {{ field('Name', 'outside_driver_name', '', attrs='maxlength="120"') }}
+          {{ field('Phone', 'outside_driver_phone', '', type='tel', attrs='maxlength="40"') }}
+          {{ field('Carrier', 'outside_driver_carrier', '', attrs='maxlength="160"', hint="Leave empty to use the truck's carrier.") }}
+        </div>
+      </fieldset>
       <label class="field"><span>Work type</span>
         <select name="kind">
           {% for value in kinds %}<option value="{{ value }}" {% if editing and order.kind == value %}selected{% endif %}>{{ kind_labels.get(value, value) }}</option>{% endfor %}
@@ -53,8 +95,16 @@
       <a class="btn ghost" href="/maintenance">Cancel</a></div>
   </form>
 </section>
+<section class="panel" id="oil-panel" hidden>
+  <div class="panel-head"><h2>Which oil</h2><span class="subtle">suggested by Claude from the make, model and engine</span></div>
+  <div id="oil-body"></div>
+</section>
 <section class="panel" id="shop-panel" hidden>
   <div class="panel-head"><h2>Where to send it</h2><span class="subtle" id="shop-status"></span></div>
   <div id="shop-body"></div>
 </section>
+{% set assistant_truck_id = truck_id %}
+{% include "_assistant.html" %}
+{% if editing %}{% set reminder_entity, reminder_entity_id = "maintenance_order", order.id %}
+{% include "reminders/_panel.html" %}{% endif %}
 {% endblock %}

@@ -238,3 +238,27 @@ body.auth {
 .map-popup-driver { font-weight: bold; }
 .map-popup-flags { color: var(--bad); margin-top: 3px; }
 .map-popup a { display: inline-block; margin-top: 5px; }
+
+.guide p { max-width: 70ch; }
+.guide-urgency { padding: 6px 10px; border: 1px solid var(--ink); }
+.guide-urgency.stop_now { background: var(--bad-bg); color: var(--bad); border-color: var(--bad); }
+.guide-urgency.soon { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.guide-urgency.next_service, .guide-urgency.watch { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+.nowrap { white-space: nowrap; }
+fieldset.outside { border: 2px groove var(--face-light); padding: 6px 10px 10px; margin: 0; }
+fieldset.outside legend { font-weight: bold; padding: 0 4px; }
+.form-grid .full, fieldset.full { grid-column: 1 / -1; }
+.chat-log { max-height: 420px; overflow-y: auto; padding: 0 10px; display: grid; gap: 8px; }
+.chat-log:empty { display: none; }
+.chat-msg { border: 1px solid var(--face-dark); padding: 6px 8px; max-width: 80ch; }
+.chat-msg.user { background: var(--shade); justify-self: end; }
+.chat-msg.assistant { background: var(--paper); }
+.chat-who { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.chat-text { white-space: pre-wrap; }
+.chat-msg .btn { margin-top: 4px; }
+.chat-starters { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 0; }
+.oil-table { border-collapse: collapse; margin: 6px 0 10px; }
+.oil-table th { text-align: left; padding: 3px 12px 3px 0; vertical-align: top; white-space: nowrap; }
+.oil-table td { padding: 3px 0; }
+.shop-hours { font-size: 11px; color: var(--muted); }
+.total-row td { border-top: 2px solid var(--ink); }

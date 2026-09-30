@@ -3,6 +3,47 @@ const body = document.getElementById('shop-body');
 const status = document.getElementById('shop-status');
 const trucks = document.querySelector('select[name=truck_id]');
 const vendorInput = document.querySelector('input[name=vendor]');
+const kindSelect = document.querySelector('select[name=kind]');
+const oilPanel = document.getElementById('oil-panel');
+const oilBody = document.getElementById('oil-body');
+const notesField = document.querySelector('textarea[name=description]');
+let oilFor = null;
+
+const isOil = () => kindSelect && kindSelect.value === 'oil';
+const realTruck = () => trucks && /^\d+$/.test(trucks.value);
+
+const loadOil = async () => {
+  if (!oilPanel || !oilBody) return;
+  if (!isOil() || !realTruck()) { oilPanel.hidden = true; oilFor = null; return; }
+  if (oilFor === trucks.value) { oilPanel.hidden = false; return; }
+  oilFor = trucks.value;
+  oilPanel.hidden = false;
+  oilBody.textContent = '';
+  const waiting = document.createElement('p');
+  waiting.className = 'empty';
+  waiting.textContent = 'Looking up the engine and asking Claude which oil it takes…';
+  oilBody.append(waiting);
+  try {
+    const response = await fetch('/maintenance/oil/' + encodeURIComponent(oilFor), { credentials: 'same-origin' });
+    if (!response.ok) throw new Error('the server answered ' + response.status);
+    oilBody.innerHTML = await response.text();
+    for (const button of oilBody.querySelectorAll('[data-oil-note]')) {
+      button.addEventListener('click', () => {
+        if (!notesField) return;
+        const line = 'Oil: ' + button.dataset.oilNote;
+        notesField.value = notesField.value ? notesField.value + '\n' + line : line;
+        button.textContent = 'Added';
+      });
+    }
+  } catch (err) {
+    oilFor = null;
+    oilBody.textContent = '';
+    const line = document.createElement('p');
+    line.className = 'empty';
+    line.textContent = 'Could not get an oil suggestion — ' + err.message + '.';
+    oilBody.append(line);
+  }
+};
 
 let map = null;
 
@@ -151,9 +192,18 @@ const load = async (truckId, params) => {
   wireSearch();
 };
 
+const refreshShops = () => {
+  if (!realTruck()) { dropMap(); panel.hidden = true; return; }
+  if (isOil()) { panel.hidden = false; load(trucks.value); } else askFirst();
+};
+
 if (panel && body && trucks) {
-  trucks.addEventListener('change', () => {
-    if (trucks.value) askFirst(); else { dropMap(); panel.hidden = true; }
-  });
-  if (trucks.value) askFirst();
+  trucks.addEventListener('change', () => { refreshShops(); loadOil(); });
+  if (kindSelect) {
+    kindSelect.addEventListener('change', () => {
+      loadOil();
+      if (isOil() && realTruck() && !map) { panel.hidden = false; load(trucks.value); }
+    });
+  }
+  if (realTruck()) { refreshShops(); loadOil(); }
 }

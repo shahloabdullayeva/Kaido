@@ -104,10 +104,10 @@ def expiring_documents(company_id, days=45):
 def company_summary(company_id):
     return one(
         """select
-            (select count(*) from trucks where company_id = %(c)s and status = 'active') as trucks_active,
-            (select count(*) from trucks where company_id = %(c)s and status = 'shop') as trucks_shop,
-            (select count(*) from trucks where company_id = %(c)s and status = 'out_of_service') as trucks_down,
-            (select count(*) from drivers where company_id = %(c)s and status = 'active') as drivers_active,
+            (select count(*) from trucks where company_id = %(c)s and status = 'active' and not is_outside) as trucks_active,
+            (select count(*) from trucks where company_id = %(c)s and status = 'shop' and not is_outside) as trucks_shop,
+            (select count(*) from trucks where company_id = %(c)s and status = 'out_of_service' and not is_outside) as trucks_down,
+            (select count(*) from drivers where company_id = %(c)s and status = 'active' and not is_outside) as drivers_active,
             (select count(*) from breakdowns where company_id = %(c)s and status <> 'resolved') as breakdowns_open,
             (select count(*) from fault_events where company_id = %(c)s and cleared_at is null) as faults_active,
             (select coalesce(sum(total), 0) from fuel_transactions

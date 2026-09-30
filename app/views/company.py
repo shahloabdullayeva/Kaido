@@ -66,6 +66,34 @@ def update():
     return redirect("/company")
 
 
+@bp.post("/company/followup")
+@login_required
+@role_required("admin")
+def followup_settings():
+    hour = forms.integer(request.form.get("followup_hour"))
+    hour = hour if hour is not None and 0 <= hour <= 21 else 7
+    enabled = forms.checkbox(request.form.get("followup_enabled"))
+    execute("update companies set followup_enabled = %s, followup_hour = %s, updated_at = now() where id = %s",
+            (enabled, hour, g.company["id"]))
+    audit("company.followup", "company", g.company["id"], {"enabled": enabled, "hour": hour})
+    flash("Follow-up turned on." if enabled else "Follow-up turned off.", "ok")
+    return redirect("/company")
+
+
+@bp.post("/company/followup/preview")
+@login_required
+@role_required("admin")
+def followup_preview():
+    from ..followup import run
+    sent = run(force_company=g.company["id"])
+    people = sent[0][1] if sent else 0
+    if people:
+        flash(f"Today's follow-up sent to {people} {'person' if people == 1 else 'people'} on Telegram.", "ok")
+    else:
+        flash("Nobody in this company has Telegram linked, so the follow-up had nowhere to go.", "bad")
+    return redirect("/company")
+
+
 @bp.post("/company/members")
 @login_required
 @role_required("admin")

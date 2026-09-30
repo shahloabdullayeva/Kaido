@@ -1,11 +1,14 @@
 {% extends "layout.html" %}
 {% from "_macros.html" import field %}
+{% block scripts %}<script src="/static/assistant.js"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
     <h1>Unit {{ truck.unit_number }}</h1>
     <p>{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}
       {% if truck.vin %}· <span class="mono">{{ truck.vin }}</span>{% endif %}
+      {% if truck.engine %}· {{ truck.engine }}{% endif %}
+      {% if truck.is_outside %}· <span class="badge info">outside</span> {{ truck.outside_carrier or '' }}{% endif %}
       {% if link %}· Samsara: {{ link.external_name or link.external_id }}{% endif %}</p>
   </div>
   <div class="actions-row">
@@ -138,4 +141,8 @@
   <p class="pad">{{ truck.notes }}</p>
 </section>
 {% endif %}
+{% set assistant_truck_id = truck.id %}
+{% include "_assistant.html" %}
+{% set reminder_entity, reminder_entity_id = "truck", truck.id %}
+{% include "reminders/_panel.html" %}
 {% endblock %}

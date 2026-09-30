@@ -13,6 +13,7 @@
     <div class="form-grid">
       {{ field('Unit number', 'unit_number', truck.unit_number, required=True, attrs='maxlength="40" autofocus') }}
       {{ field('VIN', 'vin', truck.vin, attrs='maxlength="24"') }}
+      {{ field('Engine', 'engine', truck.engine, attrs='maxlength="80"', hint='For example Detroit DD15 or Cummins X15. Left empty, Kaido reads it from the VIN.') }}
       {{ field('Year', 'year', truck.year, type='number', attrs='min="1980" max="2100"') }}
       {{ field('Make', 'make', truck.make, attrs='maxlength="60"') }}
       {{ field('Model', 'model', truck.model, attrs='maxlength="60"') }}

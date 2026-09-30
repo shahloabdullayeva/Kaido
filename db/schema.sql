@@ -408,3 +408,102 @@ create table if not exists geocodes (
   label text,
   fetched_at timestamptz not null default now()
 );
+
+alter table trucks add column if not exists is_outside boolean not null default false;
+alter table trucks add column if not exists outside_carrier text;
+alter table drivers add column if not exists is_outside boolean not null default false;
+alter table drivers add column if not exists outside_carrier text;
+
+alter table companies add column if not exists followup_enabled boolean not null default true;
+alter table companies add column if not exists followup_hour int not null default 7;
+
+create table if not exists reminders (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  entity text not null check (entity in ('truck','driver','maintenance_order','breakdown','fault_event','fuel_transaction')),
+  entity_id bigint not null,
+  note text not null,
+  remind_at timestamptz not null,
+  audience text not null default 'me' check (audience in ('me','admins')),
+  created_by int references users(id) on delete set null,
+  sent_at timestamptz,
+  done_at timestamptz,
+  done_by int references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists reminders_due_idx on reminders (remind_at) where sent_at is null and done_at is null;
+create index if not exists reminders_entity_idx on reminders (company_id, entity, entity_id);
+
+create table if not exists followups (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  local_day date not null,
+  recipients int not null default 0,
+  body text,
+  sent_at timestamptz not null default now(),
+  unique (company_id, local_day)
+);
+
+create table if not exists fault_alerts (
+  fault_id bigint primary key references fault_events(id) on delete cascade,
+  company_id int not null references companies(id) on delete cascade,
+  sent_at timestamptz not null default now()
+);
+
+create table if not exists fault_guides (
+  guide_key text primary key,
+  model text not null,
+  payload jsonb not null,
+  created_at timestamptz not null default now()
+);
+
+alter table fuel_transactions add column if not exists external_ref text;
+create unique index if not exists fuel_external_key on fuel_transactions (company_id, external_ref) where external_ref is not null;
+
+create table if not exists fuel_imports (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  filename text,
+  rows_total int not null default 0,
+  rows_added int not null default 0,
+  rows_duplicate int not null default 0,
+  rows_unmatched int not null default 0,
+  created_by int references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+
+alter table trucks add column if not exists engine text;
+alter table trucks add column if not exists engine_liters numeric(4,1);
+alter table trucks add column if not exists engine_source text;
+alter table trucks add column if not exists engine_checked_at timestamptz;
+
+create table if not exists ai_chats (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  user_id int references users(id) on delete cascade,
+  truck_id int references trucks(id) on delete cascade,
+  role text not null check (role in ('user','assistant')),
+  content text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists ai_chats_thread_idx on ai_chats (company_id, user_id, truck_id, created_at);
+
+do $$
+declare
+  tenant text;
+begin
+  foreach tenant in array array[
+    'drivers','trucks','odometer_readings','fuel_transactions','maintenance_orders','breakdowns',
+    'breakdown_updates','integrations','vehicle_links','fault_events','dvir_defects','sync_runs',
+    'reminders','followups','fault_alerts','fuel_imports','ai_chats'
+  ] loop
+    execute format('alter table %I enable row level security', tenant);
+    execute format('alter table %I force row level security', tenant);
+    execute format('drop policy if exists company_lock on %I', tenant);
+    execute format(
+      'create policy company_lock on %I using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+      'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
+  end loop;
+end $$;

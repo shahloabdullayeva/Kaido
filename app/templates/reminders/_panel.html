@@ -1,0 +1,44 @@
+{% set panel = reminder_panel(reminder_entity, reminder_entity_id) %}
+<section class="panel" id="reminders">
+  <div class="panel-head"><h2>Reminders</h2><a class="btn ghost small" href="/reminders">All reminders</a></div>
+  {% if panel.rows %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>What</th><th>For</th><th class="right"></th></tr></thead>
+    <tbody>
+      {% for item in panel.rows %}
+      <tr>
+        <td class="nowrap">{{ item.local.strftime('%d %b %Y %H:%M') }}
+          <div class="subtle">{% if item.done_at %}done{% elif item.sent_at %}sent {{ item.sent_at|ago }}{% else %}waiting{% endif %}</div></td>
+        <td>{{ item.note }}<div class="subtle">set by {{ item.author or 'someone' }}</div></td>
+        <td>{{ audiences[item.audience] }}</td>
+        <td class="right">{% if not item.done_at %}
+          <form method="post" action="/reminders/{{ item.id }}/done" class="inline">
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <input type="hidden" name="back" value="{{ request.path }}#reminders">
+            <button class="btn ghost small" type="submit">Done</button>
+          </form>{% else %}<span class="badge ok">done</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% endif %}
+  <form method="post" action="/reminders">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="entity" value="{{ reminder_entity }}">
+    <input type="hidden" name="entity_id" value="{{ reminder_entity_id }}">
+    <input type="hidden" name="back" value="{{ request.path }}#reminders">
+    <div class="form-grid">
+      <label class="field"><span>Remind on</span>
+        <input type="datetime-local" name="remind_at" value="{{ panel.default.strftime('%Y-%m-%dT%H:%M') }}" required>
+        <em>{{ panel.zone }} time</em></label>
+      <label class="field"><span>Send to</span>
+        <select name="audience">
+          <option value="me">Just me</option>
+          {% if at_least(role, 'admin') %}<option value="admins">Every admin in this company</option>{% endif %}
+        </select><em>Arrives on Telegram.</em></label>
+      <label class="field full"><span>What about</span>
+        <input type="text" name="note" maxlength="1000" required placeholder="Call the shop about the part, check the tire again, chase the invoice…"></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Set reminder</button></div>
+  </form>
+</section>

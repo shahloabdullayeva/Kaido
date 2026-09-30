@@ -2,12 +2,12 @@ import re
 
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import advisor, forms, shops as shop_search
+from .. import advisor, forms, shops as shop_search, vehicles
 from ..audit import audit
 from ..auth import login_required
 from ..config import config
 from ..db import execute, insert, one, rows
-from ..tenancy import active_trucks, company_required, role_required
+from ..tenancy import active_drivers, active_trucks, company_required, role_required
 
 bp = Blueprint("maintenance", __name__)
 
@@ -22,6 +22,81 @@ KIND_LABELS = {
     "recall": "Recall",
 }
 STATUSES = ["scheduled", "in_progress", "done"]
+
+
+def outside_truck(form):
+    unit = forms.text(form.get("outside_unit"), 40)
+    if not unit:
+        return None, "Give the outside truck a unit number or plate."
+    carrier = forms.text(form.get("outside_carrier"), 160)
+    vin = forms.text(form.get("outside_vin"), 24)
+    existing = None
+    if vin:
+        existing = one("select * from trucks where company_id = %s and is_outside and upper(vin) = upper(%s)",
+                       (g.company["id"], vin))
+    if not existing:
+        existing = one(
+            """select * from trucks where company_id = %s and is_outside and lower(unit_number) = lower(%s)
+               and coalesce(lower(outside_carrier), '') = coalesce(lower(%s), '')""",
+            (g.company["id"], unit, carrier),
+        )
+    if existing:
+        return existing, None
+    label = unit
+    clash = one("select id from trucks where company_id = %s and lower(unit_number) = lower(%s)", (g.company["id"], label))
+    if clash:
+        label = f"{unit} ({carrier or 'outside'})"
+        if one("select id from trucks where company_id = %s and lower(unit_number) = lower(%s)", (g.company["id"], label)):
+            label = f"{unit} ({carrier or 'outside'} {vin or ''})".strip()
+    truck = insert(
+        """insert into trucks (company_id, unit_number, vin, make, plate, odometer, odometer_at, is_outside, outside_carrier)
+           values (%s, %s, %s, %s, %s, %s, now(), true, %s) returning *""",
+        (g.company["id"], label, vin, forms.text(form.get("outside_vehicle"), 60),
+         forms.text(form.get("outside_plate"), 20), forms.integer(form.get("odometer")) or 0, carrier),
+    )
+    audit("truck.created", "truck", truck["id"], {"unit": label, "outside": True})
+    return vehicles.ensure_engine(truck), None
+
+
+def outside_driver(form, truck):
+    name = forms.text(form.get("outside_driver_name"), 120)
+    if not name:
+        return None, "Give the outside driver a name."
+    phone = forms.text(form.get("outside_driver_phone"), 40)
+    carrier = forms.text(form.get("outside_driver_carrier"), 160) or (truck or {}).get("outside_carrier")
+    existing = one(
+        """select * from drivers where company_id = %s and lower(name) = lower(%s)
+           and coalesce(phone, '') = coalesce(%s, '') order by is_outside desc limit 1""",
+        (g.company["id"], name, phone),
+    )
+    if existing:
+        return existing, None
+    driver = insert(
+        """insert into drivers (company_id, name, phone, is_outside, outside_carrier)
+           values (%s, %s, %s, true, %s) returning *""",
+        (g.company["id"], name, phone, carrier),
+    )
+    audit("driver.created", "driver", driver["id"], {"name": name, "outside": True})
+    return driver, None
+
+
+def chosen_driver(form, truck):
+    raw = form.get("driver_id")
+    if raw == "outside":
+        driver, problem = outside_driver(form, truck)
+        return (driver["id"] if driver else None), problem
+    if raw == "":
+        return None, None
+    driver_id = forms.integer(raw)
+    if driver_id is None:
+        return (truck or {}).get("driver_id"), None
+    if not one("select id from drivers where id = %s and company_id = %s", (driver_id, g.company["id"])):
+        return None, "That driver is not in this company."
+    return driver_id, None
+
+
+def form_choices():
+    return {"trucks": active_trucks(), "drivers": active_drivers()}
 
 
 @bp.get("/maintenance")
@@ -59,23 +134,34 @@ def index():
 @role_required("admin")
 def new():
     return render_template("maintenance/form.html", title="New work order", active="/maintenance",
-                           trucks=active_trucks(), kinds=KINDS, kind_labels=KIND_LABELS, statuses=STATUSES,
-                           truck_id=forms.integer(request.args.get("truck_id")), order=None)
+                           kinds=KINDS, kind_labels=KIND_LABELS, statuses=STATUSES,
+                           truck_id=forms.integer(request.args.get("truck_id")), order=None, **form_choices())
 
 
 @bp.post("/maintenance")
 @login_required
 @role_required("admin")
 def create():
-    truck_id = forms.integer(request.form.get("truck_id"))
-    truck = one("select * from trucks where id = %s and company_id = %s", (truck_id, g.company["id"]))
-    if not truck:
-        flash("Pick a truck.", "bad")
-        return redirect("/maintenance/new")
     description = forms.required(request.form.get("description"), 2000)
     if not description:
         flash("Describe the work.", "bad")
         return redirect("/maintenance/new")
+    if request.form.get("truck_id") == "outside":
+        truck, problem = outside_truck(request.form)
+        if problem:
+            flash(problem, "bad")
+            return redirect("/maintenance/new")
+        truck_id = truck["id"]
+    else:
+        truck_id = forms.integer(request.form.get("truck_id"))
+        truck = one("select * from trucks where id = %s and company_id = %s", (truck_id, g.company["id"]))
+    if not truck:
+        flash("Pick a truck.", "bad")
+        return redirect("/maintenance/new")
+    driver_id, problem = chosen_driver(request.form, truck)
+    if problem:
+        flash(problem, "bad")
+        return redirect(f"/maintenance/new?truck_id={truck_id}")
     status = forms.pick(request.form.get("status"), STATUSES, "scheduled")
     kind = forms.pick(request.form.get("kind"), KINDS, "repair")
     performed_on = forms.day(request.form.get("performed_on"))
@@ -85,7 +171,7 @@ def create():
              odometer, vendor, invoice_no, cost, description, next_due_on, next_due_odometer, created_by)
            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
         (
-            g.company["id"], truck_id, truck["driver_id"], kind, status,
+            g.company["id"], truck_id, driver_id, kind, status,
             forms.day(request.form.get("scheduled_for")), performed_on, odometer,
             forms.text(request.form.get("vendor"), 160), forms.text(request.form.get("invoice_no"), 40),
             forms.decimal(request.form.get("cost")), description,
@@ -96,7 +182,7 @@ def create():
     apply_completion(order, truck)
     audit("maintenance.created", "maintenance_order", order["id"], {"unit": truck["unit_number"], "kind": kind, "status": status})
     flash("Work order saved.", "ok")
-    return redirect("/maintenance")
+    return redirect(f"/maintenance/{order['id']}")
 
 
 def apply_completion(order, truck):
@@ -233,6 +319,19 @@ def shops(truck_id):
                            ai_paused=advisor.over_budget(), problem=None)
 
 
+@bp.get("/maintenance/oil/<int:truck_id>")
+@login_required
+@company_required
+def oil(truck_id):
+    truck = one("select * from trucks where id = %s and company_id = %s", (truck_id, g.company["id"]))
+    if not truck:
+        return render_template("errors/404.html"), 404
+    truck = vehicles.ensure_engine(truck)
+    advice = advisor.oil_advice(truck)
+    return render_template("maintenance/_oil.html", truck=truck, advice=advice,
+                           ai_on=advisor.available(), ai_paused=advisor.over_budget())
+
+
 @bp.get("/maintenance/<int:order_id>")
 @login_required
 @company_required
@@ -247,8 +346,8 @@ def detail(order_id):
     if not order:
         return render_template("errors/404.html"), 404
     return render_template("maintenance/form.html", title=f"Work order #{order['id']}", active="/maintenance",
-                           trucks=active_trucks(), kinds=KINDS, kind_labels=KIND_LABELS, statuses=STATUSES,
-                           order=order, truck_id=order["truck_id"])
+                           kinds=KINDS, kind_labels=KIND_LABELS, statuses=STATUSES,
+                           order=order, truck_id=order["truck_id"], **form_choices())
 
 
 @bp.post("/maintenance/<int:order_id>")
@@ -261,13 +360,17 @@ def update(order_id):
     status = forms.pick(request.form.get("status"), STATUSES, order["status"])
     performed_on = forms.day(request.form.get("performed_on"))
     truck = one("select * from trucks where id = %s and company_id = %s", (order["truck_id"], g.company["id"]))
+    driver_id, problem = chosen_driver(request.form, truck)
+    if problem:
+        flash(problem, "bad")
+        return redirect(f"/maintenance/{order_id}")
     updated = insert(
         """update maintenance_orders set driver_id = %s, kind = %s, status = %s, scheduled_for = %s, performed_on = %s,
              odometer = %s, vendor = %s, invoice_no = %s, cost = %s, description = %s,
              next_due_on = %s, next_due_odometer = %s, updated_at = now()
            where id = %s and company_id = %s returning *""",
         (
-            (truck or {}).get("driver_id"),
+            driver_id,
             forms.pick(request.form.get("kind"), KINDS, order["kind"]), status,
             forms.day(request.form.get("scheduled_for")), performed_on,
             forms.integer(request.form.get("odometer")), forms.text(request.form.get("vendor"), 160),
@@ -280,4 +383,4 @@ def update(order_id):
     apply_completion(updated, truck)
     audit("maintenance.updated", "maintenance_order", order_id, {"status": status})
     flash("Work order updated.", "ok")
-    return redirect("/maintenance")
+    return redirect(f"/maintenance/{order_id}")
