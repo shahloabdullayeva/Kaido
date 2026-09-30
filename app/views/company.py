@@ -21,6 +21,63 @@ def switch():
     return redirect(request.referrer if request.referrer and request.referrer.startswith(request.host_url) else "/")
 
 
+TIMEZONES = [
+    ("America/New_York", "Eastern"), ("America/Chicago", "Central"), ("America/Denver", "Mountain"),
+    ("America/Phoenix", "Arizona"), ("America/Los_Angeles", "Pacific"), ("America/Anchorage", "Alaska"),
+    ("Pacific/Honolulu", "Hawaii"), ("America/Toronto", "Toronto"), ("Asia/Tashkent", "Tashkent"),
+]
+
+
+def can_add_companies():
+    session = getattr(g, "session", None)
+    return bool(session and (session["platform_role"] or session.get("can_add_companies")))
+
+
+@bp.get("/companies/new")
+@login_required
+def new_company():
+    if not can_add_companies():
+        return render_template("errors/forbidden.html", needed="Permission to add companies"), 403
+    return render_template("company/new.html", title="Add company", active="/company", timezones=TIMEZONES)
+
+
+@bp.post("/companies")
+@login_required
+def create_company():
+    if not can_add_companies():
+        return render_template("errors/forbidden.html", needed="Permission to add companies"), 403
+    name = forms.required(request.form.get("name"), 160)
+    if not name:
+        flash("A company name is required.", "bad")
+        return redirect("/companies/new")
+    if one("select id from companies where lower(name) = lower(%s)", (name,)):
+        flash(f"{name} already exists.", "bad")
+        return redirect("/companies/new")
+    timezone = forms.pick(request.form.get("timezone"), [tz for tz, _ in TIMEZONES], "America/Chicago")
+    company = insert(
+        """insert into companies (name, legal_name, dot_number, mc_number, contact_name, contact_phone,
+             contact_email, timezone)
+           values (%s, %s, %s, %s, %s, %s, %s, %s) returning *""",
+        (
+            name, forms.text(request.form.get("legal_name"), 160),
+            forms.text(request.form.get("dot_number"), 20), forms.text(request.form.get("mc_number"), 20),
+            forms.text(request.form.get("contact_name"), 120), forms.text(request.form.get("contact_phone"), 40),
+            forms.text(request.form.get("contact_email"), 200), timezone,
+        ),
+    )
+    execute(
+        """insert into memberships (user_id, company_id, role)
+           select id, %s, 'admin' from users
+           where status = 'active' and (id = %s or can_add_companies or platform_role = 'owner')
+           on conflict (user_id, company_id) do update set role = 'admin'""",
+        (company["id"], g.session["user_id"]),
+    )
+    execute("update sessions set company_id = %s where id = %s", (company["id"], g.session["id"]))
+    audit("company.created", "company", company["id"], {"name": name}, company_id=company["id"])
+    flash(f"{name} added and opened. Add its trucks next, or connect Samsara under Integrations.", "ok")
+    return redirect("/company")
+
+
 @bp.get("/company")
 @login_required
 @role_required("admin")

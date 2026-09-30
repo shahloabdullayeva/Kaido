@@ -1,7 +1,8 @@
 {% extends "layout.html" %}
 {% from "_macros.html" import field %}
 {% block body %}
-<div class="page-head"><div><h1>{{ company.name }}</h1><p>Company settings, people and activity</p></div></div>
+<div class="page-head"><div><h1>{{ company.name }}</h1><p>Company settings, people and activity</p></div>
+  {% if session.platform_role or session.can_add_companies %}<a class="btn" href="/companies/new">Add company</a>{% endif %}</div>
 
 <section class="panel">
   <div class="panel-head"><h2>Details</h2></div>

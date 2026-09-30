@@ -170,7 +170,7 @@ def load_session(token):
     if not token:
         return None
     row = one(
-        """select s.*, u.email, u.name, u.platform_role, u.status, u.telegram_chat_id
+        """select s.*, u.email, u.name, u.platform_role, u.status, u.telegram_chat_id, u.can_add_companies
            from sessions s join users u on u.id = s.user_id
            where s.token_hash = %s and s.revoked_at is null
              and s.expires_at > now() and s.absolute_expires_at > now()""",

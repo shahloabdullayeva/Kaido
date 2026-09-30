@@ -262,3 +262,4 @@ fieldset.outside legend { font-weight: bold; padding: 0 4px; }
 .oil-table td { padding: 3px 0; }
 .shop-hours { font-size: 11px; color: var(--muted); }
 .total-row td { border-top: 2px solid var(--ink); }
+.add-company { font-size: 11px; white-space: nowrap; }

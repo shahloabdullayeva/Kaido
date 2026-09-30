@@ -512,3 +512,5 @@ create table if not exists osm_calls (
   service text primary key,
   last_at timestamptz not null default 'epoch'
 );
+
+alter table users add column if not exists can_add_companies boolean not null default false;

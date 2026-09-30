@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Add company</h1><p>A new carrier with its own trucks, drivers and records. You and John become its admins, and Kaido switches to it.</p></div>
+  <a class="btn ghost" href="/company">Cancel</a>
+</div>
+<section class="panel">
+  <form method="post" action="/companies">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      {{ field('Company name', 'name', '', required=True, attrs='maxlength="160" autofocus') }}
+      {{ field('Legal name', 'legal_name', '', attrs='maxlength="160"') }}
+      {{ field('DOT number', 'dot_number', '', attrs='maxlength="20"') }}
+      {{ field('MC number', 'mc_number', '', attrs='maxlength="20"') }}
+      {{ field('Contact name', 'contact_name', '', attrs='maxlength="120"') }}
+      {{ field('Contact phone', 'contact_phone', '', type='tel', attrs='maxlength="40"') }}
+      {{ field('Contact email', 'contact_email', '', type='email', attrs='maxlength="200"') }}
+      <label class="field"><span>Timezone</span>
+        <select name="timezone">{% for value, label in timezones %}<option value="{{ value }}" {% if value == 'America/Chicago' %}selected{% endif %}>{{ label }} ({{ value }})</option>{% endfor %}</select>
+        <em>The daily follow-up and reminders use this time.</em></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Add company</button></div>
+  </form>
+</section>
+{% endblock %}

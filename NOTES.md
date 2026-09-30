@@ -41,8 +41,9 @@ gateways, average 760k miles. **30 drivers**, parsed out of the Samsara vehicle
 names, 26 assigned to their truck. Fault codes flowing — 75 open on the first
 sync, and the 15-minute job opens and closes them on its own.
 
-Two demo companies (House Fleet, Bright Line Carriers) hold made-up data and can
-be deleted whenever.
+The two demo companies (House Fleet, Bright Line Carriers) and their test user were
+deleted on 30 Sep. **Add company** (top bar, or the Company page) is open to Charlotte
+and John only (`users.can_add_companies`); both become admins of every new company.
 
 ## Built on 12 Sep — where to send a truck
 
@@ -86,7 +87,7 @@ rather than an empty map.
 
 - **Follow-up.** One Telegram message per company per day (default 07:00 company time, set on
   the Company page): open breakdowns, overdue service, work that was due, reminders due, new
-  fault codes, service due soon, papers expiring. The two demo companies have it switched off.
+  fault codes, service due soon, papers expiring.
   Stop-lamp faults go out the moment the sync sees them. `bin/followup.sh` runs every 5 minutes.
 - **Reminders on everything.** Every truck, driver, work order, breakdown and fault page has a
   Reminders box: pick a date and time, it arrives on Telegram (just you, or every admin).
@@ -105,7 +106,12 @@ rather than an empty map.
   All of it shares the $0.20 daily cap.
 - **Company lock.** Postgres row-level security on every company table: inside a company's
   pages the database refuses other companies' rows even if a query forgets its filter.
-- **Nightly backup** at 03:30 into /root/backups/fleet, 14 days kept.
+- **Nightly backup** at 03:30 into /root/backups/fleet, 14 days kept. `pg_dump` needs
+  `--enable-row-security` now that the company lock is on, or it refuses to run.
+- **OpenStreetMap rules.** Tiles get the site as Referer (the page used to block it with a
+  `<meta name="referrer">` tag, which is why OSM showed its usage-policy notice), the
+  attribution links to osm.org/copyright, and Nominatim and Overpass calls are spaced at
+  least 1.1 s and 2 s apart across all workers (`osm_calls` table).
 
 ## Next, in the order worth doing
 

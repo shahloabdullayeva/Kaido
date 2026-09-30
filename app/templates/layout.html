@@ -36,6 +36,7 @@
   {% elif company %}
   <span class="switcher-static">{{ company.name }}</span>
   {% endif %}
+  {% if session.platform_role or session.can_add_companies %}<a class="add-company" href="/companies/new">+ Add company</a>{% endif %}
   <nav>
     {% for href, text, minimum in nav_items %}
       {% if not minimum or at_least(role, minimum) %}
