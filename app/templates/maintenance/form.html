@@ -73,7 +73,9 @@
       </fieldset>
       <label class="field"><span>Work type</span>
         <select name="kind">
-          {% for value in kinds %}<option value="{{ value }}" {% if editing and order.kind == value %}selected{% endif %}>{{ kind_labels.get(value, value) }}</option>{% endfor %}
+          {% for key, heading, items in groups %}<optgroup label="{{ heading }}">
+            {% for value, text in items %}<option value="{{ value }}" {% if (editing and order.kind == value) or (not editing and value == 'repair') %}selected{% endif %}>{{ text }}</option>{% endfor %}
+          </optgroup>{% endfor %}
         </select>
       </label>
       <label class="field"><span>Status</span>

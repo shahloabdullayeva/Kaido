@@ -14,6 +14,12 @@
           {% for value in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ value|label }}</option>{% endfor %}
         </select>
       </label>
+      <label class="field"><span>System</span>
+        <select name="group">
+          <option value="">All work</option>
+          {% for key, text in group_labels.items() %}<option value="{{ key }}" {% if group == key %}selected{% endif %}>{{ text }}</option>{% endfor %}
+        </select>
+      </label>
     </form>
   </div>
   {% if orders %}

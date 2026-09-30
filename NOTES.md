@@ -113,6 +113,13 @@ rather than an empty map.
   attribution links to osm.org/copyright, and Nominatim and Overpass calls are spaced at
   least 1.1 s and 2 s apart across all workers (`osm_calls` table).
 
+- **81 work types in 13 systems.** Preventive, inspections & compliance, engine,
+  aftertreatment (DPF, DEF, SCR/NOx, regen), transmission & drivetrain, brakes & air, tires &
+  wheels, steering & suspension, electrical, cab & body, trailer, road service, other. Grouped
+  roughly along the ATA/TMC VMRS system codes. The list lives in `app/work_types.py` only — the
+  database no longer checks it, so adding a type is one line there. The Maintenance page
+  filters by system and the maintenance report has a System column.
+
 ## Next, in the order worth doing
 
 1. **Oil baselines.** 35 trucks still say "no service on record". The page is there; it needs

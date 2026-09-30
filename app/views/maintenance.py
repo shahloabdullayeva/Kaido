@@ -3,6 +3,7 @@ import re
 from flask import Blueprint, flash, g, redirect, render_template, request
 
 from .. import advisor, forms, shops as shop_search, vehicles
+from ..work_types import GROUP_LABELS, GROUPS, KIND_LABELS, KINDS, kinds_in
 from ..audit import audit
 from ..auth import login_required
 from ..config import config
@@ -11,16 +12,6 @@ from ..tenancy import active_drivers, active_trucks, company_required, role_requ
 
 bp = Blueprint("maintenance", __name__)
 
-KINDS = ["oil", "pm_a", "pm_b", "repair", "tire", "annual_inspection", "recall"]
-KIND_LABELS = {
-    "oil": "Oil & filter",
-    "pm_a": "PM-A",
-    "pm_b": "PM-B",
-    "repair": "Repair",
-    "tire": "Tires",
-    "annual_inspection": "DOT annual inspection",
-    "recall": "Recall",
-}
 STATUSES = ["scheduled", "in_progress", "done"]
 
 
@@ -104,6 +95,7 @@ def form_choices():
 @company_required
 def index():
     status = forms.pick(request.args.get("status"), STATUSES + ["all", "open"], "open")
+    group = forms.pick(request.args.get("group"), list(GROUP_LABELS), "")
     params = [g.company["id"]]
     clause = ""
     if status == "open":
@@ -111,6 +103,9 @@ def index():
     elif status != "all":
         clause = " and m.status = %s"
         params.append(status)
+    if group:
+        clause += " and m.kind = any(%s)"
+        params.append(kinds_in(group))
     orders = rows(
         f"""select m.*, t.unit_number, d.name as driver_name from maintenance_orders m
             join trucks t on t.id = m.truck_id
@@ -126,7 +121,8 @@ def index():
         (g.company["id"],),
     )
     return render_template("maintenance/list.html", title="Maintenance", active="/maintenance",
-                           orders=orders, status=status, statuses=STATUSES, spend=spend, kind_labels=KIND_LABELS)
+                           orders=orders, status=status, statuses=STATUSES, spend=spend, kind_labels=KIND_LABELS,
+                           group=group, group_labels=GROUP_LABELS)
 
 
 @bp.get("/maintenance/new")
@@ -134,7 +130,7 @@ def index():
 @role_required("admin")
 def new():
     return render_template("maintenance/form.html", title="New work order", active="/maintenance",
-                           kinds=KINDS, kind_labels=KIND_LABELS, statuses=STATUSES,
+                           groups=GROUPS, statuses=STATUSES,
                            truck_id=forms.integer(request.args.get("truck_id")), order=None, **form_choices())
 
 
@@ -346,7 +342,7 @@ def detail(order_id):
     if not order:
         return render_template("errors/404.html"), 404
     return render_template("maintenance/form.html", title=f"Work order #{order['id']}", active="/maintenance",
-                           kinds=KINDS, kind_labels=KIND_LABELS, statuses=STATUSES,
+                           groups=GROUPS, statuses=STATUSES,
                            order=order, truck_id=order["truck_id"], **form_choices())
 
 

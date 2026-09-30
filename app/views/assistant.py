@@ -1,6 +1,6 @@
 from flask import Blueprint, g, jsonify, render_template, request
 
-from .. import advisor, forms
+from .. import advisor, forms, work_types
 from ..auth import login_required
 from ..db import execute, one, rows
 from ..queries import service_status
@@ -59,8 +59,8 @@ def truck_context(truck):
                      f"severity {fault['severity']}; since {fault['first_seen_at']:%d %b %Y}")
     lines.append("Recent work orders:" if work else "Work orders: none on record")
     for order in work:
-        lines.append(f"- #{order['id']} {order['kind'].replace('_', ' ')} ({order['status'].replace('_', ' ')}), "
-                     f"{order['on_day']:%d %b %Y}" if order["on_day"] else f"- #{order['id']} {order['kind']} ({order['status']})")
+        lines.append(f"- #{order['id']} {work_types.label(order['kind'])} ({order['status'].replace('_', ' ')}), "
+                     f"{order['on_day']:%d %b %Y}" if order["on_day"] else f"- #{order['id']} {work_types.label(order['kind'])} ({order['status']})")
         extra = ", ".join(part for part in [
             f"{order['odometer']:,} mi" if order["odometer"] else "",
             order["vendor"] or "",

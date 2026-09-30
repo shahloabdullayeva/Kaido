@@ -3,6 +3,7 @@ from html import escape
 from zoneinfo import ZoneInfo
 
 from .config import config
+from . import work_types
 from .db import execute, insert, one, rows
 from .telegram import send
 
@@ -57,7 +58,7 @@ def describe(company_id, entity, entity_id):
         )
         if not row:
             return None
-        return (f"Work order #{entity_id} · unit {row['unit_number']} · {row['kind'].replace('_', ' ')}",
+        return (f"Work order #{entity_id} · unit {row['unit_number']} · {work_types.label(row['kind'])}",
                 f"/maintenance/{entity_id}")
     if entity == "breakdown":
         row = one(

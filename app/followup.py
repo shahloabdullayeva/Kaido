@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from html import escape
 
+from . import work_types
 from .config import config
 from .db import execute, one, rows
 from .queries import expiring_documents, service_status, trucks_with_service
@@ -76,7 +77,7 @@ def build(company, today):
         for b in breakdowns])
     lines += _section("Service overdue", overdue)
     lines += _section("Work scheduled for today or earlier, not done", [
-        _unit_line(w["unit_number"], f"{w['kind'].replace('_', ' ')}, #{w['id']}, set for {w['scheduled_for'].strftime('%d %b')}")
+        _unit_line(w["unit_number"], f"{work_types.label(w['kind'])}, #{w['id']}, set for {w['scheduled_for'].strftime('%d %b')}")
         for w in work])
     lines += _section("Reminders due", [
         f"• {escape((describe(company_id, r['entity'], r['entity_id']) or ('Record', ''))[0])}: {escape(r['note'][:120])}"

@@ -5,13 +5,10 @@ from datetime import date, datetime, timedelta
 from .config import ROOT
 from .db import rows
 from .queries import service_status, trucks_with_service
+from .work_types import GROUP_LABELS, GROUP_OF, KIND_LABELS
 
 FONTS = ROOT / "app" / "fonts"
 
-KIND_LABELS = {
-    "oil": "Oil & filter", "pm_a": "PM-A", "pm_b": "PM-B", "repair": "Repair", "tire": "Tires",
-    "annual_inspection": "DOT annual", "recall": "Recall",
-}
 
 REPORTS = {
     "maintenance": "Maintenance and repairs",
@@ -62,11 +59,12 @@ def maintenance(filters):
         params,
     )
     for row in data:
+        row["system"] = GROUP_LABELS.get(GROUP_OF.get(row["kind"]), "")
         row["kind"] = KIND_LABELS.get(row["kind"], row["kind"])
         row["status"] = row["status"].replace("_", " ")
     columns = [("id", "#", "int", 11), ("day", "Date", "date", 18), ("unit_number", "Unit", "text", 16),
                ("carrier", "Outside carrier", "text", 22), ("driver", "Driver", "text", 26),
-               ("kind", "Work", "text", 18), ("status", "Status", "text", 14), ("vendor", "Shop", "text", 30),
+               ("system", "System", "text", 22), ("kind", "Work", "text", 26), ("status", "Status", "text", 14), ("vendor", "Shop", "text", 30),
                ("invoice_no", "Invoice", "text", 14), ("odometer", "Odometer", "int", 17),
                ("cost", "Cost", "money", 14), ("description", "What was done", "long", 60)]
     totals = {"cost": sum(float(r["cost"] or 0) for r in data)}

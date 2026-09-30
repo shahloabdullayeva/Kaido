@@ -223,7 +223,7 @@ create table if not exists maintenance_orders (
   company_id int not null references companies(id) on delete cascade,
   truck_id int not null references trucks(id) on delete cascade,
   driver_id int references drivers(id) on delete set null,
-  kind text not null default 'repair' check (kind in ('oil','pm_a','pm_b','repair','tire','annual_inspection','recall')),
+  kind text not null default 'repair',
   status text not null default 'scheduled' check (status in ('scheduled','in_progress','done')),
   scheduled_for date,
   performed_on date,
@@ -514,3 +514,5 @@ create table if not exists osm_calls (
 );
 
 alter table users add column if not exists can_add_companies boolean not null default false;
+
+alter table maintenance_orders drop constraint if exists maintenance_orders_kind_check;
