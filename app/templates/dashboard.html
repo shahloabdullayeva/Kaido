@@ -9,8 +9,8 @@
     <p>{{ fleet_size }} trucks on the book · {{ summary.drivers_active }} active drivers</p>
   </div>
   <div class="actions-row">
-    <a class="btn ghost" href="/breakdowns/new">Report breakdown</a>
-    <a class="btn" href="/fuel/new">Log fuel</a>
+    {% if at_least(role, 'admin') %}<a class="btn" href="/maintenance/new">Add maintenance</a>{% endif %}
+    <a class="btn ghost" href="/fuel/new">Log fuel</a>
   </div>
 </div>
 
