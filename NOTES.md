@@ -27,9 +27,8 @@ All enabled at boot. `systemctl status kaido` / `journalctl -u kaido -f` to look
 ## Accounts
 
 - **Charlotte** — platform owner, sees every company. Telegram linked.
-- **John** — admin at LLAP Logistics. **Still needs to link Telegram** before he can
-  sign in from a new browser: send `/link <code>` to @kaidofleet_bot. Generate a
-  fresh code from Account → Get link code, or from the shell.
+- **John** — admin at LLAP Logistics. Telegram linked, so he gets the follow-up,
+  reminders sent to admins, and stop-lamp alerts.
 
 Sign-in: password, then a 6-digit Telegram code on any browser we have not seen.
 `TRUST_DAYS=1`, so a browser is trusted for one day and then asks again.
