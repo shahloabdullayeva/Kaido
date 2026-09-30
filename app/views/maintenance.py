@@ -1,6 +1,6 @@
 import re
 
-from flask import Blueprint, flash, g, redirect, render_template, request
+from flask import Blueprint, flash, g, jsonify, redirect, render_template, request
 
 from .. import advisor, forms, shops as shop_search, vehicles
 from ..work_types import GROUP_LABELS, GROUPS, KIND_LABELS, KINDS, kinds_in
@@ -271,48 +271,95 @@ def origin_for(truck):
     return None, None
 
 
-@bp.get("/maintenance/shops/<int:truck_id>")
-@login_required
-@role_required("admin")
-def shops(truck_id):
-    truck = one(
+def shop_truck(truck_id):
+    return one(
         """select t.*, d.name as driver_name from trucks t
            left join drivers d on d.id = t.driver_id
            where t.id = %s and t.company_id = %s""",
         (truck_id, g.company["id"]),
     )
-    if not truck:
-        return render_template("errors/404.html"), 404
-    asked = (request.args.get("q") or "").strip()
+
+
+def find_shops(truck):
     origin, problem = origin_for(truck)
     if origin is None:
-        return render_template("maintenance/_shops.html", truck=truck, found=[], origin=None,
-                               query=asked, problem=problem)
+        return origin, [], None, problem
     try:
         found, meta = shop_search.nearby(origin["latitude"], origin["longitude"],
                                          radius_miles=config.SHOP_RADIUS_MILES)
     except Exception as err:
-        return render_template("maintenance/_shops.html", truck=truck, found=[], origin=origin,
-                               query=asked,
-                               problem=f"Could not reach OpenStreetMap just now ({str(err)[:90]}).")
+        return origin, [], None, f"Could not reach OpenStreetMap just now ({str(err)[:90]})."
     history = vendor_history(g.company["id"])
     for shop in found:
         shop["history"] = match_history(shop["name"], history)
         shop["detour"] = detour_for(shop["miles"])
+        shop["dial"] = shop_search.dial(shop.get("phone"))
+        shop["maps"] = shop_search.maps_link(shop)
+        address = shop.get("address") or ""
+        shop["address_complete"] = bool(address[:1].isdigit() and "," in address)
+    return origin, found, meta, None
+
+
+def fleet_oil_average():
     average = one(
         """select avg(cost) as average from maintenance_orders
            where company_id = %s and kind = 'oil' and status = 'done' and cost is not null""",
         (g.company["id"],),
     )
-    fleet_average = float(average["average"]) if average and average["average"] else None
-    advice = advisor.shop_advice(dict(truck, location=origin["label"]), found, fleet_average)
-    notes = {}
-    if advice:
-        notes = {note.number: note.note for note in advice.notes}
+    return float(average["average"]) if average and average["average"] else None
+
+
+@bp.get("/maintenance/shops/<int:truck_id>")
+@login_required
+@role_required("admin")
+def shops(truck_id):
+    truck = shop_truck(truck_id)
+    if not truck:
+        return render_template("errors/404.html"), 404
+    origin, found, meta, problem = find_shops(truck)
     return render_template("maintenance/_shops.html", truck=truck, found=found, meta=meta,
-                           origin=origin, query=asked, notes=notes, advice=advice,
-                           fleet_average=fleet_average, ai_on=advisor.available(),
-                           ai_paused=advisor.over_budget(), problem=None)
+                           origin=origin, query=(request.args.get("q") or "").strip(),
+                           fleet_average=fleet_oil_average(), ai_on=advisor.available(),
+                           ai_paused=advisor.over_budget(), problem=problem)
+
+
+@bp.get("/maintenance/shops/<int:truck_id>/advice")
+@login_required
+@role_required("admin")
+def shops_advice(truck_id):
+    truck = shop_truck(truck_id)
+    if not truck:
+        return jsonify({"state": "missing"}), 404
+    if not advisor.available():
+        return jsonify({"state": "off"})
+    if advisor.over_budget():
+        return jsonify({"state": "paused"})
+    origin, found, meta, problem = find_shops(truck)
+    if not found:
+        return jsonify({"state": "none"})
+    advice = advisor.shop_advice(dict(truck, location=origin["label"]), found, fleet_oil_average())
+    if not advice:
+        return jsonify({"state": "none"})
+    return jsonify({"state": "ok", "pick": advice.pick, "why": advice.why,
+                    "notes": {str(note.number): note.note for note in advice.notes}})
+
+
+@bp.get("/maintenance/shops/address")
+@login_required
+@role_required("admin")
+def shop_address():
+    try:
+        latitude = float(request.args.get("lat", ""))
+        longitude = float(request.args.get("lon", ""))
+    except ValueError:
+        return jsonify({"address": None}), 400
+    try:
+        address = shop_search.reverse(latitude, longitude)
+    except Exception:
+        address = None
+    name = forms.text(request.args.get("name"), 160) or ""
+    maps = shop_search.maps_link({"name": name, "address": address, "latitude": latitude, "longitude": longitude})
+    return jsonify({"address": address, "maps": maps})
 
 
 @bp.get("/maintenance/oil/<int:truck_id>")

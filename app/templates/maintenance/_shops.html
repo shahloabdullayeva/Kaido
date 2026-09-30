@@ -26,39 +26,39 @@
 <p class="empty">Nothing within {{ meta.radius_miles if meta else 50 }} miles is tagged as taking trucks.
   OpenStreetMap coverage is thin in rural areas — try a nearby town, or the driver's own judgement.</p>
   {% else %}
-    {% if advice and advice.pick %}
-<p class="shop-pick"><strong>Send it to {{ advice.pick }}.</strong> {{ advice.why }}</p>
-    {% elif advice and advice.why %}
-<p class="shop-pick">{{ advice.why }}</p>
-    {% endif %}
+<p class="shop-pick" id="shop-pick" hidden></p>
 <ol class="shop-list">
   {% for shop in found %}
-  <li>
+  <li data-shop="{{ loop.index }}" data-lat="{{ shop.latitude }}" data-lon="{{ shop.longitude }}" data-name="{{ shop.name }}"
+      {% if not shop.address_complete %}data-needs-address{% endif %}>
     <div class="shop-row">
       <span class="shop-name">{{ shop.name }}</span>
       <span class="badge {{ 'ok' if shop.open_state == 'open' else ('warn' if shop.open_state == 'unknown' else 'bad') }}">{{ shop.hours_text }}</span>
       {% if shop.truck_fit != 'yes' %}<span class="badge warn">truck fit unconfirmed — phone ahead</span>{% endif %}
     </div>
+    <div class="shop-address" data-address>{% if shop.address_complete %}{{ shop.address }}{% else %}<span class="subtle">{{ shop.address ~ " — " if shop.address }}finding the full address…</span>{% endif %}</div>
     <div class="subtle">
       {{ shop.miles }} mi away · detour about {{ shop.detour.cost|money }} and {{ shop.detour.spell }} round trip
-      {%- if shop.address %} · {{ shop.address }}{% endif %}
-      {%- if shop.phone %} · <a href="tel:{{ shop.phone }}">{{ shop.phone }}</a>{% endif %}
-      {%- if shop.website %} · <a href="{{ shop.website }}" rel="noreferrer noopener">website</a>{% endif %}
+      {%- if shop.phone %} · {{ shop.phone }}{% else %} · no phone listed{% endif %}
+      {%- if shop.website %} · <a href="{{ shop.website }}" rel="noreferrer noopener" target="_blank">website</a>{% endif %}
     </div>
     {% if shop.opening_hours %}<div class="shop-hours">Hours: {{ shop.opening_hours|osm_hours }}</div>{% endif %}
     {% if shop.history %}
     <div class="shop-history">You have used this shop {{ shop.history.visits }}×, average
       {{ shop.history.average|money }}, last {{ shop.history.last }}.</div>
     {% endif %}
-    {% if notes.get(loop.index) %}<div class="shop-note">{{ notes[loop.index] }}</div>{% endif %}
-    <button type="button" class="btn ghost small" data-pick-vendor="{{ shop.name }}">Use as vendor</button>
+    <div class="shop-note" data-note hidden></div>
+    <div class="shop-actions">
+      {% if shop.dial %}<a class="btn small" href="tel:{{ shop.dial }}">Call</a>{% endif %}
+      <a class="btn ghost small" href="{{ shop.maps }}" target="_blank" rel="noopener noreferrer" data-maps>Google Maps</a>
+      <button type="button" class="btn ghost small" data-show-shop="{{ loop.index }}">Show on map</button>
+      <button type="button" class="btn ghost small" data-pick-vendor="{{ shop.name }}">Use as vendor</button>
+    </div>
   </li>
   {% endfor %}
 </ol>
-<p class="subtle">Shops from OpenStreetMap{% if meta and meta.cached %}, cached{% endif %}.
+<p class="subtle" id="shop-foot" data-ai="{{ 'paused' if ai_paused else ('on' if ai_on else 'off') }}">Shops from OpenStreetMap{% if meta and meta.cached %}, cached{% endif %}.
   {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
-  {% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.
-  {% elif ai_paused and not notes %}AI notes are paused — today's budget is spent. They come back tomorrow.
-  {% elif not notes %}AI notes did not come back this time.{% endif %}</p>
+  <span id="shop-ai-state">{% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.{% elif ai_paused %}AI notes are paused — today's budget is spent. They come back tomorrow.{% endif %}</span></p>
   {% endif %}
 {% endif %}

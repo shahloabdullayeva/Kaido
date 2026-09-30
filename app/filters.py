@@ -88,7 +88,9 @@ def json_attr(value):
 
 def shop_pins(found):
     pins = [{"name": shop["name"], "lat": shop["latitude"], "lon": shop["longitude"],
-             "miles": shop["miles"], "open": shop["open_state"]} for shop in found or []]
+             "miles": shop["miles"], "open": shop["open_state"], "address": shop.get("address"),
+             "phone": shop.get("phone"), "dial": shop.get("dial"), "maps": shop.get("maps"),
+             "hours": shop.get("hours_text")} for shop in found or []]
     return Markup(escape(json.dumps(pins)))
 
 

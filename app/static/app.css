@@ -263,3 +263,14 @@ fieldset.outside legend { font-weight: bold; padding: 0 4px; }
 .shop-hours { font-size: 11px; color: var(--muted); }
 .total-row td { border-top: 2px solid var(--ink); }
 .add-company { font-size: 11px; white-space: nowrap; }
+
+.progress { padding-top: 8px; padding-bottom: 4px; }
+.progress-track { height: 14px; border: 2px inset var(--face-dark); background: #fff; }
+.progress-fill { height: 100%; width: 0; background: #000080; transition: width 0.12s linear; }
+.progress-text { font-size: 11px; margin-top: 3px; }
+.shop-address { font-size: 12px; margin-top: 2px; }
+.shop-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.shop-actions .btn { margin-top: 0; }
+.shop-list li.active { outline: 2px solid #000080; outline-offset: 3px; }
+.shop-popup { font-size: 12px; min-width: 190px; }
+.shop-popup div { margin-top: 3px; }

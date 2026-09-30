@@ -15,6 +15,7 @@ class OverpassBusy(Exception):
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 USER_AGENT = "Kaido/1.0 fleet maintenance (+https://kaido.shahlo.blog)"
 CACHE_DAYS = 7
 GEOCODE_DAYS = 90
@@ -256,6 +257,50 @@ def geocode(text):
     return place
 
 
+def reverse(latitude, longitude):
+    key = f"reverse:{float(latitude):.5f},{float(longitude):.5f}"
+    row = one("select label from geocodes where query = %s and fetched_at > now() - make_interval(days => %s)",
+              (key, GEOCODE_DAYS))
+    if row:
+        return row["label"] or None
+    _polite("nominatim")
+    response = requests.get(
+        NOMINATIM_REVERSE_URL,
+        params={"lat": float(latitude), "lon": float(longitude), "format": "jsonv2", "zoom": 18, "addressdetails": 1},
+        headers={"User-Agent": USER_AGENT},
+        timeout=25,
+    )
+    response.raise_for_status()
+    found = response.json() or {}
+    parts = found.get("address") or {}
+    street = " ".join(part for part in [parts.get("house_number"), parts.get("road")] if part)
+    town = parts.get("city") or parts.get("town") or parts.get("village") or parts.get("hamlet") or parts.get("county")
+    state = parts.get("state")
+    postcode = parts.get("postcode")
+    label = ", ".join(part for part in [street, town, " ".join(p for p in [state, postcode] if p)] if part)
+    execute(
+        """insert into geocodes (query, lat, lon, label, fetched_at) values (%s, %s, %s, %s, now())
+           on conflict (query) do update set label = excluded.label, fetched_at = now()""",
+        (key, float(latitude), float(longitude), label),
+    )
+    return label or None
+
+
+def dial(phone):
+    first = (phone or "").split(";")[0].strip()
+    digits = "".join(ch for ch in first if ch.isdigit() or ch == "+")
+    return digits or None
+
+
+def maps_link(shop):
+    from urllib.parse import quote
+    if shop.get("address"):
+        query = f"{shop['name']}, {shop['address']}"
+    else:
+        query = f"{shop['latitude']},{shop['longitude']}"
+    return "https://www.google.com/maps/search/?api=1&query=" + quote(query)
+
+
 def _brand(name):
     lowered = (name or "").lower()
     for key, label in BRAND_HINTS.items():
@@ -324,7 +369,7 @@ def _collect(latitude, longitude, radius_miles, limit):
             "longitude": lon,
             "miles": round(haversine(latitude, longitude, lat, lon), 1),
             "address": address or None,
-            "phone": tags.get("phone") or tags.get("contact:phone"),
+            "phone": (tags.get("phone") or tags.get("contact:phone") or "").split(";")[0].strip() or None,
             "website": tags.get("website") or tags.get("contact:website"),
             "opening_hours": tags.get("opening_hours"),
             "open_state": state,

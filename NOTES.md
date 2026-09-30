@@ -130,6 +130,13 @@ rather than an empty map.
   Service schedule links to the baseline page for each one. Overdue and due-soon items go into
   the dashboard, the truck list, the daily follow-up and the fleet report.
 
+- **Shop finder, step by step.** The list comes back first (OpenStreetMap only), then Claude's
+  pick and notes (`/maintenance/shops/<id>/advice`) and any missing street addresses
+  (`/maintenance/shops/address`, Nominatim reverse lookup, cached 90 days in `geocodes`) fill in
+  while a percentage bar runs. Every shop has a Google Maps link, a Call button (`tel:`) when
+  OpenStreetMap lists a phone, and "Show on map", which zooms to it and enlarges its pin.
+  Most OSM shops have no phone listed; Google Maps is the fallback for that.
+
 ## Next, in the order worth doing
 
 1. **Service baselines.** 35 trucks still have no oil change on record, and none have the other
