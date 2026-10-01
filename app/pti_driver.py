@@ -171,10 +171,12 @@ def rejected(inspection, reason):
     tag = mention(truck)
     zone = zone_for(one("select timezone from companies where id = %s", (truck["company_id"],))["timezone"])
     when = inspection["submitted_at"].astimezone(zone).strftime("%d %b %H:%M")
-    lines = [f"❌ <b>Unit {escape(truck['unit_number'])}</b> — {kind} from {when} was not accepted"
-             + (f" {tag}" if tag else ""),
-             f"Reason: {escape(reason)}",
-             f"<a href=\"{escape(pti.link_for(pti.ensure_token(truck)))}\">Do the PTI again</a> with clear photos of the truck."]
+    lines = [f"❌ <b>Unit {escape(truck['unit_number'])}</b>" + (f" {tag}" if tag else ""),
+             f"Your {kind} from {when} was done wrong, so it was not accepted.",
+             f"What was wrong: {escape(reason)}",
+             "",
+             f"Please <a href=\"{escape(pti.link_for(pti.ensure_token(truck)))}\">do the PTI again</a>. "
+             "This time take each photo of the truck itself, close and in good light, so it goes through."]
     return bool(send(truck["telegram_chat_id"], "\n".join(lines)).get("ok"))
 
 

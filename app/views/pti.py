@@ -276,8 +276,13 @@ def driver_form(token):
     if not truck:
         return render_template("pti/gone.html", title="PTI"), 404
     previous = pti.previous_with_defects(truck["id"])
+    latest = one(
+        "select review_status, review_note, kind from inspections where truck_id = %s order by submitted_at desc limit 1",
+        (truck["id"],),
+    )
+    redo = latest if latest and latest["review_status"] == "rejected" else None
     return render_template(
-        "pti/driver.html", title=f"PTI · Unit {truck['unit_number']}", truck=truck, token=token,
+        "pti/driver.html", redo=redo, title=f"PTI · Unit {truck['unit_number']}", truck=truck, token=token,
         sections=pti.SECTIONS, drivers=driver_options(truck["company_id"]), previous=previous,
         previous_defects=pti.defects_of(previous) if previous else [], kinds=pti.KINDS,
         certifications=pti.CERTIFICATIONS, na_allowed=pti.NA_ALLOWED,
