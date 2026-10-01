@@ -33,7 +33,7 @@
   <form method="post" action="/pti/report/{{ item.id }}/review">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <p class="muted">{{ 'Change the decision if needed.' if item.review_status else 'Look at the photos and the AI check below, then approve it, or reject it and the driver is asked to do it again.' }}</p>
-    <div class="form-grid"><label class="field full"><span>Note (required to reject — the driver sees it)</span><input name="review_note" maxlength="1000" placeholder="e.g. Photos show a keyboard, not the truck"></label></div>
+    <div class="form-grid"><label class="field full"><span>Note <span class="req">*</span> <em>needed to reject — the driver sees it</em></span><input name="review_note" maxlength="1000" placeholder="e.g. Photos show a keyboard, not the truck"></label></div>
     <div class="form-actions">
       <button class="btn" type="submit" name="decision" value="approved">Approve</button>
       <button class="btn danger" type="submit" name="decision" value="rejected" data-busy="Rejecting…">Reject — driver redoes it</button>
@@ -63,12 +63,12 @@
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <p class="muted">FMCSA 396.11: before the truck runs again, someone signs off that each defect was repaired or that repair is not needed for safe operation.</p>
     <div class="form-grid">
-      <label class="field"><span>Sign-off</span>
+      <label class="field"><span>Sign-off <span class="req">*</span></span>
         <select name="certification" required>
           <option value="">Pick one</option>
           {% for value, text in certifications.items() %}<option value="{{ value }}">{{ text }}</option>{% endfor %}
         </select></label>
-      <label class="field"><span>Signed by</span><input name="certified_name" maxlength="120" required value="{{ session.name }}"></label>
+      <label class="field"><span>Signed by <span class="req">*</span></span><input name="certified_name" maxlength="120" required value="{{ session.name }}"></label>
       <label class="field full"><span>What was done</span><textarea name="certified_note" maxlength="2000"></textarea></label>
     </div>
     <div class="form-actions"><button class="btn" type="submit">Sign off</button></div>

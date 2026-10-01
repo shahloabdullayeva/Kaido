@@ -38,7 +38,7 @@
         {% for driver in drivers %}<option value="{{ driver.id }}" {% if driver.id == truck.driver_id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
       </select>
     </label>
-    <label class="field" data-driver-typed {% if truck.driver_id %}hidden{% endif %}><span>Your name</span>
+    <label class="field" data-driver-typed {% if truck.driver_id %}hidden{% endif %}><span>Your name <span class="req">*</span></span>
       <input name="driver_name" maxlength="120" autocomplete="name"></label>
     <label class="field"><span>Odometer</span>
       <input name="odometer" type="number" inputmode="numeric" min="0" value="{{ truck.odometer or '' }}">
@@ -50,7 +50,7 @@
   {% for title, entries in sections %}
   <fieldset class="pti-section">
     <legend>{{ title }}</legend>
-    <label class="pti-photo pti-proof">Photo or video of {{ title|lower }} — required
+    <label class="pti-photo pti-proof">Photo or video: {{ title }} <span class="req">*</span>
       <input type="file" name="section_{{ loop.index }}" accept="image/*,video/*" capture="environment" multiple required></label>
     {% for key, label in entries %}
     <div class="pti-item" data-item>
@@ -61,8 +61,8 @@
         {% if key in na_allowed %}<label><input type="radio" name="item_{{ key }}" value="na"> No trailer</label>{% endif %}
       </div>
       <div class="pti-defect" data-defect>
-        <input name="note_{{ key }}" maxlength="500" placeholder="What is wrong?">
-        <label class="pti-photo">Photo of the defect — required <input type="file" name="photo_{{ key }}" accept="image/*,video/*" capture="environment" multiple></label>
+        <input name="note_{{ key }}" maxlength="500" placeholder="What is wrong? *">
+        <label class="pti-photo">Photo of the defect <span class="req">*</span> <input type="file" name="photo_{{ key }}" accept="image/*,video/*" capture="environment" multiple></label>
       </div>
     </div>
     {% endfor %}
@@ -70,19 +70,18 @@
   {% endfor %}
 
   <div class="pti-block">
-    <div class="field" data-safe><span>Safe to drive?</span>
+    <div class="field" data-safe><span>Safe to drive? <span class="req">*</span></span>
       <div class="pti-states">
         <label><input type="radio" name="safe_to_drive" value="yes"> Yes, safe</label>
         <label class="defect"><input type="radio" name="safe_to_drive" value="no"> No, not safe</label>
       </div>
-      <em>Only needed when you marked a defect.</em>
     </div>
     <label class="field"><span>Anything else</span><textarea name="notes" maxlength="2000"></textarea></label>
     <label class="pti-photo">Other photos <input type="file" name="photo_general" accept="image/*" capture="environment" multiple></label>
     {% if previous %}
-    <label class="checkbox"><input type="checkbox" name="reviewed_previous" value="1" required> <span>I read the last report and its sign-off above.</span></label>
+    <label class="checkbox"><input type="checkbox" name="reviewed_previous" value="1" required> <span>I read the last report and its sign-off above. <span class="req">*</span></span></label>
     {% endif %}
-    <label class="field"><span>Sign with your full name</span>
+    <label class="field"><span>Sign with your full name <span class="req">*</span></span>
       <input name="signed_name" maxlength="120" required autocomplete="name"></label>
   </div>
   <button class="btn" type="submit" data-busy="Sending…">Send PTI</button>
