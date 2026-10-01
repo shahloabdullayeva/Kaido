@@ -42,20 +42,23 @@
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Drivers' Telegram group</h2><span class="subtle">PTI reminders with each truck's link</span></div>
+  <div class="panel-head"><h2>Truck Telegram groups</h2><span class="subtle">each truck's group gets only its own PTI reminders</span></div>
   <div class="pad">
-    {% if company.driver_chat_id %}
-    <p>Connected to <strong>{{ company.driver_chat_title or 'a group' }}</strong>.</p>
-    {% else %}
-    <p><strong>Not connected yet.</strong> To connect: add <span class="mono">@{{ bot_name }}</span> to the drivers' group, then send this in the group:</p>
-    <p class="mono pti-code">/drivers {{ driver_code }}</p>
-    <p class="subtle">The bot answers in the group when it is connected. Refresh this page after.</p>
-    {% endif %}
+    <p>To connect a truck's group: add <span class="mono">@kaidofleet_bot</span> to it, then send the <span class="mono">/truck</span> line shown on that truck's page. The driver then sends <span class="mono">/unit</span> once so reminders tag them.</p>
   </div>
+  {% if truck_groups %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Group</th><th>Driver tagged</th></tr></thead>
+    <tbody>{% for truck in truck_groups %}
+      <tr><td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a></td><td>{{ truck.telegram_chat_title or '—' }}</td>
+        <td>{% if truck.telegram_username %}@{{ truck.telegram_username }}{% elif truck.telegram_user_id %}{{ truck.driver_name }}{% else %}<span class="muted">not yet — driver sends /unit</span>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="empty">No truck groups connected yet.</p>{% endif %}
   <form method="post" action="/company/drivers-group">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <div class="form-grid">
-      <label class="checkbox field"><input type="checkbox" name="pti_messages_enabled" value="1" {% if company.pti_messages_enabled %}checked{% endif %}> <span>Send PTI messages to the group</span></label>
+      <label class="checkbox field"><input type="checkbox" name="pti_messages_enabled" value="1" {% if company.pti_messages_enabled %}checked{% endif %}> <span>Send PTI reminders to truck groups</span></label>
       <fieldset class="field full"><span>Send on</span>
         <div class="pill-row">{% for value, name in weekdays %}<label class="checkbox"><input type="checkbox" name="pti_days" value="{{ value }}" {% if value in (company.pti_days or []) %}checked{% endif %}> {{ name }}</label>{% endfor %}</div>
       </fieldset>
@@ -66,23 +69,18 @@
         <select name="pti_evening_hour">{% for hour in range(13, 24) %}<option value="{{ hour }}" {% if company.pti_evening_hour == hour %}selected{% endif %}>{{ '%02d:00'|format(hour) }}</option>{% endfor %}</select>
         <em>{{ company.timezone }} time</em></label>
     </div>
-    <p class="subtle">Follows FMCSA 396.13 and 396.11: a pre-trip message on the mornings picked above with each truck's PTI link (the rule itself is every day: check the truck and read the last report's repair sign-off before driving), a post-trip message on those evenings (defects reported at the end of each day's work), and, on any day, a one-off nudge naming any truck that drives 10+ miles in a day with no pre-trip.</p>
+    <p class="subtle">FMCSA 396.13 and 396.11: pre-trip reminder on the mornings picked (the rule itself is every day: check the truck and read the last repair sign-off before driving), post-trip reminder on those evenings, and on any day a one-off reminder to a truck's group when it drives 10+ miles with no pre-trip.</p>
     <div class="form-actions"><button class="btn" type="submit">Save</button></div>
   </form>
+  {% if truck_groups %}
   <div class="form-actions pad">
     {% for which in ['morning', 'evening'] %}
-    <form method="post" action="/company/drivers-group/send" class="inline">
-      <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="which" value="{{ which }}"><input type="hidden" name="to" value="me">
-      <button class="btn ghost" type="submit">Preview {{ 'pre-trip' if which == 'morning' else 'post-trip' }} message on my Telegram</button></form>
+    <form method="post" action="/company/drivers-group/preview" class="inline">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="which" value="{{ which }}"><input type="hidden" name="truck_id" value="{{ truck_groups[0].id }}">
+      <button class="btn ghost" type="submit">Preview {{ 'pre-trip' if which == 'morning' else 'post-trip' }} on my Telegram</button></form>
     {% endfor %}
-    {% if company.driver_chat_id %}
-    <form method="post" action="/company/drivers-group/send" class="inline" data-confirm="Send the pre-trip message to the drivers' group now?">
-      <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="which" value="morning"><input type="hidden" name="to" value="group">
-      <button class="btn ghost" type="submit">Send pre-trip message to the group now</button></form>
-    <form method="post" action="/company/drivers-group/disconnect" class="inline" data-confirm="Stop sending PTI messages to this group?">
-      <input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost danger" type="submit">Disconnect group</button></form>
-    {% endif %}
   </div>
+  {% endif %}
 </section>
 
 <section class="panel">

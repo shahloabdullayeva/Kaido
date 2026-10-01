@@ -653,3 +653,16 @@ end $$;
 alter table companies add column if not exists pti_days int[] not null default '{1,4}';
 
 alter table drivers add column if not exists telegram_user_id bigint;
+
+alter table trucks add column if not exists telegram_chat_id bigint;
+alter table trucks add column if not exists telegram_chat_title text;
+alter table trucks add column if not exists telegram_link_code text unique;
+alter table pti_messages add column if not exists chat_id bigint;
+alter table pti_messages add column if not exists message_ids bigint[];
+update trucks t set telegram_chat_id = c.driver_chat_id, telegram_chat_title = c.driver_chat_title
+  from companies c
+  where c.id = t.company_id and c.driver_chat_id is not null and t.telegram_chat_id is null
+    and t.id = (select d.id from trucks d join drivers r on r.id = d.driver_id
+                where d.company_id = c.id and r.telegram_user_id is not null order by d.id limit 1);
+update companies set driver_chat_id = null, driver_chat_title = null, driver_link_code = null
+  where driver_chat_id is not null;

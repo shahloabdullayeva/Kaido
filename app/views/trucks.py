@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms, pti, sheets
+from .. import forms, pti, pti_driver, sheets
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -278,11 +278,13 @@ def detail(truck_id):
     link = one("select * from vehicle_links where truck_id = %s", (truck_id,))
     inspections = rows("select * from inspections where truck_id = %s order by submitted_at desc limit 8", (truck_id,))
     pti_link = pti.link_for(pti.ensure_token(truck)) if at_least(g.role, "admin") else None
+    group_code = pti_driver.link_code(truck) if pti_link and not truck["telegram_chat_id"] else None
     return render_template(
         "trucks/detail.html", title=f"Unit {truck['unit_number']}", active="/trucks",
         truck=truck, statuses=service_status(enriched), history=history, fuel=fuel,
         faults=faults, breakdowns=breakdowns, economy=fuel_economy(truck_id), link=link,
         last_oil=last_oil, inspections=inspections, pti_link=pti_link, pti_kinds=pti.KINDS,
+        group_code=group_code, group_truck=pti_driver.one_truck(g.company["id"], truck_id),
     )
 
 

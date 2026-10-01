@@ -36,7 +36,8 @@ def send(chat_id, text, **extra):
         data = response.json()
         if not data.get("ok"):
             log.warning("send to %s failed: %s", chat_id, data.get("description"))
-        return {"ok": bool(data.get("ok")), "reason": data.get("description")}
+        return {"ok": bool(data.get("ok")), "reason": data.get("description"),
+                "message_id": (data.get("result") or {}).get("message_id")}
     except (requests.RequestException, ValueError) as err:
         reason = redact(str(err))
         log.warning("send to %s failed: %s", chat_id, reason)

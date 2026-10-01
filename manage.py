@@ -185,23 +185,22 @@ def handle_group_update(update, send):
         pti_driver.move_group(chat["id"], message["migrate_to_chat_id"])
         return True
     parts = (message.get("text") or "").split()
-    if parts and parts[0].split("@")[0] == "/unit":
-        if len(parts) < 2:
-            send(chat["id"], "Send /unit followed by your truck number, for example /unit 003")
-            return True
+    command = parts[0].split("@")[0] if parts else ""
+    if command == "/unit":
         _truck, reply = pti_driver.claim_unit(chat["id"], message.get("from") or {}, " ".join(parts[1:]))
         send(chat["id"], reply, reply_to_message_id=message.get("message_id"))
         return True
-    if not parts or parts[0].split("@")[0] != "/drivers":
+    if command not in ("/truck", "/drivers"):
         return True
     if len(parts) < 2:
-        send(chat["id"], "Send /drivers followed by the code from the Company page in Kaido.")
+        send(chat["id"], "Send /truck followed by the code from the truck's page in Kaido.")
         return True
-    company = pti_driver.claim_group(parts[1], chat)
-    if not company:
-        send(chat["id"], "That code is not valid. Copy it again from the Company page in Kaido.")
+    truck = pti_driver.claim_group(parts[1], chat)
+    if not truck:
+        send(chat["id"], "That code is not valid. Copy it again from the truck's page in Kaido.")
         return True
-    send(chat["id"], f"Connected to {company['name']}. PTI reminders for the drivers will come to this group.")
+    send(chat["id"], f"Connected to Unit {truck['unit_number']} ({truck['company_name']}). "
+                     "PTI reminders for this truck only will come here. Driver: send /unit once so they tag you.")
     return True
 
 

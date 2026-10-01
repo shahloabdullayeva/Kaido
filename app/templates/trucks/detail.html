@@ -131,6 +131,17 @@
       <button class="btn ghost small" type="button" data-copy="{{ pti_link }}">Copy link</button>
       <a class="btn ghost small" href="{{ pti_link }}">Fill in a PTI</a>
       <a class="btn ghost small" href="/pti/stickers?truck_id={{ truck.id }}">Print QR sticker</a>
+    </div>
+    <p><strong>Telegram group:</strong>
+    {% if truck.telegram_chat_id %}connected to <strong>{{ truck.telegram_chat_title or 'a group' }}</strong>{% if group_truck and (group_truck.telegram_username or group_truck.telegram_user_id) %}, tags {{ '@' ~ group_truck.telegram_username if group_truck.telegram_username else group_truck.driver_name }}{% else %} — driver has not sent /unit yet{% endif %}.
+    {% else %}not connected. Add <span class="mono">@kaidofleet_bot</span> to this truck's group and send <span class="mono pti-code">/truck {{ group_code }}</span>{% endif %}</p>
+    <div class="actions-row">
+      {% if truck.telegram_chat_id %}
+      <form method="post" action="/trucks/{{ truck.id }}/telegram/send" data-confirm="Send the pre-trip reminder to {{ truck.telegram_chat_title or 'the group' }} now?">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="which" value="morning"><button class="btn ghost small" type="submit">Send pre-trip reminder now</button></form>
+      <form method="post" action="/trucks/{{ truck.id }}/telegram/disconnect" data-confirm="Stop PTI reminders to this group?">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost small danger" type="submit">Disconnect group</button></form>
+      {% endif %}
       <form method="post" action="/trucks/{{ truck.id }}/pti-link" data-confirm="Make a new link? The current sticker in this truck will stop working.">
         <input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost small danger" type="submit">Replace link</button></form>
     </div>

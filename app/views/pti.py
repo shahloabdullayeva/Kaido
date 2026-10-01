@@ -2,7 +2,7 @@ from urllib.parse import urlencode
 
 from flask import Blueprint, flash, g, redirect, render_template, request, send_file
 
-from .. import forms, pti
+from .. import forms, pti, pti_driver
 from ..audit import audit, client_ip
 from ..auth import login_required, throttle
 from ..db import one, rows
@@ -169,6 +169,32 @@ def links():
                       "telegram": "https://t.me/share/url?" + urlencode({"url": url, "text": message})})
     everything = "\n".join(f"Unit {c['unit']}: {c['url']}" for c in cards)
     return render_template("pti/links.html", title="PTI links", active="/pti", cards=cards, everything=everything)
+
+
+@bp.post("/trucks/<int:truck_id>/telegram/send")
+@login_required
+@role_required("admin")
+def telegram_send(truck_id):
+    truck = pti_driver.one_truck(g.company["id"], truck_id)
+    if not truck or not truck["telegram_chat_id"]:
+        flash("This truck has no Telegram group connected.", "bad")
+        return redirect(f"/trucks/{truck_id}")
+    kind = forms.pick(request.form.get("which"), ["morning", "evening"], "morning")
+    ok = pti_driver.deliver(truck, kind)
+    audit("pti.group_message", "truck", truck_id, {"kind": kind, "ok": ok})
+    flash(f"Sent to {truck['telegram_chat_title'] or 'the group'}." if ok
+          else "Telegram did not accept it. If the bot was removed from the group, connect it again.", "ok" if ok else "bad")
+    return redirect(f"/trucks/{truck_id}")
+
+
+@bp.post("/trucks/<int:truck_id>/telegram/disconnect")
+@login_required
+@role_required("admin")
+def telegram_disconnect(truck_id):
+    pti_driver.disconnect(g.company["id"], truck_id)
+    audit("pti.group_removed", "truck", truck_id)
+    flash("Group disconnected. No more PTI reminders will go there.", "ok")
+    return redirect(f"/trucks/{truck_id}")
 
 
 @bp.post("/trucks/<int:truck_id>/pti-link")

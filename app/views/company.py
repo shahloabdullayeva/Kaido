@@ -1,7 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
 from .. import forms, pti_driver
-from ..config import config
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -95,10 +94,9 @@ def index():
            where a.company_id = %s order by a.created_at desc limit 50""",
         (g.company["id"],),
     )
-    code = None if company["driver_chat_id"] else pti_driver.link_code(company)
     return render_template("company/index.html", title="Company", active="/company",
                            company=company, members=members, log=log, roles=ROLES, role_labels=ROLE_LABELS,
-                           driver_code=code, bot_name=config.TELEGRAM_BOT_USERNAME, weekdays=pti_driver.WEEKDAYS)
+                           truck_groups=pti_driver.connected(g.company["id"]), weekdays=pti_driver.WEEKDAYS)
 
 
 @bp.post("/company")
@@ -175,36 +173,19 @@ def drivers_group():
     return redirect("/company")
 
 
-@bp.post("/company/drivers-group/send")
+@bp.post("/company/drivers-group/preview")
 @login_required
 @role_required("admin")
-def drivers_group_send():
-    company = one("select * from companies where id = %s", (g.company["id"],))
-    which = forms.pick(request.form.get("which"), ["morning", "evening"], "morning")
-    target = forms.pick(request.form.get("to"), ["me", "group"], "me")
-    chat = company["driver_chat_id"] if target == "group" else g.session["telegram_chat_id"]
-    if not chat:
-        flash("Link your Telegram on your account page first." if target == "me"
-              else "No drivers' group is connected yet.", "bad")
+def drivers_group_preview():
+    kind = forms.pick(request.form.get("which"), ["morning", "evening"], "morning")
+    chat = g.session["telegram_chat_id"]
+    truck = pti_driver.one_truck(g.company["id"], forms.integer(request.form.get("truck_id")))
+    if not chat or not truck:
+        flash("Link your Telegram on your account page first." if not chat else "Pick a truck.", "bad")
         return redirect("/company")
-    build = pti_driver.morning if which == "morning" else pti_driver.evening
-    ok = pti_driver.deliver(chat, build(company))
-    audit("company.driver_message_sent", "company", g.company["id"], {"which": which, "to": target, "ok": ok})
-    if ok:
-        flash(f"The {which} PTI message was sent to {'your Telegram' if target == 'me' else company['driver_chat_title'] or 'the group'}.", "ok")
-    else:
-        flash("Telegram did not accept the message. If the bot was removed from the group, connect it again.", "bad")
-    return redirect("/company")
-
-
-@bp.post("/company/drivers-group/disconnect")
-@login_required
-@role_required("admin")
-def drivers_group_disconnect():
-    execute("update companies set driver_chat_id = null, driver_chat_title = null, updated_at = now() where id = %s",
-            (g.company["id"],))
-    audit("company.driver_group_removed", "company", g.company["id"])
-    flash("Drivers' group disconnected. No more PTI messages will go there.", "ok")
+    truck = dict(truck, telegram_chat_id=chat)
+    ok = pti_driver.deliver(truck, kind)
+    flash("Preview sent to your Telegram only." if ok else "Telegram did not accept the message.", "ok" if ok else "bad")
     return redirect("/company")
 
 
