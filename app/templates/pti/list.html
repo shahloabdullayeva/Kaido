@@ -1,0 +1,64 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>PTI</h1><p>Pre- and post-trip inspections. {{ open_count }} report{{ '' if open_count == 1 else 's' }} with defects not signed off.</p></div>
+  {% if at_least(role, 'admin') %}<a class="btn" href="/pti/stickers">Print QR stickers</a>{% endif %}
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Today, {{ day|day }}</h2>
+    <span class="subtle">{{ missing|length }} truck{{ '' if missing|length == 1 else 's' }} moved without a pre-trip</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Driver</th><th class="right">Moved today</th><th>Pre-trip</th><th>Last PTI</th></tr></thead>
+    <tbody>
+      {% for truck in board %}
+      <tr>
+        <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a></td>
+        <td>{{ truck.driver_name or '—' }}</td>
+        <td class="right">{{ truck.moved|number }} mi</td>
+        <td>{% if truck.pre_trips %}<span class="badge ok">done</span>
+            {% elif truck.missing %}<span class="badge bad">missing</span>
+            {% else %}<span class="badge muted">not yet</span>{% endif %}</td>
+        <td>{{ truck.last_at|ago if truck.last_at else 'never' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/pti" class="filters" data-autosubmit>
+      <label class="field"><span>Show</span>
+        <select name="show">
+          <option value="all" {% if show == 'all' %}selected{% endif %}>Every report</option>
+          <option value="defects" {% if show == 'defects' %}selected{% endif %}>With defects</option>
+          <option value="open" {% if show == 'open' %}selected{% endif %}>Defects not signed off</option>
+        </select>
+      </label>
+    </form>
+  </div>
+  {% if items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Type</th><th>Driver</th><th>Result</th><th>Sign-off</th><th>When</th></tr></thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.unit_number or '—' }}</a>
+          {% if item.source == 'samsara' %}<div class="subtle">from Samsara</div>{% endif %}</td>
+        <td>{{ kinds.get(item.kind, 'Inspection') }}</td>
+        <td>{{ item.driver_name or '—' }}</td>
+        <td>{% if not item.defect_count %}<span class="badge ok">no defects</span>
+            {% elif item.safe_to_drive is false %}<span class="badge bad">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, unsafe</span>
+            {% else %}<span class="badge warn">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}</span>{% endif %}</td>
+        <td>{% if not item.defect_count %}—{% elif item.certified_at %}<span class="badge ok">{{ 'repaired' if item.certification == 'repaired' else 'not needed' }}</span>{% else %}<span class="badge bad">open</span>{% endif %}</td>
+        <td>{{ item.submitted_at|stamp }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No PTIs yet. Print the QR stickers and put one in each cab — drivers scan it and fill in the checklist on their phone, no login.</p>
+  {% endif %}
+</section>
+{% endblock %}

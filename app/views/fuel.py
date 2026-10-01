@@ -4,6 +4,7 @@ from .. import forms, fuel_import
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
+from ..logs import get
 from ..tenancy import active_drivers, active_trucks, company_required, role_required
 
 bp = Blueprint("fuel", __name__)
@@ -123,6 +124,7 @@ def import_file():
     try:
         report = fuel_import.run(g.company["id"], g.session["user_id"], upload.filename, upload.read())
     except Exception as err:
+        get("fuel").warning("EFS import of %s failed", upload.filename, exc_info=True)
         flash(f"Could not import that file. {str(err)[:400]}", "bad")
         return redirect("/fuel/import")
     audit("fuel.imported", "fuel_import", None, {"file": upload.filename, "added": report["added"],

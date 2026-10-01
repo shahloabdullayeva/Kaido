@@ -1,16 +1,19 @@
 import re
+from datetime import datetime
 
 from flask import Blueprint, flash, g, jsonify, redirect, render_template, request
 
-from .. import advisor, forms, shops as shop_search, vehicles
+from .. import advisor, forms, google_places, shops as shop_search, vehicles
 from ..work_types import GROUP_LABELS, GROUPS, KIND_LABELS, KINDS, kinds_in
 from ..audit import audit
 from ..auth import login_required
 from ..config import config
 from ..db import execute, insert, one, rows
+from ..logs import get
 from ..tenancy import active_drivers, active_trucks, company_required, role_required
 
 bp = Blueprint("maintenance", __name__)
+log = get("maintenance")
 
 STATUSES = ["scheduled", "in_progress", "done"]
 
@@ -129,6 +132,7 @@ def index():
 @login_required
 @role_required("admin")
 def new():
+    g.google_map = google_places.available()
     return render_template("maintenance/form.html", title="New work order", active="/maintenance",
                            groups=GROUPS, statuses=STATUSES,
                            truck_id=forms.integer(request.args.get("truck_id")), order=None, **form_choices())
@@ -164,21 +168,30 @@ def create():
     odometer = forms.integer(request.form.get("odometer"))
     order = insert(
         """insert into maintenance_orders (company_id, truck_id, driver_id, kind, status, scheduled_for, performed_on,
-             odometer, vendor, invoice_no, cost, description, next_due_on, next_due_odometer, created_by)
-           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
+             odometer, vendor, invoice_no, cost, description, next_due_on, next_due_odometer, created_by,
+             shop_where, shop_lat, shop_lon)
+           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
         (
             g.company["id"], truck_id, driver_id, kind, status,
             forms.day(request.form.get("scheduled_for")), performed_on, odometer,
             forms.text(request.form.get("vendor"), 160), forms.text(request.form.get("invoice_no"), 40),
             forms.decimal(request.form.get("cost")), description,
             forms.day(request.form.get("next_due_on")), forms.integer(request.form.get("next_due_odometer")),
-            g.session["user_id"],
+            g.session["user_id"], *shop_origin_fields(request.form),
         ),
     )
     apply_completion(order, truck)
     audit("maintenance.created", "maintenance_order", order["id"], {"unit": truck["unit_number"], "kind": kind, "status": status})
     flash("Work order saved.", "ok")
     return redirect(f"/maintenance/{order['id']}")
+
+
+def shop_origin_fields(form):
+    """Where the shop search last looked, when someone typed or picked a place instead of Samsara's."""
+    latitude, longitude = forms.decimal(form.get("shop_lat")), forms.decimal(form.get("shop_lon"))
+    if latitude is None or longitude is None or not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        return None, None, None
+    return forms.text(form.get("shop_where"), 160), latitude, longitude
 
 
 def apply_completion(order, truck):
@@ -248,17 +261,25 @@ def detour_for(miles):
 
 def origin_for(truck):
     latitude, longitude = request.args.get("lat"), request.args.get("lon")
+    where = forms.text(request.args.get("where"), 160)
     if latitude and longitude:
         try:
-            return {"latitude": float(latitude), "longitude": float(longitude),
-                    "label": "the spot you picked on the map", "source": "picked"}, None
+            latitude, longitude = float(latitude), float(longitude)
         except ValueError:
             return None, "That point on the map did not make sense."
+        if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+            return None, "That point on the map did not make sense."
+        return {"latitude": latitude, "longitude": longitude,
+                "label": where or "the spot you picked on the map",
+                "source": "typed" if where else "picked"}, None
     asked = (request.args.get("q") or "").strip()
     if asked:
+        if google_places.looks_like_link(asked):
+            return origin_from_link(asked)
         try:
             place = shop_search.geocode(asked)
         except Exception as err:
+            log.warning("geocoding %r failed: %s", asked, err)
             return None, f"Could not look that address up just now ({str(err)[:80]})."
         if not place:
             return None, f"Nothing found for “{asked}”. Try a city and state, or the name of a truck stop."
@@ -269,6 +290,22 @@ def origin_for(truck):
                 "label": truck["location"] or "a position without a street address",
                 "at": truck["located_at"], "source": "samsara"}, None
     return None, None
+
+
+def origin_from_link(link):
+    try:
+        found = google_places.read_link(link)
+        if found["latitude"] is None and found["name"]:
+            place = shop_search.geocode(found["name"])
+            if place:
+                found.update(latitude=place["latitude"], longitude=place["longitude"])
+    except Exception as err:
+        log.warning("reading Google Maps link %r failed: %s", link, err)
+        return None, f"Could not read that Google Maps link ({str(err)[:80]})."
+    if found["latitude"] is None:
+        return None, "That link has no location in it. Open it in Google Maps and copy the link from the address bar."
+    return {"latitude": found["latitude"], "longitude": found["longitude"],
+            "label": found["name"] or "the place in that Google Maps link", "source": "typed"}, None
 
 
 def shop_truck(truck_id):
@@ -284,20 +321,29 @@ def find_shops(truck):
     origin, problem = origin_for(truck)
     if origin is None:
         return origin, [], None, problem
+    latitude, longitude = float(origin["latitude"]), float(origin["longitude"])
     try:
-        found, meta = shop_search.nearby(origin["latitude"], origin["longitude"],
-                                         radius_miles=config.SHOP_RADIUS_MILES)
+        found, meta = shop_search.nearby(latitude, longitude, radius_miles=config.SHOP_RADIUS_MILES)
     except Exception as err:
-        return origin, [], None, f"Could not reach OpenStreetMap just now ({str(err)[:90]})."
+        log.warning("shop search around %.4f,%.4f failed: %s", latitude, longitude, err)
+        found, meta = [], None
+        problem = f"Could not reach the map service just now ({str(err)[:90]})."
+    radius = meta["radius_miles"] if meta else config.SHOP_RADIUS_MILES
+    saved = shop_search.saved_near(g.company["id"], latitude, longitude, max(radius, 100))
+    if saved:
+        now = meta["local_time"] if meta else datetime.now(shop_search.zone_for(longitude))
+        from_google = bool(meta and meta.get("source") == "google")
+        found = shop_search.with_saved(found, saved, latitude, longitude, now,
+                                       details_budget=3 if from_google else 0)
     history = vendor_history(g.company["id"])
     for shop in found:
         shop["history"] = match_history(shop["name"], history)
         shop["detour"] = detour_for(shop["miles"])
         shop["dial"] = shop_search.dial(shop.get("phone"))
-        shop["maps"] = shop_search.maps_link(shop)
+        shop["maps"] = shop.get("maps") or shop_search.maps_link(shop)
         address = shop.get("address") or ""
-        shop["address_complete"] = bool(address[:1].isdigit() and "," in address)
-    return origin, found, meta, None
+        shop["address_complete"] = shop.get("source") == "google" or bool(address[:1].isdigit() and "," in address)
+    return origin, found, meta, problem
 
 
 def fleet_oil_average():
@@ -318,7 +364,10 @@ def shops(truck_id):
         return render_template("errors/404.html"), 404
     origin, found, meta, problem = find_shops(truck)
     return render_template("maintenance/_shops.html", truck=truck, found=found, meta=meta,
-                           origin=origin, query=(request.args.get("q") or "").strip(),
+                           origin=origin, query=(request.args.get("q") or request.args.get("where") or "").strip(),
+                           google_key=config.GOOGLE_MAPS_BROWSER_KEY if meta and meta.get("source") == "google" else "",
+                           saved_count=one("select count(*) as n from saved_shops where company_id = %s",
+                                           (g.company["id"],))["n"],
                            fleet_average=fleet_oil_average(), ai_on=advisor.available(),
                            ai_paused=advisor.over_budget(), problem=problem)
 
@@ -355,7 +404,8 @@ def shop_address():
         return jsonify({"address": None}), 400
     try:
         address = shop_search.reverse(latitude, longitude)
-    except Exception:
+    except Exception as err:
+        log.warning("reverse lookup %.5f,%.5f failed: %s", latitude, longitude, err)
         address = None
     name = forms.text(request.args.get("name"), 160) or ""
     maps = shop_search.maps_link({"name": name, "address": address, "latitude": latitude, "longitude": longitude})
@@ -388,6 +438,7 @@ def detail(order_id):
     )
     if not order:
         return render_template("errors/404.html"), 404
+    g.google_map = google_places.available()
     return render_template("maintenance/form.html", title=f"Work order #{order['id']}", active="/maintenance",
                            groups=GROUPS, statuses=STATUSES,
                            order=order, truck_id=order["truck_id"], **form_choices())
@@ -410,7 +461,8 @@ def update(order_id):
     updated = insert(
         """update maintenance_orders set driver_id = %s, kind = %s, status = %s, scheduled_for = %s, performed_on = %s,
              odometer = %s, vendor = %s, invoice_no = %s, cost = %s, description = %s,
-             next_due_on = %s, next_due_odometer = %s, updated_at = now()
+             next_due_on = %s, next_due_odometer = %s, shop_where = %s, shop_lat = %s, shop_lon = %s,
+             updated_at = now()
            where id = %s and company_id = %s returning *""",
         (
             driver_id,
@@ -420,10 +472,113 @@ def update(order_id):
             forms.text(request.form.get("invoice_no"), 40), forms.decimal(request.form.get("cost")),
             forms.required(request.form.get("description"), 2000),
             forms.day(request.form.get("next_due_on")), forms.integer(request.form.get("next_due_odometer")),
-            order_id, g.company["id"],
+            *shop_origin_fields(request.form), order_id, g.company["id"],
         ),
     )
     apply_completion(updated, truck)
     audit("maintenance.updated", "maintenance_order", order_id, {"status": status})
     flash("Work order updated.", "ok")
     return redirect(f"/maintenance/{order_id}")
+
+
+@bp.get("/maintenance/saved-shops")
+@login_required
+@company_required
+def saved_shops():
+    shops = rows(
+        """select s.*, u.name as added_by_name from saved_shops s
+           left join users u on u.id = s.added_by
+           where s.company_id = %s order by s.name""",
+        (g.company["id"],),
+    )
+    return render_template("maintenance/saved_shops.html", title="Saved shops", active="/maintenance",
+                           shops=shops, google_on=google_places.available())
+
+
+def save_shop(link=None, name=None, address=None, phone=None, note=None):
+    """Store one shop from a Google Maps link or a name and address. Returns (row, problem)."""
+    found = {"name": name, "latitude": None, "longitude": None, "place_id": None, "url": None}
+    if link:
+        try:
+            found.update({key: value for key, value in google_places.read_link(link).items() if value})
+        except Exception as err:
+            log.warning("reading saved-shop link %r failed: %s", link, err)
+            return None, f"{link[:60]} — could not read it ({str(err)[:80]})."
+    if found["latitude"] is None:
+        lookup = address or found["name"]
+        if not lookup:
+            return None, f"{(link or '')[:60]} — no location in the link. Copy it from the Google Maps address bar."
+        try:
+            place = shop_search.geocode(lookup)
+        except Exception as err:
+            return None, f"{lookup[:60]} — could not look it up ({str(err)[:80]})."
+        if not place:
+            return None, f"{lookup[:60]} — nothing found at that address."
+        found.update(latitude=place["latitude"], longitude=place["longitude"])
+        address = address or place["label"]
+    name = forms.text(name, 160) or forms.text(found["name"], 160)
+    if not address:
+        try:
+            address = shop_search.reverse(found["latitude"], found["longitude"])
+        except Exception as err:
+            log.warning("reverse lookup for saved shop failed: %s", err)
+    if not name:
+        name = address or "Saved shop"
+    if not found["place_id"] and google_places.available():
+        try:
+            match = google_places.place_id_near(name, found["latitude"], found["longitude"])
+            found["place_id"] = match and match.get("id")
+        except google_places.GoogleError as err:
+            log.warning("place id lookup for %r failed: %s", name, err)
+    row = insert(
+        """insert into saved_shops (company_id, name, address, latitude, longitude, phone, maps_url, place_id,
+             source_url, note, added_by)
+           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
+        (g.company["id"], name, forms.text(address, 300), found["latitude"], found["longitude"],
+         forms.text(phone, 40), found["url"], found["place_id"], forms.text(link, 1000),
+         forms.text(note, 300), g.session["user_id"]),
+    )
+    audit("saved_shop.added", "saved_shop", row["id"], {"name": name})
+    return row, None
+
+
+@bp.post("/maintenance/saved-shops")
+@login_required
+@role_required("admin")
+def add_saved_shops():
+    links = [line.strip() for line in (request.form.get("links") or "").splitlines() if line.strip()][:40]
+    name, address = forms.text(request.form.get("name"), 160), forms.text(request.form.get("address"), 300)
+    note, phone = request.form.get("note"), request.form.get("phone")
+    results = [save_shop(link=link, note=note) for link in links]
+    if name or address:
+        results.append(save_shop(name=name, address=address, phone=phone, note=note))
+    added = [row["name"] for row, _problem in results if row]
+    problems = [problem for row, problem in results if not row]
+    if not links and not (name or address):
+        flash("Paste a Google Maps link, or type a name and address.", "bad")
+    if added:
+        flash(f"Saved {len(added)}: {', '.join(added)[:300]}", "ok")
+    for problem in problems:
+        flash(problem, "bad")
+    return redirect("/maintenance/saved-shops")
+
+
+@bp.post("/maintenance/saved-shops/<int:shop_id>")
+@login_required
+@role_required("admin")
+def edit_saved_shop(shop_id):
+    shop = one("select * from saved_shops where id = %s and company_id = %s", (shop_id, g.company["id"]))
+    if not shop:
+        return render_template("errors/404.html"), 404
+    if request.form.get("delete"):
+        execute("delete from saved_shops where id = %s and company_id = %s", (shop_id, g.company["id"]))
+        audit("saved_shop.deleted", "saved_shop", shop_id, {"name": shop["name"]})
+        flash(f"Removed {shop['name']}.", "ok")
+        return redirect("/maintenance/saved-shops")
+    execute(
+        "update saved_shops set name = %s, phone = %s, note = %s where id = %s and company_id = %s",
+        (forms.text(request.form.get("name"), 160) or shop["name"], forms.text(request.form.get("phone"), 40),
+         forms.text(request.form.get("note"), 300), shop_id, g.company["id"]),
+    )
+    flash("Saved.", "ok")
+    return redirect("/maintenance/saved-shops")

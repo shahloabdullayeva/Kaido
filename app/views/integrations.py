@@ -92,11 +92,13 @@ def samsara_import():
         return redirect("/integrations")
     audit("integration.vehicles_imported", "integration", "samsara", result)
     if result["created"] or result["matched"]:
+        synced = sync_company(g.company["id"])
         flash(
             f"Created {result['created']} trucks from Samsara"
             + (f", matched {result['matched']} to trucks already here" if result["matched"] else "")
-            + ". Run a sync to pull their odometer and faults.",
-            "ok",
+            + (f". Pulled mileage for {synced['odometer']} and positions for {synced['positions']}."
+               if synced["status"] == "ok" else f". The first sync failed: {synced.get('error')}"),
+            "ok" if synced["status"] == "ok" else "bad",
         )
     else:
         flash("Every Samsara vehicle is already linked to a truck.", "info")

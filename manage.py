@@ -103,6 +103,18 @@ def cmd_sync(args):
     return 0
 
 
+def cmd_google_usage(args):
+    from app import google_places
+    from app.config import config
+    if not google_places.available():
+        print("GOOGLE_MAPS_API_KEY is not set — shop search uses OpenStreetMap.")
+    print(f"Today: {google_places.calls_today()} of {config.GOOGLE_DAILY_CALLS} calls allowed")
+    print("This month:")
+    for item in google_places.month_usage():
+        print(f"  {item['sku']:<24} {item['used']:>6} used, {item['free']:>6} free, est. ${item['cost']:.2f}")
+    return 0
+
+
 def cmd_ai_spend(args):
     from app.advisor import MODEL, spent_today, spent_total
     from app.config import config
@@ -155,14 +167,26 @@ def cmd_followup(args):
 
 
 def cmd_telegram(args):
-    from app.telegram import enabled, get_updates, send
+    import time
+    from app.logs import get
+    from app.telegram import TelegramDown, enabled, get_updates, send
+    log = get("telegram-bot")
     if not enabled():
         print("TELEGRAM_BOT_TOKEN is not set in .env")
         return 1
     offset = None
     print("Listening for /link codes. Ctrl-C to stop.")
+    failures = 0
     while True:
-        updates = get_updates(offset)
+        try:
+            updates = get_updates(offset)
+            failures = 0
+        except TelegramDown as err:
+            failures += 1
+            if failures in (1, 10) or failures % 100 == 0:
+                log.warning("Telegram unreachable (%s in a row): %s", failures, err)
+            time.sleep(min(60, 5 * failures))
+            continue
         for update in updates:
             offset = update["update_id"] + 1
             message = update.get("message") or {}
@@ -300,6 +324,8 @@ def main():
     sync.add_argument("--all", action="store_true")
     sync.set_defaults(func=cmd_sync)
 
+    sub.add_parser("google-usage", help="Google Maps calls today and this month").set_defaults(func=cmd_google_usage)
+
     spend = sub.add_parser("ai-spend", help="what the AI notes have cost so far")
     spend.add_argument("--days", type=int, default=14)
     spend.add_argument("--credit", type=float, default=5.0)
@@ -317,7 +343,16 @@ def main():
     demo.set_defaults(func=cmd_demo)
 
     args = parser.parse_args()
-    sys.exit(args.func(args) or 0)
+    from app import logs
+    logs.setup(args.command)
+    try:
+        code = args.func(args) or 0
+    except KeyboardInterrupt:
+        code = 130
+    except Exception:
+        logs.get("manage").exception("manage.py %s failed", " ".join(sys.argv[1:]))
+        code = 1
+    sys.exit(code)
 
 
 if __name__ == "__main__":

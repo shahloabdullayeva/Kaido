@@ -1,12 +1,12 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms, sheets
+from .. import forms, pti, sheets
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
 from ..queries import attach_last_services, company_intervals, fuel_economy, service_status
 from ..work_types import BASELINE_KINDS, SCHEDULES, SEVERE_FACTOR, label as work_label
-from ..tenancy import active_drivers, company_required, role_required, scoped_truck
+from ..tenancy import active_drivers, at_least, company_required, role_required, scoped_truck
 
 bp = Blueprint("trucks", __name__)
 
@@ -276,11 +276,13 @@ def detail(truck_id):
     faults = rows("select * from fault_events where truck_id = %s order by last_seen_at desc limit 10", (truck_id,))
     breakdowns = rows("select * from breakdowns where truck_id = %s order by occurred_at desc limit 10", (truck_id,))
     link = one("select * from vehicle_links where truck_id = %s", (truck_id,))
+    inspections = rows("select * from inspections where truck_id = %s order by submitted_at desc limit 8", (truck_id,))
+    pti_link = pti.link_for(pti.ensure_token(truck)) if at_least(g.role, "admin") else None
     return render_template(
         "trucks/detail.html", title=f"Unit {truck['unit_number']}", active="/trucks",
         truck=truck, statuses=service_status(enriched), history=history, fuel=fuel,
         faults=faults, breakdowns=breakdowns, economy=fuel_economy(truck_id), link=link,
-        last_oil=last_oil,
+        last_oil=last_oil, inspections=inspections, pti_link=pti_link, pti_kinds=pti.KINDS,
     )
 
 

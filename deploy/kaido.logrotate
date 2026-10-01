@@ -1,0 +1,8 @@
+/root/kaido/logs/errors.log /root/kaido/sync.log /root/kaido/followup.log /root/kaido/backup.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+}

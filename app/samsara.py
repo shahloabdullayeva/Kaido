@@ -88,18 +88,11 @@ class SamsaraClient:
         pagination = payload.get("pagination") or {}
         return payload.get("data") or [], pagination.get("endCursor")
 
-    def defects(self, updated_after=None):
-        params = {}
-        if updated_after:
-            params["updatedAfterTime"] = updated_after
-        for path in ("/fleet/defects/stream", "/fleet/defects"):
-            try:
-                return self.paginate(path, params, limit_pages=5)
-            except SamsaraError as err:
-                if "404" in str(err):
-                    continue
-                raise
-        return []
+    def defects(self, start_time):
+        return self.paginate("/defects/stream", {"startTime": start_time, "limit": 200}, limit_pages=10)
+
+    def dvirs(self, start_time):
+        return self.paginate("/dvirs/stream", {"startTime": start_time, "limit": 200}, limit_pages=10)
 
 
 def meters_to_miles(meters):

@@ -100,13 +100,33 @@ const loadOil = async () => {
 let map = null;
 let markers = [];
 let searchRun = 0;
+let lastParams = {};
 const progressHost = document.getElementById('shop-progress');
+const form = trucks ? trucks.form : null;
+const savedField = (name) => (form ? form.querySelector('input[name=' + name + ']') : null);
 
 const setStatus = (text) => { if (status) status.textContent = text || ''; };
 
 const unitLabel = () => {
   const option = trucks.selectedOptions[0];
   return option && option.value ? option.textContent.trim() : '';
+};
+
+// Where the last search looked, saved with the work order so reopening it looks there again.
+const remembered = () => {
+  const lat = savedField('shop_lat');
+  const lon = savedField('shop_lon');
+  if (!lat || !lon || !lat.value || !lon.value) return null;
+  const where = savedField('shop_where');
+  return { lat: lat.value, lon: lon.value, where: where ? where.value : '' };
+};
+
+const remember = (place) => {
+  const fields = { shop_lat: place ? place.lat : '', shop_lon: place ? place.lon : '', shop_where: place ? place.where : '' };
+  for (const [name, value] of Object.entries(fields)) {
+    const input = savedField(name);
+    if (input) input.value = value || '';
+  }
 };
 
 const dropMap = () => {
@@ -121,15 +141,36 @@ const askFirst = () => {
   body.textContent = '';
   const wrap = document.createElement('div');
   wrap.className = 'pad';
+  const row = document.createElement('div');
+  row.className = 'shop-where';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.maxLength = 1000;
+  input.placeholder = 'Address, city and state, truck stop, or a Google Maps link — empty for the Samsara position';
+  const saved = remembered();
+  if (saved) input.value = saved.where || '';
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'btn ghost';
-  button.textContent = 'Find a shop for ' + unitLabel();
-  button.addEventListener('click', () => load(trucks.value));
+  button.className = 'btn';
+  button.textContent = 'Find shops for ' + unitLabel();
+  const go = () => {
+    const asked = input.value.trim();
+    const place = remembered();
+    if (!asked) load(trucks.value, {});
+    else if (place && asked === place.where) load(trucks.value, place);
+    else load(trucks.value, { q: asked });
+  };
+  button.addEventListener('click', go);
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); go(); }
+  });
+  row.append(input, button);
   const note = document.createElement('p');
   note.className = 'subtle';
-  note.textContent = 'Starts from the last position Samsara reported. If there is none, type where the truck is.';
-  wrap.append(button, note);
+  note.textContent = saved
+    ? 'This work order last looked near the place above. Clear the box to start from the Samsara position.'
+    : 'Leave the box empty to start from the last position Samsara reported, or type where the truck is.';
+  wrap.append(row, note);
   body.append(wrap);
   panel.hidden = false;
 };
@@ -143,16 +184,18 @@ const failed = (message) => {
   again.type = 'button';
   again.className = 'btn ghost small';
   again.textContent = 'Try again';
-  again.addEventListener('click', () => load(trucks.value));
+  const params = lastParams;
+  again.addEventListener('click', () => load(trucks.value, params));
   const wrap = document.createElement('div');
   wrap.className = 'pad';
   wrap.append(again);
   body.append(line, wrap);
 };
 
-const pinStyle = (state) => {
-  if (state === 'open') return { color: '#006600', fillColor: '#66aa66' };
-  if (state === 'closed') return { color: '#cc0000', fillColor: '#dd8888' };
+const pinStyle = (pin) => {
+  if (pin.saved) return { color: '#1d4ed8', fillColor: '#60a5fa' };
+  if (pin.open === 'open') return { color: '#006600', fillColor: '#66aa66' };
+  if (pin.open === 'closed') return { color: '#cc0000', fillColor: '#dd8888' };
   return { color: '#996600', fillColor: '#ccaa66' };
 };
 
@@ -160,7 +203,7 @@ const popupFor = (pin) => {
   const box = document.createElement('div');
   box.className = 'shop-popup';
   const name = document.createElement('strong');
-  name.textContent = pin.name;
+  name.textContent = pin.name + (pin.saved ? ' (saved)' : '');
   const facts = document.createElement('div');
   facts.textContent = pin.miles + ' mi' + (pin.hours ? ' · ' + pin.hours : '');
   const where = document.createElement('div');
@@ -189,13 +232,112 @@ const popupFor = (pin) => {
   return box;
 };
 
-const highlight = (index) => {
-  markers.forEach((entry, i) => {
-    if (!entry) return;
-    entry.marker.setRadius(i === index ? 12 : 6);
-    entry.marker.setStyle({ weight: i === index ? 4 : 2 });
-    if (i === index) entry.marker.bringToFront();
+// Two map engines behind one shape: Leaflet with OpenStreetMap tiles, or Google Maps when the
+// shops came from Google (Google's terms require its places to be shown on a Google map).
+const leafletMap = (node) => {
+  const view = L.map(node, { scrollWheelZoom: false });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    referrerPolicy: 'strict-origin-when-cross-origin',
+  }).addTo(view);
+  return {
+    addOrigin(lat, lon, label) { L.marker([lat, lon]).addTo(view).bindPopup(label); },
+    addPin(pin, onClick) {
+      const marker = L.circleMarker([pin.lat, pin.lon], {
+        radius: pin.saved ? 8 : 6, weight: 2, fillOpacity: 0.85, ...pinStyle(pin),
+      }).addTo(view);
+      marker.bindPopup(() => popupFor(pin));
+      marker.on('click', onClick);
+      return {
+        setActive(on) {
+          marker.setRadius(on ? 12 : (pin.saved ? 8 : 6));
+          marker.setStyle({ weight: on ? 4 : 2 });
+          if (on) marker.bringToFront();
+        },
+        openPopup() { marker.setPopupContent(popupFor(pin)); marker.openPopup(); },
+        refresh() { if (marker.isPopupOpen()) marker.setPopupContent(popupFor(pin)); },
+      };
+    },
+    fit(points) { view.fitBounds(points, { padding: [24, 24], maxZoom: 11 }); },
+    overview() { view.setView([39.5, -98.35], 4); },
+    focus(lat, lon, then) {
+      view.flyTo([lat, lon], 15, { duration: 0.6 });
+      view.once('moveend', then);
+    },
+    onClick(handler) { view.on('click', (event) => handler(event.latlng.lat, event.latlng.lng)); },
+    remove() { view.remove(); },
+  };
+};
+
+let googleReady = null;
+const loadGoogle = (key) => {
+  if (!googleReady) {
+    googleReady = new Promise((resolve, reject) => {
+      window.kaidoMapsReady = resolve;
+      const script = document.createElement('script');
+      script.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(key)
+        + '&loading=async&callback=kaidoMapsReady&v=weekly';
+      script.async = true;
+      script.onerror = () => { googleReady = null; reject(new Error('Google Maps did not load')); };
+      document.head.append(script);
+    });
+  }
+  return googleReady;
+};
+
+const googleMap = async (node, key) => {
+  await loadGoogle(key);
+  const { Map, InfoWindow } = await google.maps.importLibrary('maps');
+  const { Marker } = await google.maps.importLibrary('marker');
+  const view = new Map(node, {
+    center: { lat: 39.5, lng: -98.35 }, zoom: 4, gestureHandling: 'cooperative',
+    clickableIcons: false, mapTypeControl: false, streetViewControl: false,
   });
+  const info = new InfoWindow();
+  let showing = null;
+  info.addListener('closeclick', () => { showing = null; });
+  const dot = (pin, on) => {
+    const style = pinStyle(pin);
+    return {
+      path: google.maps.SymbolPath.CIRCLE, scale: on ? 11 : (pin.saved ? 8 : 6),
+      fillColor: style.fillColor, fillOpacity: 0.9, strokeColor: style.color, strokeWeight: on ? 4 : 2,
+    };
+  };
+  return {
+    addOrigin(lat, lon, label) {
+      const marker = new Marker({ position: { lat, lng: lon }, map: view, title: label, zIndex: 1000 });
+      marker.addListener('click', () => { showing = null; info.setContent(label); info.open({ anchor: marker, map: view }); });
+    },
+    addPin(pin, onClick) {
+      const marker = new Marker({ position: { lat: pin.lat, lng: pin.lon }, map: view, icon: dot(pin, false), title: pin.name });
+      const handle = {
+        setActive(on) { marker.setIcon(dot(pin, on)); marker.setZIndex(on ? 999 : null); },
+        openPopup() { showing = handle; info.setContent(popupFor(pin)); info.open({ anchor: marker, map: view }); },
+        refresh() { if (showing === handle) info.setContent(popupFor(pin)); },
+      };
+      marker.addListener('click', () => { onClick(); handle.openPopup(); });
+      return handle;
+    },
+    fit(points) {
+      const bounds = new google.maps.LatLngBounds();
+      points.forEach(([lat, lon]) => bounds.extend({ lat, lng: lon }));
+      view.fitBounds(bounds, 24);
+      google.maps.event.addListenerOnce(view, 'idle', () => { if (view.getZoom() > 11) view.setZoom(11); });
+    },
+    overview() {},
+    focus(lat, lon, then) {
+      view.panTo({ lat, lng: lon });
+      view.setZoom(15);
+      google.maps.event.addListenerOnce(view, 'idle', then);
+    },
+    onClick(handler) { view.addListener('click', (event) => handler(event.latLng.lat(), event.latLng.lng())); },
+    remove() { node.textContent = ''; },
+  };
+};
+
+const highlight = (index) => {
+  markers.forEach((entry, i) => { if (entry) entry.handle.setActive(i === index); });
   for (const row of body.querySelectorAll('.shop-list li')) {
     row.classList.toggle('active', Number(row.dataset.shop) - 1 === index);
   }
@@ -205,47 +347,56 @@ const showShop = (index) => {
   const entry = markers[index];
   if (!map || !entry) return;
   highlight(index);
-  entry.marker.setPopupContent(popupFor(entry.pin));
-  map.flyTo([entry.pin.lat, entry.pin.lon], 15, { duration: 0.6 });
-  map.once('moveend', () => entry.marker.openPopup());
+  map.focus(entry.pin.lat, entry.pin.lon, () => entry.handle.openPopup());
   document.getElementById('shop-map').scrollIntoView({ block: 'center', behavior: 'smooth' });
 };
 
-const drawMap = () => {
+const drawMap = async (run) => {
   const node = document.getElementById('shop-map');
-  if (!node || typeof L === 'undefined') return;
+  if (!node) return;
+  let view = null;
+  if (node.dataset.map === 'google' && node.dataset.key) {
+    try {
+      view = await googleMap(node, node.dataset.key);
+    } catch (err) {
+      node.textContent = 'The Google map did not load (' + err.message + '). The list below still works.';
+      node.classList.add('empty');
+      return;
+    }
+  } else if (typeof L !== 'undefined') {
+    view = leafletMap(node);
+  }
+  if (!view) return;
+  if (run !== searchRun) { view.remove(); return; }
+  map = view;
   const lat = parseFloat(node.dataset.lat);
   const lon = parseFloat(node.dataset.lon);
-  const placed = isFinite(lat) && isFinite(lon);
-  map = L.map(node, { scrollWheelZoom: false });
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    referrerPolicy: 'strict-origin-when-cross-origin',
-  }).addTo(map);
-  if (placed) {
-    const bounds = [[lat, lon]];
-    L.marker([lat, lon]).addTo(map).bindPopup(node.dataset.label || 'Here');
+  if (isFinite(lat) && isFinite(lon)) {
+    const points = [[lat, lon]];
+    map.addOrigin(lat, lon, node.dataset.label || 'Here');
     let pins = [];
     try { pins = JSON.parse(node.dataset.shops || '[]'); } catch (err) { pins = []; }
     pins.forEach((pin, index) => {
-      const marker = L.circleMarker([pin.lat, pin.lon], {
-        radius: 6, weight: 2, fillOpacity: 0.85, ...pinStyle(pin.open),
-      }).addTo(map);
-      marker.bindPopup(() => popupFor(pin));
-      marker.on('click', () => highlight(index));
-      markers[index] = { marker, pin };
-      bounds.push([pin.lat, pin.lon]);
+      markers[index] = { pin, handle: map.addPin(pin, () => highlight(index)) };
+      points.push([pin.lat, pin.lon]);
     });
-    map.fitBounds(bounds, { padding: [24, 24], maxZoom: 11 });
+    map.fit(points);
   } else {
-    map.setView([39.5, -98.35], 4);
+    map.overview();
   }
-  map.on('click', (event) => {
-    load(trucks.value, {
-      lat: event.latlng.lat.toFixed(5),
-      lon: event.latlng.lng.toFixed(5),
-    });
+  map.onClick((pickedLat, pickedLon) => {
+    load(trucks.value, { lat: pickedLat.toFixed(5), lon: pickedLon.toFixed(5) });
+  });
+};
+
+const rememberOrigin = () => {
+  const node = document.getElementById('shop-map');
+  if (!node || !node.dataset.kind) return;
+  if (node.dataset.kind === 'samsara') { remember(null); return; }
+  remember({
+    lat: Number(node.dataset.lat).toFixed(5),
+    lon: Number(node.dataset.lon).toFixed(5),
+    where: node.dataset.where || '',
   });
 };
 
@@ -265,6 +416,8 @@ const wireVendorPicks = () => {
 };
 
 const wireSearch = () => {
+  const home = body.querySelector('[data-shop-samsara]');
+  if (home) home.addEventListener('click', () => load(trucks.value, {}));
   const input = body.querySelector('#shop-where');
   const button = body.querySelector('[data-shop-search]');
   if (!input || !button) return;
@@ -320,7 +473,7 @@ const fillAddress = (row, data) => {
   if (entry) {
     if (data.address) entry.pin.address = data.address;
     if (data.maps) entry.pin.maps = data.maps;
-    if (entry.marker.isPopupOpen()) entry.marker.setPopupContent(popupFor(entry.pin));
+    entry.handle.refresh();
   }
 };
 
@@ -363,12 +516,14 @@ const followUp = async (run, truckId, query, meter) => {
 
 const load = async (truckId, params) => {
   if (!truckId) return;
+  if (params === undefined) params = remembered() || {};
+  lastParams = params;
   const run = ++searchRun;
   dropMap();
   setStatus('');
   body.textContent = '';
   const meter = progressHost ? progressBar(progressHost) : { stage() {}, finish() {}, stop() {} };
-  meter.stage(0, 48, 'Asking OpenStreetMap what is nearby');
+  meter.stage(0, 48, 'Looking up what is nearby');
   const query = new URLSearchParams(params || {}).toString();
   let markup = '';
   try {
@@ -386,9 +541,10 @@ const load = async (truckId, params) => {
   }
   if (run !== searchRun) { meter.stop(); return; }
   body.innerHTML = markup;
-  drawMap();
+  rememberOrigin();
   wireVendorPicks();
   wireSearch();
+  drawMap(run);
   followUp(run, truckId, query, meter);
 };
 
@@ -398,7 +554,7 @@ const refreshShops = () => {
 };
 
 if (panel && body && trucks) {
-  trucks.addEventListener('change', () => { refreshShops(); loadOil(); });
+  trucks.addEventListener('change', () => { remember(null); refreshShops(); loadOil(); });
   if (kindSelect) {
     kindSelect.addEventListener('change', () => {
       loadOil();

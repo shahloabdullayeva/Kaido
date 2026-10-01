@@ -7,7 +7,11 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from .db import cursor, execute, one
+from . import google_places
+from .db import cursor, execute, one, rows
+from .logs import get
+
+log = get("shops")
 
 class OverpassBusy(Exception):
     pass
@@ -19,6 +23,10 @@ NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 USER_AGENT = "Kaido/1.0 fleet maintenance (+https://kaido.shahlo.blog)"
 CACHE_DAYS = 7
 GEOCODE_DAYS = 90
+# Google's terms allow only brief caching of Places content (coordinates up to 30 days).
+GOOGLE_CACHE_HOURS = 1
+GOOGLE_GEOCODE_DAYS = 30
+GOOGLE_QUERIES = ("semi truck repair shop", "truck stop")
 EARTH_MILES = 3958.7613
 
 QUERY = """[out:json][timeout:50];
@@ -224,6 +232,34 @@ def geocode(text):
     cleaned = " ".join((text or "").split())[:160]
     if not cleaned:
         return None
+    if google_places.usable():
+        try:
+            return _google_geocode(cleaned)
+        except google_places.GoogleError as err:
+            log.warning("Google geocoding failed for %r, using OpenStreetMap: %s", cleaned, err)
+    return _nominatim_geocode(cleaned)
+
+
+def _google_geocode(cleaned):
+    key = "google:" + cleaned.lower()
+    row = one(
+        "select lat, lon, label from geocodes where query = %s and fetched_at > now() - make_interval(days => %s)",
+        (key, GOOGLE_GEOCODE_DAYS),
+    )
+    if row:
+        return {"latitude": float(row["lat"]), "longitude": float(row["lon"]), "label": row["label"]}
+    place = google_places.geocode(cleaned)
+    if place:
+        execute(
+            """insert into geocodes (query, lat, lon, label, fetched_at) values (%s, %s, %s, %s, now())
+               on conflict (query) do update set lat = excluded.lat, lon = excluded.lon,
+                 label = excluded.label, fetched_at = now()""",
+            (key, place["latitude"], place["longitude"], place["label"]),
+        )
+    return place
+
+
+def _nominatim_geocode(cleaned):
     key = cleaned.lower()
     row = one(
         "select lat, lon, label from geocodes where query = %s and fetched_at > now() - make_interval(days => %s)",
@@ -325,16 +361,184 @@ def _truck_fit(tags, name):
 
 
 def nearby(latitude, longitude, radius_miles=50, limit=8, min_confirmed=3):
+    """Shops around a point: from Google when it is set up and under today's cap, else OpenStreetMap."""
+    if google_places.usable():
+        try:
+            return _nearby_google(latitude, longitude, radius_miles, limit)
+        except google_places.GoogleError as err:
+            log.warning("Google shop search failed, using OpenStreetMap: %s", err)
+    return _nearby_osm(latitude, longitude, radius_miles, limit, min_confirmed)
+
+
+def _nearby_osm(latitude, longitude, radius_miles, limit, min_confirmed):
     shops, meta = _collect(latitude, longitude, radius_miles, limit)
     confirmed = [s for s in shops if s["truck_fit"] == "yes"]
     if len(confirmed) < min_confirmed and radius_miles < 100:
         try:
             wider, wider_meta = _collect(latitude, longitude, 100, limit)
-        except (OverpassBusy, requests.RequestException):
+        except (OverpassBusy, requests.RequestException) as err:
+            log.warning("Overpass failed widening to 100 mi: %s", err)
             return shops[:limit], meta
         if len(wider) > len(shops):
             shops, meta = wider, wider_meta
     return shops[:limit], meta
+
+
+def _google_places(latitude, longitude, radius_m):
+    cell = "g:" + _cell(latitude, longitude)
+    fresh = one(
+        "select payload from shop_lookups where cell = %s and radius_m = %s and fetched_at > now() - make_interval(hours => %s)",
+        (cell, radius_m, GOOGLE_CACHE_HOURS),
+    )
+    if fresh:
+        return fresh["payload"], True
+    places, seen = [], set()
+    for query in GOOGLE_QUERIES:
+        for place in google_places.search_shops(query, latitude, longitude, radius_m):
+            if place.get("id") in seen:
+                continue
+            seen.add(place.get("id"))
+            place["_query"] = query
+            places.append(place)
+    execute(
+        """insert into shop_lookups (cell, radius_m, payload, fetched_at) values (%s, %s, %s, now())
+           on conflict (cell, radius_m) do update set payload = excluded.payload, fetched_at = now()""",
+        (cell, radius_m, json.dumps(places)),
+    )
+    return places, False
+
+
+def from_google(place, latitude, longitude, now):
+    where = place.get("location") or {}
+    lat, lon = where.get("latitude"), where.get("longitude")
+    name = (place.get("displayName") or {}).get("text")
+    if lat is None or lon is None or not name:
+        return None
+    if place.get("businessStatus") in ("CLOSED_PERMANENTLY", "CLOSED_TEMPORARILY"):
+        return None
+    types = set(place.get("types") or [])
+    kind = "truck_stop" if "truck_stop" in types else place.get("primaryType") or "shop"
+    fit = "yes" if "truck_stop" in types else _truck_fit({}, name)
+    state, hours_text = google_places.open_state(place.get("regularOpeningHours"), now)
+    hours = place.get("regularOpeningHours") or {}
+    return {
+        "name": name,
+        "brand": _brand(name),
+        "truck_fit": fit,
+        "kind": kind,
+        "latitude": lat,
+        "longitude": lon,
+        "miles": round(haversine(latitude, longitude, lat, lon), 1),
+        "address": _short_address(place.get("formattedAddress")),
+        "phone": place.get("nationalPhoneNumber") or place.get("internationalPhoneNumber"),
+        "website": place.get("websiteUri"),
+        "opening_hours": None,
+        "hours_lines": hours.get("weekdayDescriptions") or [],
+        "open_state": state,
+        "hours_text": hours_text,
+        "rating": place.get("rating"),
+        "ratings": place.get("userRatingCount"),
+        "maps": place.get("googleMapsUri"),
+        "place_id": place.get("id"),
+        "source": "google",
+    }
+
+
+def _short_address(text):
+    if not text:
+        return None
+    return re.sub(r",\s*(USA|United States|Canada|Mexico)$", "", text)
+
+
+def _nearby_google(latitude, longitude, radius_miles, limit):
+    radius_m = int(radius_miles * 1609.344)
+    places, from_cache = _google_places(latitude, longitude, radius_m)
+    zone = zone_for(float(longitude))
+    now = datetime.now(zone)
+    shops = [shop for shop in (from_google(place, latitude, longitude, now) for place in places) if shop]
+    shops = [shop for shop in shops if shop["miles"] <= radius_miles * 1.05]
+    shops.sort(key=lambda s: (s["truck_fit"] != "yes", s["open_state"] == "closed", s["miles"]))
+    return shops[:limit], {"local_time": now, "zone": str(zone), "cached": from_cache, "found": len(shops),
+                           "radius_miles": radius_miles, "source": "google"}
+
+
+# ---------------------------------------------------------------- saved shops
+
+def saved_near(company_id, latitude, longitude, radius_miles):
+    found = []
+    for row in rows("""select s.*, u.name as added_by_name from saved_shops s
+                       left join users u on u.id = s.added_by where s.company_id = %s""", (company_id,)):
+        miles = haversine(latitude, longitude, row["latitude"], row["longitude"])
+        if miles <= radius_miles:
+            found.append(dict(row, miles=round(miles, 1)))
+    return sorted(found, key=lambda row: row["miles"])
+
+
+def _words(text):
+    return {word for word in re.findall(r"[a-z0-9]+", (text or "").lower()) if len(word) > 2}
+
+
+def _same_place(saved, shop):
+    apart = haversine(saved["latitude"], saved["longitude"], shop["latitude"], shop["longitude"])
+    if saved.get("place_id") and saved["place_id"] == shop.get("place_id"):
+        return apart < 1
+    if apart > 0.2:
+        return False
+    return apart < 0.03 or bool(_words(saved["name"]) & _words(shop["name"]))
+
+
+def _google_details(saved, latitude, longitude, now):
+    """Live phone and hours for a saved shop the area search did not return."""
+    cell = "gd:" + (saved.get("place_id") or f"{saved['latitude']},{saved['longitude']}")
+    cached = one("select payload from shop_lookups where cell = %s and radius_m = 0 "
+                 "and fetched_at > now() - make_interval(hours => %s)", (cell, GOOGLE_CACHE_HOURS))
+    if cached:
+        place = cached["payload"]
+    else:
+        place = google_places.shop_details(saved["name"], saved["latitude"], saved["longitude"]) or {}
+        execute(
+            """insert into shop_lookups (cell, radius_m, payload, fetched_at) values (%s, 0, %s, now())
+               on conflict (cell, radius_m) do update set payload = excluded.payload, fetched_at = now()""",
+            (cell, json.dumps(place)),
+        )
+    shop = from_google(place, latitude, longitude, now) if place else None
+    return shop if shop and _same_place(saved, shop) else None
+
+
+def with_saved(shops, saved, latitude, longitude, now, details_budget=3):
+    """Saved shops first, each carrying whatever live detail the search found for the same place."""
+    merged, rest = [], list(shops)
+    for row in saved:
+        match = next((shop for shop in rest if _same_place(row, shop)), None)
+        if match:
+            rest.remove(match)
+        elif details_budget > 0 and google_places.usable():
+            details_budget -= 1
+            try:
+                match = _google_details(row, latitude, longitude, now)
+            except google_places.GoogleError as err:
+                log.warning("Google details for saved shop %s failed: %s", row["id"], err)
+        live = match or {}
+        state, hours_text = (live.get("open_state"), live.get("hours_text")) if match else ("unknown", "hours not checked")
+        merged.append({
+            **live,
+            "name": row["name"],
+            "latitude": float(row["latitude"]),
+            "longitude": float(row["longitude"]),
+            "miles": row["miles"],
+            "address": row["address"] or live.get("address"),
+            "phone": row["phone"] or live.get("phone"),
+            "website": row["website"] or live.get("website"),
+            "maps": row["maps_url"] or live.get("maps"),
+            "truck_fit": "yes",
+            "kind": live.get("kind") or "truck_repair",
+            "open_state": state or "unknown",
+            "hours_text": hours_text or "hours not listed",
+            "hours_lines": live.get("hours_lines") or [],
+            "opening_hours": live.get("opening_hours"),
+            "saved": {"id": row["id"], "note": row["note"], "by": row.get("added_by_name")},
+        })
+    return merged + rest
 
 
 def _collect(latitude, longitude, radius_miles, limit):
@@ -377,4 +581,4 @@ def _collect(latitude, longitude, radius_miles, limit):
         })
     shops.sort(key=lambda s: (s["truck_fit"] != "yes", s["open_state"] == "closed", s["miles"]))
     return shops, {"local_time": now, "zone": str(zone), "cached": from_cache,
-                   "found": len(shops), "radius_miles": radius_miles}
+                   "found": len(shops), "radius_miles": radius_miles, "source": "osm"}

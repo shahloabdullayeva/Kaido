@@ -1,6 +1,7 @@
 import requests
 
 from .db import execute, one
+from .logs import get
 
 VPIC = "https://vpic.nhtsa.dot.gov/api/vehicles/DecodeVinValues/{vin}?format=json"
 
@@ -34,7 +35,7 @@ def ensure_engine(truck):
     try:
         found = decode_vin(truck["vin"])
     except Exception as err:
-        print(f"[vpic] {truck['vin']}: {err}")
+        get("vehicles").warning("VIN decode failed for %s: %s", truck["vin"], err)
         return truck
     execute(
         """update trucks set engine = coalesce(engine, %s), engine_liters = coalesce(engine_liters, %s),

@@ -1,8 +1,14 @@
 import requests
 
 from .config import config
+from .logs import get, redact
 
 API = "https://api.telegram.org"
+log = get("telegram")
+
+
+class TelegramDown(Exception):
+    pass
 
 
 def enabled():
@@ -29,11 +35,12 @@ def send(chat_id, text, **extra):
         )
         data = response.json()
         if not data.get("ok"):
-            print(f"[telegram] send failed: {data.get('description')}")
+            log.warning("send to %s failed: %s", chat_id, data.get("description"))
         return {"ok": bool(data.get("ok")), "reason": data.get("description")}
-    except requests.RequestException as err:
-        print(f"[telegram] send error: {err}")
-        return {"ok": False, "reason": str(err)}
+    except (requests.RequestException, ValueError) as err:
+        reason = redact(str(err))
+        log.warning("send to %s failed: %s", chat_id, reason)
+        return {"ok": False, "reason": reason}
 
 
 def get_updates(offset=None):
@@ -42,6 +49,12 @@ def get_updates(offset=None):
     params = {"timeout": 25}
     if offset:
         params["offset"] = offset
-    response = requests.get(f"{API}/bot{config.TELEGRAM_BOT_TOKEN}/getUpdates", params=params, timeout=35)
-    data = response.json()
-    return data.get("result", []) if data.get("ok") else []
+    try:
+        response = requests.get(f"{API}/bot{config.TELEGRAM_BOT_TOKEN}/getUpdates", params=params, timeout=35)
+        data = response.json()
+    except (requests.RequestException, ValueError) as err:
+        # The exception text carries the URL, and the URL carries the bot token.
+        raise TelegramDown(redact(str(err))) from None
+    if not data.get("ok"):
+        raise TelegramDown(data.get("description") or f"HTTP {response.status_code}")
+    return data.get("result", [])

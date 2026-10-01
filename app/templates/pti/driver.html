@@ -1,0 +1,85 @@
+{% include "pti/_public_head.html" %}
+<h1>Unit {{ truck.unit_number }}</h1>
+<p class="muted">{{ truck.company_name }}{% if truck.year or truck.make %} · {{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}{% endif %}</p>
+
+{% if previous %}
+<div class="pti-previous {{ 'ok' if previous.certified_at else 'bad' }}">
+  <strong>Last report had {{ previous.defect_count }} defect{{ '' if previous.defect_count == 1 else 's' }}</strong>
+  <div class="subtle">{{ kinds.get(previous.kind, 'Inspection') }} by {{ previous.driver_name or 'unknown' }}, {{ previous.submitted_at|stamp }}</div>
+  <ul>{% for defect in previous_defects %}<li>{{ defect.label }}{% if defect.note %} — {{ defect.note }}{% endif %}</li>{% endfor %}</ul>
+  {% if previous.certified_at %}
+  <div>Signed off: {{ certifications.get(previous.certification, '') }} by {{ previous.certified_name }}{% if previous.certified_note %} — {{ previous.certified_note }}{% endif %}</div>
+  {% else %}
+  <div><strong>Not repaired or signed off yet.</strong> Check it yourself before you drive.</div>
+  {% endif %}
+</div>
+{% endif %}
+
+<form method="post" action="/pti/{{ token }}" enctype="multipart/form-data" class="pti-form" data-pti>
+  <input type="hidden" name="csrf" value="{{ session.csrf if session else anon_csrf() }}">
+
+  <div class="pti-block">
+    <label class="field"><span>Inspection</span>
+      <select name="kind">
+        <option value="pre_trip">Pre-trip</option>
+        <option value="post_trip">Post-trip</option>
+      </select>
+    </label>
+    <label class="field"><span>Driver</span>
+      <select name="driver_id" data-driver-pick>
+        <option value="">Someone not on the list</option>
+        {% for driver in drivers %}<option value="{{ driver.id }}" {% if driver.id == truck.driver_id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label class="field" data-driver-typed {% if truck.driver_id %}hidden{% endif %}><span>Your name</span>
+      <input name="driver_name" maxlength="120" autocomplete="name"></label>
+    <label class="field"><span>Odometer</span>
+      <input name="odometer" type="number" inputmode="numeric" min="0" value="{{ truck.odometer or '' }}">
+      <em>Filled in from the truck. Fix it if it is off.</em></label>
+  </div>
+
+  <p class="pti-hint">Everything starts as <strong>OK</strong>. Tap <strong>Defect</strong> on anything wrong, say what it is, and add a photo.</p>
+
+  {% for title, entries in sections %}
+  <fieldset class="pti-section">
+    <legend>{{ title }}</legend>
+    {% for key, label in entries %}
+    <div class="pti-item" data-item>
+      <div class="pti-label">{{ label }}</div>
+      <div class="pti-states">
+        <label><input type="radio" name="item_{{ key }}" value="ok" checked> OK</label>
+        <label class="defect"><input type="radio" name="item_{{ key }}" value="defect"> Defect</label>
+        <label><input type="radio" name="item_{{ key }}" value="na"> N/A</label>
+      </div>
+      <div class="pti-defect" data-defect>
+        <input name="note_{{ key }}" maxlength="500" placeholder="What is wrong?">
+        <label class="pti-photo">Add photo <input type="file" name="photo_{{ key }}" accept="image/*" capture="environment" multiple></label>
+      </div>
+    </div>
+    {% endfor %}
+  </fieldset>
+  {% endfor %}
+
+  <div class="pti-block">
+    <div class="field" data-safe><span>Safe to drive?</span>
+      <div class="pti-states">
+        <label><input type="radio" name="safe_to_drive" value="yes"> Yes, safe</label>
+        <label class="defect"><input type="radio" name="safe_to_drive" value="no"> No, not safe</label>
+      </div>
+      <em>Only needed when you marked a defect.</em>
+    </div>
+    <label class="field"><span>Anything else</span><textarea name="notes" maxlength="2000"></textarea></label>
+    <label class="pti-photo">Other photos <input type="file" name="photo_general" accept="image/*" capture="environment" multiple></label>
+    {% if previous %}
+    <label class="checkbox"><input type="checkbox" name="reviewed_previous" value="1" required> <span>I read the last report and its sign-off above.</span></label>
+    {% endif %}
+    <label class="field"><span>Sign with your full name</span>
+      <input name="signed_name" maxlength="120" required autocomplete="name"></label>
+  </div>
+  <button class="btn" type="submit" data-busy="Sending…">Send PTI</button>
+</form>
+</div>
+<script src="/static/app.js"></script>
+<script src="/static/pti.js"></script>
+</body>
+</html>

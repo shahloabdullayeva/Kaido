@@ -118,6 +118,7 @@ closed automatically. Run it from the Integrations page, or on a schedule:
     manage.py telegram-bot                link Telegram accounts
     manage.py demo --company              sample trucks, fuel and a breakdown
     manage.py ai-spend                    what the AI notes have cost so far
+    manage.py google-usage                Google Maps calls today and this month
 
 ## The fleet map
 
@@ -183,6 +184,52 @@ cent.
 
     manage.py ai-spend                    what it has cost, per day and all time
     manage.py ai-spend --credit 5         how far a given amount of credit goes
+
+## Google Maps and saved shops
+
+With `GOOGLE_MAPS_API_KEY` set, the shop finder asks Google Places instead of
+OpenStreetMap: better coverage, a phone number and opening hours on nearly every
+shop, and the Google rating. Typed addresses are geocoded by Google too. If Google
+fails or today's allowance is used, the search quietly falls back to OpenStreetMap
+(and says which it used under the list). Google's terms require its places to be
+drawn on a Google map, so that panel's map becomes a Google map; the dashboard map
+stays on OpenStreetMap.
+
+**Cost.** A search is two Text Search (Enterprise) calls, $35 per 1,000 with the first
+1,000 each month free; geocoding an address is $5 per 1,000 with 10,000 free.
+`GOOGLE_DAILY_CALLS` (30) is a hard daily cap, which keeps a whole month under the free
+1,000 — worst case about 15 fresh searches a day. Results are kept one hour (Google
+does not allow longer), so reopening a work order right away is free. The map on the
+page is a Dynamic Maps load, 10,000 free a month.
+
+    manage.py google-usage                calls today and this month, with the estimated bill
+
+Use two keys in Google Cloud: `GOOGLE_MAPS_API_KEY` restricted to this server's IP and
+to *Places API (New)* and *Geocoding API*; `GOOGLE_MAPS_BROWSER_KEY` restricted to
+`https://kaido.shahlo.blog/*` and to *Maps JavaScript API*. The browser key is visible
+in the page, which is why it gets its own restrictions. Set a budget alert on the
+billing account as well.
+
+**Saved shops** (Maintenance → Saved shops) are the company's own list — paste Google
+Maps links, one per line (Share → Copy link in the app; short `maps.app.goo.gl` links
+work), or type a name and address. Every search lists any saved shop within 100 miles
+first, with a blue pin and a "saved by" badge, and Claude is told to prefer them.
+Reading a link costs nothing: the name and position come from the link itself and the
+Google place id is an ID-only lookup, which Google does not bill.
+
+A Google Maps link also works in the shop finder's search box.
+
+**The search remembers where it looked.** Typing a place or clicking the map stores it
+on the work order when it is saved, so reopening the order searches there again rather
+than jumping back to the Samsara position. *Back to where Samsara has …* returns to it.
+
+## Error log
+
+Warnings and errors from the web app, the sync, the follow-up and the Telegram bot all
+go to `logs/errors.log`, with bot tokens and API keys stripped out. It is rotated weekly
+with the other logs (`deploy/kaido.logrotate`, installed at `/etc/logrotate.d/kaido`).
+
+    tail -f logs/errors.log
 
 ## Service schedule
 

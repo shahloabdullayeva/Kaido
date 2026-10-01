@@ -56,8 +56,9 @@ for. Distance, diesel cost of the round trip, opening hours and what this compan
 has paid at that shop before are all on the list. README → *Where to send it* has
 the detail.
 
-**Google Maps was not used.** Places would have been about $32 per 1,000 lookups
-plus a billing account; OpenStreetMap is free and answers the same question. What
+**Google Maps was not used at first** (see 30 Sep evening below — it is now optional).
+Places would have been about $32 per 1,000 lookups plus a billing account; OpenStreetMap
+is free and answers the same question. What
 OSM is worse at is opening hours — most big truck stops carry no hours tag at all,
 and those read "hours not listed" rather than a guess.
 
@@ -137,6 +138,28 @@ rather than an empty map.
   OpenStreetMap lists a phone, and "Show on map", which zooms to it and enlarges its pin.
   Most OSM shops have no phone listed; Google Maps is the fallback for that.
 
+## Fixed and built on 30 Sep, evening
+
+- **Shop finder used the Samsara position even after an address was typed.** The typed
+  place was never stored, so reopening a work order (or it reloading for an oil change)
+  went back to Samsara, and "Try again" after an error did too. The place is now saved on
+  the work order (`shop_where`, `shop_lat`, `shop_lon`), the first screen has the address
+  box next to the button, and there is an explicit "Back to where Samsara has …".
+- **Google Maps** for the shop finder is built but **off by choice**: Google wanted a $30
+  prepayment to open billing, and Kaido is to stay free. Leave `GOOGLE_MAPS_API_KEY` empty;
+  OpenStreetMap does the search. If ever wanted: README → Google Maps.
+- **Saved shops** — Maintenance → Saved shops. John's Google Maps links go in there; they
+  are listed first in every search within 100 miles.
+- **Error log** at `logs/errors.log`, secrets stripped, rotated weekly.
+- **Telegram bot token was being written to the journal** whenever Telegram could not be
+  reached (the request URL carries it), and the bot crashed and restarted each time. It now
+  redacts, waits and retries. The token is in old journal lines from 30 Sep — rotate it
+  with @BotFather if that matters.
+- **Postgres restarts caused "AdminShutdown" errors** on the next sign-in (30 Sep 06:57).
+  The pool now checks each connection before use.
+- Leftover `db/migrate.js` (from a Node version, pointing at a `src/` that does not exist)
+  removed. openpyxl's "no default style" warning silenced.
+
 ## Next, in the order worth doing
 
 1. **Service baselines.** 35 trucks still have no oil change on record, and none have the other
@@ -159,3 +182,11 @@ rather than an empty map.
 - **Overpass is a free service with no SLA.** Answers are cached for seven days per
   0.01° map cell, and a stale answer is served when it is busy; if it is down and
   nothing is cached, the panel says so.
+
+## PTI (1 Oct 2026)
+- Drivers do pre/post-trip on their phone from a per-truck link (`/pti/<token>`, no login), printed as QR stickers from PTI → Print QR stickers. Replacing a truck's link kills the old sticker.
+- Checklist covers the 11 FMCSA 396.11 items plus common walkaround items. A defect needs a note; photos are optional and shrunk to 1600px.
+- Defects send a Telegram alert. An admin signs off (repaired / not needed), and the next driver must confirm they read it. The daily follow-up lists defects not signed off.
+- The PTI page shows trucks that moved 10+ mi today with no pre-trip.
+- Samsara DVIRs now use the real endpoints `/dvirs/stream` and `/defects/stream` (the old `/fleet/defects/stream` guess was wrong). Neither org had a single DVIR in 90 days, so drivers are not doing them in the Samsara app.
+- Importing trucks from Samsara now runs a sync right away (BOOKIT showed 0 miles until the next cron).

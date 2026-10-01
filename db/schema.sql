@@ -497,6 +497,30 @@ create table if not exists service_intervals (
   primary key (company_id, kind)
 );
 
+-- Where the shop search last looked for this work order, when it was not the Samsara position.
+alter table maintenance_orders add column if not exists shop_where text;
+alter table maintenance_orders add column if not exists shop_lat numeric(9,6);
+alter table maintenance_orders add column if not exists shop_lon numeric(9,6);
+
+-- Shops the company trusts, usually pasted in as Google Maps links. Listed first in every search.
+create table if not exists saved_shops (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  name text not null,
+  address text,
+  latitude numeric(9,6) not null,
+  longitude numeric(9,6) not null,
+  phone text,
+  website text,
+  maps_url text,
+  place_id text,
+  source_url text,
+  note text,
+  added_by int references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists saved_shops_company_idx on saved_shops (company_id);
+
 do $$
 declare
   tenant text;
@@ -504,7 +528,8 @@ begin
   foreach tenant in array array[
     'drivers','trucks','odometer_readings','fuel_transactions','maintenance_orders','breakdowns',
     'breakdown_updates','integrations','vehicle_links','fault_events','dvir_defects','sync_runs',
-    'reminders','followups','fault_alerts','fuel_imports','ai_chats','service_intervals'
+    'reminders','followups','fault_alerts','fuel_imports','ai_chats','service_intervals',
+    'saved_shops'
   ] loop
     execute format('alter table %I enable row level security', tenant);
     execute format('alter table %I force row level security', tenant);
@@ -525,3 +550,73 @@ create table if not exists osm_calls (
 alter table users add column if not exists can_add_companies boolean not null default false;
 
 alter table maintenance_orders drop constraint if exists maintenance_orders_kind_check;
+
+-- One row per billable Google Maps Platform request, for the daily cap.
+create table if not exists google_calls (
+  id bigserial primary key,
+  sku text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists google_calls_day_idx on google_calls (created_at desc);
+
+alter table trucks add column if not exists pti_token text unique;
+
+create table if not exists inspections (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int references trucks(id) on delete set null,
+  driver_id int references drivers(id) on delete set null,
+  driver_name text,
+  kind text not null default 'pre_trip' check (kind in ('pre_trip', 'post_trip', 'mechanic', 'unspecified')),
+  source text not null default 'kaido' check (source in ('kaido', 'samsara')),
+  external_id text,
+  odometer int,
+  results jsonb not null default '{}',
+  defect_count int not null default 0,
+  safe_to_drive boolean,
+  notes text,
+  signed_name text,
+  reviewed_previous_id bigint references inspections(id) on delete set null,
+  submitted_at timestamptz not null default now(),
+  submitted_ip text,
+  created_by int references users(id) on delete set null,
+  certification text check (certification in ('repaired', 'not_needed')),
+  certified_note text,
+  certified_name text,
+  certified_by int references users(id) on delete set null,
+  certified_at timestamptz,
+  maintenance_order_id bigint references maintenance_orders(id) on delete set null,
+  alerted_at timestamptz,
+  raw jsonb,
+  created_at timestamptz not null default now(),
+  unique (company_id, source, external_id)
+);
+create index if not exists inspections_company_idx on inspections (company_id, submitted_at desc);
+create index if not exists inspections_truck_idx on inspections (truck_id, submitted_at desc);
+create index if not exists inspections_open_idx on inspections (company_id) where defect_count > 0 and certified_at is null;
+
+create table if not exists inspection_photos (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  inspection_id bigint not null references inspections(id) on delete cascade,
+  item text,
+  path text not null,
+  content_type text not null default 'image/jpeg',
+  created_at timestamptz not null default now()
+);
+create index if not exists inspection_photos_idx on inspection_photos (inspection_id);
+
+do $$
+declare tenant text;
+begin
+  foreach tenant in array array['inspections', 'inspection_photos'] loop
+    execute format('alter table %I enable row level security', tenant);
+    execute format('alter table %I force row level security', tenant);
+    execute format('drop policy if exists company_lock on %I', tenant);
+    execute format(
+      'create policy company_lock on %I using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+      'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
+  end loop;
+end $$;

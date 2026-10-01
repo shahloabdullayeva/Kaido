@@ -3,6 +3,7 @@ import json
 from flask import g, request
 
 from .db import execute
+from .logs import get
 
 
 def client_ip():
@@ -32,4 +33,4 @@ def audit(action, entity=None, entity_id=None, detail=None, company_id=None, use
             ),
         )
     except Exception as err:
-        print(f"[audit] failed: {err}")
+        get("audit").warning("could not write audit entry %s: %s", action, err)

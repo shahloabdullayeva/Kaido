@@ -1,0 +1,17 @@
+{% include "pti/_public_head.html" %}
+<h1>PTI sent</h1>
+<p>{{ kinds.get(item.kind, 'Inspection') }} for unit {{ truck.unit_number }}, {{ item.submitted_at|stamp }}.</p>
+{% if defects %}
+<div class="pti-previous bad">
+  <strong>{{ defects|length }} defect{{ '' if defects|length == 1 else 's' }} reported</strong>
+  <ul>{% for defect in defects %}<li>{{ defect.label }}{% if defect.note %} — {{ defect.note }}{% endif %}</li>{% endfor %}</ul>
+  <div>The office has been told.{% if item.safe_to_drive is false %} <strong>Do not drive this truck until it is fixed.</strong>{% endif %}</div>
+</div>
+{% else %}
+<p class="pti-previous ok">No defects. Drive safe.</p>
+{% endif %}
+{% if photos %}<p class="muted">{{ photos }} photo{{ '' if photos == 1 else 's' }} attached.</p>{% endif %}
+<p><a href="/pti/{{ truck.pti_token }}">Start another PTI</a></p>
+</div>
+</body>
+</html>

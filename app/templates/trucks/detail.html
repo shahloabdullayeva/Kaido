@@ -121,6 +121,36 @@
   </section>
 </div>
 
+<section class="panel">
+  <div class="panel-head"><h2>PTI</h2>
+    <a class="btn ghost small" href="/pti">All PTIs</a></div>
+  {% if pti_link %}
+  <div class="pad">
+    <p>Driver link: <a class="mono" href="{{ pti_link }}">{{ pti_link }}</a></p>
+    <div class="actions-row">
+      <a class="btn ghost small" href="{{ pti_link }}">Fill in a PTI</a>
+      <a class="btn ghost small" href="/pti/stickers?truck_id={{ truck.id }}">Print QR sticker</a>
+      <form method="post" action="/trucks/{{ truck.id }}/pti-link" data-confirm="Make a new link? The current sticker in this truck will stop working.">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost small danger" type="submit">Replace link</button></form>
+    </div>
+  </div>
+  {% endif %}
+  {% if inspections %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Type</th><th>Driver</th><th>Result</th></tr></thead>
+    <tbody>
+      {% for item in inspections %}
+      <tr><td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.submitted_at|stamp }}</a></td>
+        <td>{{ pti_kinds.get(item.kind, 'Inspection') }}</td><td>{{ item.driver_name or '—' }}</td>
+        <td>{% if not item.defect_count %}<span class="badge ok">no defects</span>
+          {% elif item.certified_at %}<span class="badge muted">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, signed off</span>
+          {% else %}<span class="badge bad">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, open</span>{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No PTIs for this truck yet.</p>{% endif %}
+</section>
+
 <div class="grid-2">
   <section class="panel">
     <div class="panel-head"><h2>Recent fuel</h2></div>

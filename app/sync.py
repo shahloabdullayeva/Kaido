@@ -1,8 +1,10 @@
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+from . import pti
 from .db import execute, insert, one, rows
+from .logs import get
 from .samsara import SamsaraClient, SamsaraError, meters_to_miles, parse_fault_codes
 from .security import decrypt, encrypt
 
@@ -308,11 +310,30 @@ def sync_faults(company_id, truck, faults):
     return opened, cleared
 
 
+DVIR_DAYS = 14
+
+
 def sync_defects(company_id, client):
+    start = (datetime.now(timezone.utc) - timedelta(days=DVIR_DAYS)).strftime("%Y-%m-%dT%H:%M:%SZ")
     try:
-        defects = client.defects()
+        defects = client.defects(start)
+        dvirs = client.dvirs(start)
     except SamsaraError:
         return None
+    by_dvir = {}
+    for defect in defects:
+        by_dvir.setdefault(str(defect.get("dvirId") or ""), []).append(defect)
+    for dvir in dvirs:
+        vehicle = dvir.get("vehicle") or {}
+        link = one(
+            "select truck_id from vehicle_links where company_id = %s and external_id = %s",
+            (company_id, str(vehicle.get("id") or "")),
+        )
+        if not link or not link["truck_id"] or not dvir.get("id"):
+            continue
+        row = pti.store_samsara(company_id, link["truck_id"], dvir, by_dvir.get(str(dvir["id"]), []))
+        if row and row["inserted"]:
+            pti.alert(row["id"])
     seen = 0
     for defect in defects:
         external_id = str(defect.get("id") or "")
@@ -395,6 +416,8 @@ def sync_company(company_id):
         return counters
     except Exception as err:
         message = str(err)[:500]
+        get("sync").warning("Samsara sync failed for company %s: %s", company_id, message,
+                            exc_info=not isinstance(err, SamsaraError))
         execute(
             """update integrations set status = 'error', last_error = %s, updated_at = now()
                where company_id = %s and provider = 'samsara'""",

@@ -274,3 +274,42 @@ fieldset.outside legend { font-weight: bold; padding: 0 4px; }
 .shop-list li.active { outline: 2px solid #000080; outline-offset: 3px; }
 .shop-popup { font-size: 12px; min-width: 190px; }
 .shop-popup div { margin-top: 3px; }
+
+body.pti-public { background: var(--shade); margin: 0; padding: 12px; }
+.pti-card { background: var(--paper); border: 2px outset var(--face); padding: 14px; max-width: 640px; margin: 0 auto; }
+.pti-card h1 { font-size: 20px; margin: 6px 0 2px; }
+.pti-block { display: grid; gap: 10px; margin: 12px 0; }
+.pti-block input, .pti-block select, .pti-block textarea { font-size: 16px; }
+.pti-hint { font-size: 12px; border-left: 3px solid var(--face-dark); padding-left: 8px; }
+.pti-section { border: 1px solid var(--face-dark); margin: 0 0 12px; padding: 4px 8px 8px; }
+.pti-section legend { font-weight: bold; font-family: var(--serif); font-size: 15px; padding: 0 4px; }
+.pti-item { padding: 8px 0; border-bottom: 1px dotted var(--face-dark); }
+.pti-item:last-child { border-bottom: 0; }
+.pti-item.is-defect { background: var(--bad-bg); margin: 0 -8px; padding: 8px; }
+.pti-label { font-size: 14px; margin-bottom: 4px; }
+.pti-states { display: flex; gap: 6px; flex-wrap: wrap; }
+.pti-states label { display: flex; align-items: center; gap: 4px; border: 2px outset var(--face); background: var(--face-light); padding: 6px 12px; font-size: 14px; cursor: pointer; }
+.pti-states label:has(input:checked) { border-style: inset; background: var(--ink); color: var(--paper); }
+.pti-states label.defect:has(input:checked) { background: var(--bad); border-color: var(--bad); }
+.pti-defect { display: grid; gap: 6px; margin-top: 6px; }
+.pti-defect input[type=text], .pti-defect input:not([type]) { font-size: 16px; padding: 6px; }
+.pti-photo { display: inline-block; border: 2px outset var(--face); background: var(--face-light); padding: 5px 10px; font-size: 13px; cursor: pointer; width: fit-content; }
+.pti-photo input { display: block; font-size: 12px; margin-top: 4px; max-width: 100%; }
+.pti-photo[data-count]:not([data-count=""])::after { content: " · " attr(data-count); color: var(--ok); font-weight: bold; }
+.pti-form > .btn { width: 100%; font-size: 16px; padding: 10px; }
+.pti-previous { border: 1px solid var(--ink); padding: 8px 10px; margin: 10px 0; font-size: 13px; }
+.pti-previous.bad { border-color: var(--bad); background: var(--bad-bg); }
+.pti-previous.ok { border-color: var(--ok); background: var(--ok-bg); }
+.pti-previous ul { margin: 6px 0; padding-left: 18px; }
+.pti-sign { font-size: 18px; font-style: italic; }
+.pti-group th { background: var(--shade); text-align: left; }
+.pti-thumb { width: 96px; height: 96px; object-fit: cover; border: 1px solid var(--face-dark); margin: 4px 4px 0 0; vertical-align: top; }
+body.pti-print { background: #fff; padding: 12px; }
+.pti-print-note { font-size: 12px; }
+.pti-stickers { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.pti-sticker { border: 2px dashed var(--ink); padding: 10px; text-align: center; break-inside: avoid; }
+.pti-sticker svg { width: 180px; height: 180px; }
+.pti-sticker-title { font-family: var(--serif); font-weight: bold; font-size: 18px; }
+@media print { .pti-print-note { display: none; } body.pti-print { padding: 0; } }
+.pti-states input { width: auto; margin: 0; }
+.pti-card [hidden] { display: none !important; }

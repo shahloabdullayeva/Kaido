@@ -1,5 +1,4 @@
 import json
-import sys
 from hashlib import sha256
 from typing import List, Literal
 
@@ -7,6 +6,9 @@ from pydantic import BaseModel
 
 from .config import config
 from .db import execute, one
+from .logs import get
+
+log = get("advisor")
 
 MODEL = config.AI_MODEL
 MAX_SHOPS = 8
@@ -107,7 +109,7 @@ def _ask(system, user, output_format, max_tokens=1200):
             output_format=output_format,
         )
     except Exception as err:
-        print(f"advisor {MODEL} failed: {err}", file=sys.stderr)
+        log.warning("%s call failed: %s", MODEL, err)
         return None
     _remember(response.usage)
     parsed = response.parsed_output
@@ -120,7 +122,7 @@ def _ask(system, user, output_format, max_tokens=1200):
 SHOP_SYSTEM = (
     "You advise a truck fleet dispatcher choosing where to send a Class 8 tractor "
     "for an oil and filter service. You are given the truck, its current position, "
-    "and a numbered list of candidate shops pulled from OpenStreetMap, each with "
+    "and a numbered list of candidate shops pulled from Google Maps or OpenStreetMap, each with "
     "distance, opening hours where known, and the fleet's own past invoices at that "
     "shop. For each shop write one line of at most 18 words, and give its number. "
     "RULES YOU MUST FOLLOW: "
@@ -132,13 +134,16 @@ SHOP_SYSTEM = (
     "says that already. "
     "The fleet's own past invoices are the strongest evidence there is: if they have "
     "used a shop before, lead with what they paid and when. "
-    "'Truck fit unconfirmed' means OpenStreetMap does not say whether the bay takes a "
+    "A shop marked 'saved by the fleet' is one the fleet's own people chose and trust: "
+    "pick a saved shop unless it is closed when the truck needs it or much further than "
+    "another shop that fits a Class 8. "
+    "'Truck fit unconfirmed' means the map data does not say whether the bay takes a "
     "Class 8 tractor — say to phone ahead, do not assume it fits. "
     "A shop marked 24/7 is worth preferring when the truck is moving at night. "
     "Write plain English a dispatcher would say out loud, never the raw tag words. "
     "If the only honest thing to say is that nobody knows whether the bay fits a "
     "Class 8, say exactly that and nothing else. "
-    "Do not invent star ratings; there are no reviews in this data. "
+    "Only mention a star rating when one is given in the data, and never invent one. "
     "Then set 'pick' to the name of the shop you would send the truck to, and "
     "'why' to one sentence under 25 words saying why that one. If nothing is a "
     "sensible choice, set pick to an empty string and say so in 'why'."
@@ -157,6 +162,11 @@ def shop_advice(truck, shops, fleet_average=None):
             ("takes Class 8" if shop["truck_fit"] == "yes" else "truck fit unconfirmed"),
             shop["hours_text"],
         ]
+        if shop.get("saved"):
+            note = shop["saved"].get("note")
+            bits.append("saved by the fleet" + (f" — note: {note}" if note else ""))
+        if shop.get("rating"):
+            bits.append(f"Google rating {shop['rating']:.1f} from {shop.get('ratings') or 0} reviews")
         if shop.get("phone"):
             bits.append(f"phone {shop['phone']}")
         history = shop.get("history")
@@ -326,7 +336,7 @@ def chat_reply(context, history, question):
             messages=messages,
         )
     except Exception as err:
-        print(f"chat {MODEL} failed: {err}", file=sys.stderr)
+        log.warning("%s chat failed: %s", MODEL, err)
         return None, "The assistant did not answer just now. Try again in a minute."
     _remember(response.usage)
     text = "".join(block.text for block in response.content if getattr(block, "type", "") == "text").strip()

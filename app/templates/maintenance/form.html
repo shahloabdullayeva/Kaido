@@ -15,6 +15,9 @@
 <section class="panel">
   <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}" data-truck-fill>
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="shop_where" value="{{ order.shop_where or '' if editing else '' }}">
+    <input type="hidden" name="shop_lat" value="{{ order.shop_lat if editing and order.shop_lat is not none else '' }}">
+    <input type="hidden" name="shop_lon" value="{{ order.shop_lon if editing and order.shop_lon is not none else '' }}">
     <div class="form-grid">
       <label class="field"><span>Truck</span>
         <select name="truck_id" required {% if editing %}disabled{% endif %}>

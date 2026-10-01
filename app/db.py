@@ -1,12 +1,14 @@
 from contextlib import contextmanager
 
-import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
 from .config import config
 
-pool = ConnectionPool(config.DATABASE_URL, min_size=1, max_size=10, kwargs={"row_factory": dict_row}, open=True)
+# check= tests each connection before handing it out, so a Postgres restart costs a
+# reconnect instead of an AdminShutdown error on the next request.
+pool = ConnectionPool(config.DATABASE_URL, min_size=1, max_size=10, kwargs={"row_factory": dict_row},
+                      check=ConnectionPool.check_connection, open=True)
 
 
 def current_company():

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }} · Kaido</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="pti-print">
+<p class="pti-print-note">Print this page and put each sticker inside the cab of its truck. Drivers scan it with the phone camera to do the PTI — no app, no login. <a href="/pti">Back to PTI</a></p>
+<div class="pti-stickers">
+  {% for card in cards %}
+  <div class="pti-sticker">
+    <div class="pti-sticker-title">PTI · Unit {{ card.unit }}</div>
+    {{ card.svg|safe }}
+    <div class="subtle">Scan before every trip</div>
+  </div>
+  {% else %}
+  <p>No trucks.</p>
+  {% endfor %}
+</div>
+</body>
+</html>

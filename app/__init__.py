@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, request, url_for
 
-from . import filters, reminders
+from . import filters, logs, reminders
 from .auth import ANON_CSRF_COOKIE, SESSION_COOKIE, load_session
 from .config import IS_PROD, config
 from .security import csrf_matches, random_token
@@ -16,13 +16,14 @@ def anon_csrf():
 
 
 def create_app():
+    logs.setup("web")
     app = Flask(__name__, static_folder="static", static_url_path="/static")
     app.secret_key = config.SECRET_KEY
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=IS_PROD,
-        MAX_CONTENT_LENGTH=12 * 1024 * 1024,
+        MAX_CONTENT_LENGTH=40 * 1024 * 1024,
     )
     filters.register(app)
 
@@ -46,11 +47,26 @@ def create_app():
 
     @app.after_request
     def finish(response):
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; script-src 'self'; style-src 'self'; "
-            "img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
-            "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
-        )
+        if getattr(g, "google_map", False):
+            # Google's documented allowlist for the Maps JavaScript API, on the work-order pages only.
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' https://*.googleapis.com https://*.gstatic.com https://*.google.com; "
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+                "font-src 'self' https://fonts.gstatic.com; "
+                "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com "
+                "https://*.ggpht.com https://*.googleusercontent.com "
+                "https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
+                "connect-src 'self' https://*.googleapis.com https://*.google.com https://*.gstatic.com; "
+                "frame-src https://*.google.com; worker-src blob:; "
+                "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+            )
+        else:
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; script-src 'self'; style-src 'self'; "
+                "img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
+                "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+            )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
@@ -106,10 +122,11 @@ def create_app():
     from .views.assistant import bp as assistant_bp
     from .views.reports import bp as reports_bp
     from .views.trucks import bp as trucks_bp
+    from .views.pti import bp as pti_bp
 
     for blueprint in (auth_bp, dashboard_bp, trucks_bp, drivers_bp, fuel_bp,
                       maintenance_bp, breakdowns_bp, faults_bp, integrations_bp,
-                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp):
+                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(404)

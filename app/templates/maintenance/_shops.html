@@ -2,15 +2,18 @@
   <input type="text" id="shop-where" value="{{ query or '' }}" maxlength="160"
          placeholder="Address, city and state, or the name of a truck stop">
   <button type="button" class="btn" data-shop-search>Look here</button>
+  {% if origin and origin.source != 'samsara' and truck.latitude is not none %}<button type="button" class="btn ghost" data-shop-samsara>Back to where Samsara has {{ truck.unit_number }}</button>{% endif %}
 </div>
 <p class="subtle shop-origin">
   {%- if origin and origin.source == 'samsara' %}
   <strong>{{ truck.unit_number }}</strong> is at {{ origin.label }}{% if origin.at %}, reported {{ origin.at|ago }}{% endif %}.
   Local time there is about {{ meta.local_time.strftime('%H:%M') if meta else '—' }}. Type an address above to look somewhere else.
   {%- elif origin and origin.source == 'typed' %}
-  Looking around <strong>{{ origin.label }}</strong>. Click the map to move the search.
+  Looking around <strong>{{ origin.label }}</strong>. Click the map to move the search. Saving the work order remembers this place.
   {%- elif origin %}
-  Looking around the spot you picked on the map.
+  Looking around the spot you picked on the map. Saving the work order remembers this place.
+  {%- elif problem %}
+  Type an address, a city and state, a truck stop, or paste a Google Maps link.
   {%- else %}
   Samsara has not reported a position for <strong>{{ truck.unit_number }}</strong>. Type where it is, or click the map.
   {%- endif %}
@@ -19,12 +22,13 @@
 <div id="shop-map"
      {% if origin %}data-lat="{{ origin.latitude }}" data-lon="{{ origin.longitude }}"
      data-label="{% if origin.source == 'samsara' %}{{ truck.unit_number }}{% if truck.driver_name %}, {{ truck.driver_name }}{% endif %}{% else %}Looking here{% endif %} — {{ origin.label }}"
-     data-kind="{{ origin.source }}"{% endif %}
+     data-kind="{{ origin.source }}" data-where="{{ (origin.label if '://' in query or 'goo.gl' in query else query) if origin.source == 'typed' else '' }}"{% endif %}
+     {% if google_key %}data-map="google" data-key="{{ google_key }}"{% endif %}
      data-shops='{{ found|shop_pins }}'></div>
-{% if origin and not problem %}
+{% if origin and (found or not problem) %}
   {% if not found %}
-<p class="empty">Nothing within {{ meta.radius_miles if meta else 50 }} miles is tagged as taking trucks.
-  OpenStreetMap coverage is thin in rural areas — try a nearby town, or the driver's own judgement.</p>
+<p class="empty">Nothing within {{ meta.radius_miles if meta else 50 }} miles looks like it takes trucks.
+  {% if meta and meta.source == 'osm' %}OpenStreetMap coverage is thin in rural areas — try a nearby town, or the driver's own judgement.{% else %}Try a nearby town.{% endif %}</p>
   {% else %}
 <p class="shop-pick" id="shop-pick" hidden></p>
 <ol class="shop-list">
@@ -34,6 +38,7 @@
     <div class="shop-row">
       <span class="shop-name">{{ shop.name }}</span>
       <span class="badge {{ 'ok' if shop.open_state == 'open' else ('warn' if shop.open_state == 'unknown' else 'bad') }}">{{ shop.hours_text }}</span>
+      {% if shop.saved %}<span class="badge ok">saved{% if shop.saved.by %} by {{ shop.saved.by }}{% endif %}</span>{% endif %}
       {% if shop.truck_fit != 'yes' %}<span class="badge warn">truck fit unconfirmed — phone ahead</span>{% endif %}
     </div>
     <div class="shop-address" data-address>{% if shop.address_complete %}{{ shop.address }}{% else %}<span class="subtle">{{ shop.address ~ " — " if shop.address }}finding the full address…</span>{% endif %}</div>
@@ -42,7 +47,10 @@
       {%- if shop.phone %} · {{ shop.phone }}{% else %} · no phone listed{% endif %}
       {%- if shop.website %} · <a href="{{ shop.website }}" rel="noreferrer noopener" target="_blank">website</a>{% endif %}
     </div>
-    {% if shop.opening_hours %}<div class="shop-hours">Hours: {{ shop.opening_hours|osm_hours }}</div>{% endif %}
+    {% if shop.saved and shop.saved.note %}<div class="shop-history">{{ shop.saved.note }}</div>{% endif %}
+    {% if shop.rating %}<div class="subtle">Google rating {{ '%.1f'|format(shop.rating) }} from {{ shop.ratings or 0 }} reviews</div>{% endif %}
+    {% if shop.hours_lines %}<details class="shop-hours"><summary>Hours</summary>{{ shop.hours_lines|join(' · ') }}</details>
+    {% elif shop.opening_hours %}<div class="shop-hours">Hours: {{ shop.opening_hours|osm_hours }}</div>{% endif %}
     {% if shop.history %}
     <div class="shop-history">You have used this shop {{ shop.history.visits }}×, average
       {{ shop.history.average|money }}, last {{ shop.history.last }}.</div>
@@ -57,7 +65,8 @@
   </li>
   {% endfor %}
 </ol>
-<p class="subtle" id="shop-foot" data-ai="{{ 'paused' if ai_paused else ('on' if ai_on else 'off') }}">Shops from OpenStreetMap{% if meta and meta.cached %}, cached{% endif %}.
+<p class="subtle" id="shop-foot" data-ai="{{ 'paused' if ai_paused else ('on' if ai_on else 'off') }}">Shops from {{ 'Google Maps' if meta and meta.source == 'google' else 'OpenStreetMap' }}{% if meta and meta.cached %}, cached{% endif %}.
+  {% if saved_count %}<a href="/maintenance/saved-shops">{{ saved_count }} saved shop{{ 's' if saved_count != 1 }}</a> come first when nearby.{% else %}<a href="/maintenance/saved-shops">Save shops</a> to have them listed first.{% endif %}
   {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
   <span id="shop-ai-state">{% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.{% elif ai_paused %}AI notes are paused — today's budget is spent. They come back tomorrow.{% endif %}</span></p>
   {% endif %}

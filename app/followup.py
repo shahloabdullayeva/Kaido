@@ -4,6 +4,7 @@ from html import escape
 from . import work_types
 from .config import config
 from .db import execute, one, rows
+from .pti import open_defects
 from .queries import expiring_documents, service_status, trucks_with_service
 from .reminders import company_chats, describe, zone_for
 from .telegram import send
@@ -75,6 +76,11 @@ def build(company, today):
     lines += _section("Breakdowns still open", [
         _unit_line(b["unit_number"], f"{b['status'].replace('_', ' ')}, since {b['occurred_at'].astimezone(tz).strftime('%d %b')}")
         for b in breakdowns])
+    lines += _section("PTI defects not signed off", [
+        _unit_line(p["unit_number"], f"{p['defect_count']} defect{'' if p['defect_count'] == 1 else 's'}"
+                   + (", driver said NOT safe" if p["safe_to_drive"] is False else "")
+                   + f", {p['submitted_at'].astimezone(tz).strftime('%d %b')} — {config.APP_URL}/pti/report/{p['id']}")
+        for p in open_defects(company_id)])
     lines += _section("Service overdue", overdue)
     lines += _section("Work scheduled for today or earlier, not done", [
         _unit_line(w["unit_number"], f"{work_types.label(w['kind'])}, #{w['id']}, set for {w['scheduled_for'].strftime('%d %b')}")

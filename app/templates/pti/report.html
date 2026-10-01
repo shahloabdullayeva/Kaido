@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>PTI #{{ item.id }} · Unit {{ item.unit_number or '—' }}</h1>
+    <p>{{ kinds.get(item.kind, 'Inspection') }} by {{ item.driver_name or 'unknown driver' }}, {{ item.submitted_at|stamp }}{% if item.source == 'samsara' %} · from Samsara{% endif %}</p></div>
+  <div class="actions-row">
+    {% if item.truck_id %}<a class="btn ghost" href="/trucks/{{ item.truck_id }}">Truck</a>{% endif %}
+    <a class="btn ghost" href="/pti">All PTIs</a>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat {{ 'bad' if item.defect_count and not item.certified_at else '' }}"><div class="stat-label">Result</div>
+    <div class="stat-value">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}</div>
+    <div class="stat-hint">{% if item.safe_to_drive is false %}driver said NOT safe to drive{% elif item.defect_count %}driver said safe to drive{% else %}all OK{% endif %}</div></div>
+  <div class="stat"><div class="stat-label">Odometer</div><div class="stat-value">{{ item.odometer|number }}</div></div>
+  <div class="stat"><div class="stat-label">Signed</div><div class="stat-value pti-sign">{{ item.signed_name or '—' }}</div>
+    <div class="stat-hint">{% if reviewed %}reviewed PTI #{{ reviewed.id }} before driving{% endif %}</div></div>
+</div>
+
+{% if item.defect_count %}
+<section class="panel">
+  <div class="panel-head"><h2>Repair sign-off</h2>
+    {% if item.maintenance_order_id %}<a class="btn ghost small" href="/maintenance/{{ item.maintenance_order_id }}">Work order #{{ item.maintenance_order_id }} ({{ item.order_status|label }})</a>
+    {% elif at_least(role, 'admin') %}
+    <form method="post" action="/pti/report/{{ item.id }}/work-order"><input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <button class="btn ghost small" type="submit">Open a work order</button></form>
+    {% endif %}
+  </div>
+  {% if item.certified_at %}
+  <div class="detail-list">
+    <div><span>Sign-off</span><strong>{{ certifications.get(item.certification, '') }}</strong></div>
+    <div><span>By</span><strong>{{ item.certified_name }}</strong></div>
+    <div><span>When</span><strong>{{ item.certified_at|stamp }}</strong></div>
+    {% if item.certified_note %}<div><span>Note</span><strong>{{ item.certified_note }}</strong></div>{% endif %}
+  </div>
+  {% elif at_least(role, 'admin') %}
+  <form method="post" action="/pti/report/{{ item.id }}/certify">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <p class="muted">FMCSA 396.11: before the truck runs again, someone signs off that each defect was repaired or that repair is not needed for safe operation.</p>
+    <div class="form-grid">
+      <label class="field"><span>Sign-off</span>
+        <select name="certification" required>
+          <option value="">Pick one</option>
+          {% for value, text in certifications.items() %}<option value="{{ value }}">{{ text }}</option>{% endfor %}
+        </select></label>
+      <label class="field"><span>Signed by</span><input name="certified_name" maxlength="120" required value="{{ session.name }}"></label>
+      <label class="field full"><span>What was done</span><textarea name="certified_note" maxlength="2000"></textarea></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Sign off</button></div>
+  </form>
+  {% else %}
+  <p class="empty">Not signed off yet.</p>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head"><h2>Checklist</h2></div>
+  <div class="table-wrap"><table>
+    <tbody>
+      {% for title, lines in sections %}
+      <tr class="pti-group"><th colspan="3">{{ title }}</th></tr>
+      {% for line in lines %}
+      <tr>
+        <td>{{ line.label }}</td>
+        <td>{% if line.state == 'defect' %}<span class="badge bad">defect</span>{% elif line.state == 'na' %}<span class="badge muted">n/a</span>{% else %}<span class="badge ok">ok</span>{% endif %}</td>
+        <td>{{ line.note or '' }}
+          {% for photo in photos.get(line.key, []) %}<a href="/pti/photo/{{ photo.id }}"><img class="pti-thumb" src="/pti/photo/{{ photo.id }}" alt="Photo of {{ line.label }}"></a>{% endfor %}</td>
+      </tr>
+      {% endfor %}
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+{% if item.notes or photos.get('general') or photos.get('') %}
+<section class="panel">
+  <div class="panel-head"><h2>Notes and photos</h2></div>
+  {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
+  <div class="pad">{% for photo in photos.get('general', []) + photos.get('', []) %}<a href="/pti/photo/{{ photo.id }}"><img class="pti-thumb" src="/pti/photo/{{ photo.id }}" alt="PTI photo"></a>{% endfor %}</div>
+</section>
+{% endif %}
+{% endblock %}
