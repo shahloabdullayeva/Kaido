@@ -666,3 +666,10 @@ update trucks t set telegram_chat_id = c.driver_chat_id, telegram_chat_title = c
                 where d.company_id = c.id and r.telegram_user_id is not null order by d.id limit 1);
 update companies set driver_chat_id = null, driver_chat_title = null, driver_link_code = null
   where driver_chat_id is not null;
+
+alter table inspection_photos add column if not exists kind text not null default 'photo';
+alter table inspection_photos add column if not exists bytes bigint;
+
+alter table inspections add column if not exists ai_status text;
+alter table inspections add column if not exists ai_result jsonb;
+alter table inspections add column if not exists ai_checked_at timestamptz;

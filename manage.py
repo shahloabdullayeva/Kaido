@@ -161,10 +161,12 @@ def cmd_followup(args):
     reminded = reminders.send_due()
     alerted = followup.send_fault_alerts()
     sent = followup.run()
-    from app import pti_driver
+    from app import pti_ai, pti_driver
     drivers = pti_driver.run()
-    if reminded or alerted or sent or drivers:
-        print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}, driver PTI messages {drivers}")
+    reviewed = pti_ai.run_pending()
+    if reminded or alerted or sent or drivers or reviewed:
+        print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}, driver PTI messages {drivers}, "
+              f"AI photo checks {reviewed}")
     return 0
 
 
@@ -202,6 +204,12 @@ def handle_group_update(update, send):
     send(chat["id"], f"Connected to Unit {truck['unit_number']} ({truck['company_name']}). "
                      "PTI reminders for this truck only will come here. Driver: send /unit once so they tag you.")
     return True
+
+
+def cmd_pti_cleanup(args):
+    from app import pti
+    print(f"removed {pti.cleanup_media()} PTI photos/videos older than {pti.KEEP_MEDIA_DAYS} days")
+    return 0
 
 
 def cmd_telegram(args):
@@ -377,6 +385,7 @@ def main():
     follow.set_defaults(func=cmd_followup)
 
     sub.add_parser("telegram-bot", help="link Telegram accounts").set_defaults(func=cmd_telegram)
+    sub.add_parser("pti-cleanup", help="delete PTI photos/videos past the FMCSA 3 months").set_defaults(func=cmd_pti_cleanup)
 
     demo = sub.add_parser("demo", help="add sample trucks, drivers, fuel and a breakdown")
     demo.add_argument("--company", required=True)

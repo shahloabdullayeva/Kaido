@@ -8,6 +8,8 @@ if (ptiForm) {
     box.hidden = !isDefect;
     const note = box.querySelector('input[name^=note_]');
     if (note) note.required = isDefect;
+    const photo = box.querySelector('input[type=file]');
+    if (photo) photo.required = isDefect;
   };
   const syncSafe = () => {
     const any = ptiForm.querySelector('[data-item] input[value=defect]:checked');
@@ -52,8 +54,13 @@ if (ptiForm) {
       if (typeof DataTransfer === 'undefined') return;
       const label = input.closest('label');
       const out = new DataTransfer();
-      for (const file of input.files) out.items.add(await shrink(file));
+      let tooBig = false;
+      for (const file of input.files) {
+        if (file.type.startsWith('video/') && file.size > 50 * 1024 * 1024) { tooBig = true; continue; }
+        out.items.add(await shrink(file));
+      }
       input.files = out.files;
+      if (tooBig) alert('That video is too long. Keep videos under about 30 seconds, or take a photo instead.');
       if (label) label.dataset.count = input.files.length ? `${input.files.length} added` : '';
     });
   }

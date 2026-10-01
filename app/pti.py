@@ -10,58 +10,50 @@ from .security import random_token
 from .telegram import send
 
 PHOTO_DIR = ROOT / "uploads" / "pti"
-MAX_PHOTOS = 12
+MAX_PHOTOS = 60
 PHOTO_EDGE = 1600
+MAX_VIDEO_BYTES = 50 * 1024 * 1024
+KEEP_MEDIA_DAYS = 92
+VIDEO_TYPES = {".mp4": "video/mp4", ".m4v": "video/mp4", ".mov": "video/quicktime", ".3gp": "video/3gpp",
+               ".webm": "video/webm"}
 
 SECTIONS = [
     ("In the cab", [
-        ("gauges", "Gauges, warning lights, air pressure builds"),
+        ("steering", "Steering"),
         ("horn", "Horn"),
-        ("wipers", "Windshield wipers and washer"),
-        ("windshield", "Windshield and windows"),
+        ("wipers", "Windshield wipers"),
         ("mirrors", "Mirrors"),
-        ("heater_defroster", "Heater and defroster"),
-        ("steering", "Steering, free play"),
-        ("emergency_equipment", "Fire extinguisher, triangles, spare fuses"),
-        ("seat_belt", "Seat belt"),
-    ]),
-    ("Brakes and air", [
-        ("service_brakes", "Service brakes"),
+        ("emergency_equipment", "Emergency equipment: extinguisher, triangles"),
         ("parking_brake", "Parking brake"),
-        ("air_lines", "Air lines and glad hands, no leaks"),
-        ("trailer_brakes", "Trailer brake connections"),
     ]),
-    ("Engine compartment", [
-        ("fluid_levels", "Oil, coolant, power steering levels"),
-        ("belts_hoses", "Belts and hoses"),
-        ("leaks", "No oil, fuel or coolant leaks"),
+    ("Brakes and coupling", [
+        ("service_brakes", "Service brakes and trailer brake connections"),
+        ("coupling", "Coupling devices: fifth wheel, kingpin"),
     ]),
-    ("Outside the truck", [
-        ("lights", "Headlights, turn signals, brake lights, markers"),
-        ("reflectors", "Reflectors and reflective tape"),
-        ("tires", "Tires: tread, inflation, damage"),
-        ("wheels_rims", "Wheels, rims, lug nuts"),
-        ("suspension", "Springs, airbags, shocks"),
-        ("exhaust", "Exhaust system"),
-        ("frame_body", "Frame, body, doors"),
-        ("fuel_tanks", "Fuel tanks and caps"),
-    ]),
-    ("Coupling and trailer", [
-        ("fifth_wheel", "Fifth wheel, kingpin, locking jaws"),
-        ("coupling", "Coupling devices, safety chains"),
-        ("trailer_lights", "Trailer lights"),
-        ("trailer_tires", "Trailer tires, wheels, rims"),
-        ("landing_gear", "Landing gear"),
-        ("trailer_doors", "Trailer doors, roof, seal"),
+    ("Outside", [
+        ("lights", "Lights and reflectors"),
+        ("tires", "Tires"),
+        ("wheels_rims", "Wheels and rims"),
     ]),
 ]
+NA_ALLOWED = {"coupling"}
+EARLIER_ITEMS = {
+    "gauges": "Gauges, warning lights, air pressure builds", "windshield": "Windshield and windows",
+    "heater_defroster": "Heater and defroster", "seat_belt": "Seat belt", "air_lines": "Air lines and glad hands",
+    "trailer_brakes": "Trailer brake connections", "fluid_levels": "Oil, coolant, power steering levels",
+    "belts_hoses": "Belts and hoses", "leaks": "Oil, fuel or coolant leaks", "reflectors": "Reflectors",
+    "suspension": "Springs, airbags, shocks", "exhaust": "Exhaust system", "frame_body": "Frame, body, doors",
+    "fuel_tanks": "Fuel tanks and caps", "fifth_wheel": "Fifth wheel, kingpin, locking jaws",
+    "trailer_lights": "Trailer lights", "trailer_tires": "Trailer tires, wheels, rims",
+    "landing_gear": "Landing gear", "trailer_doors": "Trailer doors, roof, seal",
+}
 ITEMS = {key: label for _section, entries in SECTIONS for key, label in entries}
 KINDS = {"pre_trip": "Pre-trip", "post_trip": "Post-trip", "mechanic": "Mechanic", "unspecified": "Inspection"}
 CERTIFICATIONS = {"repaired": "Repaired", "not_needed": "Repair not needed for safe operation"}
 
 
 def item_label(key):
-    return ITEMS.get(key) or (key or "").replace("_", " ").capitalize()
+    return ITEMS.get(key) or EARLIER_ITEMS.get(key) or (key or "").replace("_", " ").capitalize()
 
 
 def truck_by_token(token):
@@ -120,7 +112,59 @@ def defects_of(inspection):
     return out
 
 
+SECTION_KEYS = {f"section_{number}": title for number, (title, _entries) in enumerate(SECTIONS, 1)}
+
+
+def media_label(key):
+    return SECTION_KEYS.get(key) or item_label(key)
+
+
+def video_type(upload):
+    head = upload.stream.read(16)
+    upload.stream.seek(0)
+    suffix = "." + (upload.filename or "").rsplit(".", 1)[-1].lower() if "." in (upload.filename or "") else ""
+    if head[4:8] == b"ftyp":
+        if suffix in (".mov",) or head[8:10] == b"qt":
+            return ".mov", "video/quicktime"
+        if head[8:11] == b"3gp":
+            return ".3gp", "video/3gpp"
+        return ".mp4", "video/mp4"
+    if head[:4] == b"\x1aE\xdf\xa3":
+        return ".webm", "video/webm"
+    return None
+
+
+def has_file(uploads):
+    return any(upload and upload.filename for upload in uploads)
+
+
 def save_photo(company_id, inspection_id, item, upload):
+    folder = PHOTO_DIR / str(company_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    key = item if item in ITEMS or item in EARLIER_ITEMS or item in SECTION_KEYS else None
+    video = video_type(upload)
+    if video:
+        suffix, content_type = video
+        name = f"{uuid.uuid4().hex}{suffix}"
+        target = folder / name
+        size = 0
+        with open(target, "wb") as out:
+            while True:
+                block = upload.stream.read(1024 * 1024)
+                if not block:
+                    break
+                size += len(block)
+                if size > MAX_VIDEO_BYTES:
+                    out.close()
+                    target.unlink(missing_ok=True)
+                    return False
+                out.write(block)
+        execute(
+            """insert into inspection_photos (company_id, inspection_id, item, path, content_type, kind, bytes)
+               values (%s, %s, %s, %s, %s, 'video', %s)""",
+            (company_id, inspection_id, key, f"{company_id}/{name}", content_type, size),
+        )
+        return True
     from PIL import Image, ImageOps
     try:
         image = Image.open(upload.stream)
@@ -129,16 +173,26 @@ def save_photo(company_id, inspection_id, item, upload):
         image = image.convert("RGB")
     except Exception:
         return False
-    folder = PHOTO_DIR / str(company_id)
-    folder.mkdir(parents=True, exist_ok=True)
     name = f"{uuid.uuid4().hex}.jpg"
     image.save(folder / name, "JPEG", quality=82)
     execute(
-        """insert into inspection_photos (company_id, inspection_id, item, path)
-           values (%s, %s, %s, %s)""",
-        (company_id, inspection_id, item if item in ITEMS else None, f"{company_id}/{name}"),
+        """insert into inspection_photos (company_id, inspection_id, item, path, bytes)
+           values (%s, %s, %s, %s, %s)""",
+        (company_id, inspection_id, key, f"{company_id}/{name}", (folder / name).stat().st_size),
     )
     return True
+
+
+def cleanup_media(days=KEEP_MEDIA_DAYS):
+    old = rows(
+        "select id, path from inspection_photos where created_at < now() - make_interval(days => %s)", (days,)
+    )
+    for photo in old:
+        path = photo_file(photo)
+        if path:
+            path.unlink(missing_ok=True)
+        execute("delete from inspection_photos where id = %s", (photo["id"],))
+    return len(old)
 
 
 def photo_file(photo):

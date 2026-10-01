@@ -39,6 +39,7 @@ class Config:
     ENCRYPTION_KEY = os.environ.get("ENCRYPTION_KEY", "")
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_BOT_USERNAME = os.environ.get("TELEGRAM_BOT_USERNAME", "kaidofleet_bot")
+    AI_PHOTO_MODEL = os.environ.get("AI_PHOTO_MODEL", "claude-opus-5-5")
     TRUST_DAYS = _int("TRUST_DAYS", 30)
     CODE_TTL_MINUTES = _int("CODE_TTL_MINUTES", 10)
     SESSION_IDLE_HOURS = _int("SESSION_IDLE_HOURS", 12)

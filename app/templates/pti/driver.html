@@ -38,22 +38,24 @@
       <em>Filled in from the truck. Fix it if it is off.</em></label>
   </div>
 
-  <p class="pti-hint">Everything starts as <strong>OK</strong>. Tap <strong>Defect</strong> on anything wrong, say what it is, and add a photo.</p>
+  <p class="pti-hint">Each of the 3 sections needs <strong>a photo or short video</strong> showing it. AI checks every photo. Everything starts as <strong>OK</strong> — tap <strong>Defect</strong> on anything wrong, say what it is, and take a photo of it.</p>
 
   {% for title, entries in sections %}
   <fieldset class="pti-section">
     <legend>{{ title }}</legend>
+    <label class="pti-photo pti-proof">Photo or video of {{ title|lower }} — required
+      <input type="file" name="section_{{ loop.index }}" accept="image/*,video/*" capture="environment" multiple required></label>
     {% for key, label in entries %}
     <div class="pti-item" data-item>
       <div class="pti-label">{{ label }}</div>
       <div class="pti-states">
         <label><input type="radio" name="item_{{ key }}" value="ok" checked> OK</label>
         <label class="defect"><input type="radio" name="item_{{ key }}" value="defect"> Defect</label>
-        <label><input type="radio" name="item_{{ key }}" value="na"> N/A</label>
+        {% if key in na_allowed %}<label><input type="radio" name="item_{{ key }}" value="na"> No trailer</label>{% endif %}
       </div>
       <div class="pti-defect" data-defect>
         <input name="note_{{ key }}" maxlength="500" placeholder="What is wrong?">
-        <label class="pti-photo">Add photo <input type="file" name="photo_{{ key }}" accept="image/*" capture="environment" multiple></label>
+        <label class="pti-photo">Photo of the defect — required <input type="file" name="photo_{{ key }}" accept="image/*,video/*" capture="environment" multiple></label>
       </div>
     </div>
     {% endfor %}

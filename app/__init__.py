@@ -23,7 +23,7 @@ def create_app():
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=IS_PROD,
-        MAX_CONTENT_LENGTH=40 * 1024 * 1024,
+        MAX_CONTENT_LENGTH=300 * 1024 * 1024,
     )
     filters.register(app)
 

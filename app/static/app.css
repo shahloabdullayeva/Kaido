@@ -315,3 +315,5 @@ body.pti-print { background: #fff; padding: 12px; }
 .pti-card [hidden] { display: none !important; }
 .pti-all { min-height: 220px; font-family: var(--mono); }
 .pti-code { font-size: 16px; border: 1px dashed var(--ink); padding: 6px 10px; display: inline-block; }
+.pti-proof { display: block; width: auto; margin: 4px 0 8px; border-color: var(--ink); background: var(--warn-bg); }
+.pti-video { width: 240px; max-width: 100%; border: 1px solid var(--face-dark); margin: 4px 4px 0 0; vertical-align: top; }

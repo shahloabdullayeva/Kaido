@@ -8,3 +8,4 @@ DB_URL=$(grep '^DATABASE_URL=' .env | cut -d= -f2-)
 pg_dump --enable-row-security "$DB_URL" | gzip > "$DEST/fleet-$STAMP.sql.gz"
 find "$DEST" -name 'fleet-*.sql.gz' -mtime +14 -delete
 echo "backup written to $DEST/fleet-$STAMP.sql.gz"
+./venv/bin/python manage.py pti-cleanup

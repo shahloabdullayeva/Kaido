@@ -28,7 +28,10 @@ def index():
     elif show == "defects":
         clause = " and i.defect_count > 0"
     items = rows(
-        f"""select i.*, t.unit_number from inspections i left join trucks t on t.id = i.truck_id
+        f"""select i.*, t.unit_number,
+                   (select count(*) from inspection_photos p where p.inspection_id = i.id and p.kind = 'photo') as photo_count,
+                   (select count(*) from inspection_photos p where p.inspection_id = i.id and p.kind = 'video') as video_count
+            from inspections i left join trucks t on t.id = i.truck_id
             where i.company_id = %s{clause} order by i.submitted_at desc limit 300""",
         (g.company["id"],),
     )
@@ -59,14 +62,14 @@ def report(inspection_id):
         by_item.setdefault(photo["item"] or "", []).append(photo)
     results = item["results"] or {}
     sections = []
-    for title, entries in pti.SECTIONS:
+    for number, (title, entries) in enumerate(pti.SECTIONS, 1):
         lines = [{"key": key, "label": label, **(results.get(key) or {})} for key, label in entries if key in results]
         if lines:
-            sections.append((title, lines))
+            sections.append((title, lines, f"section_{number}"))
     extra = [{"key": key, "label": pti.item_label(key), **value} for key, value in results.items()
              if key not in pti.ITEMS and isinstance(value, dict)]
     if extra:
-        sections.append(("Reported in Samsara", extra))
+        sections.append(("Reported in Samsara" if item["source"] == "samsara" else "Earlier checklist items", extra, None))
     reviewed = None
     if item["reviewed_previous_id"]:
         reviewed = one("select id, submitted_at, driver_name from inspections where id = %s", (item["reviewed_previous_id"],))
@@ -229,7 +232,7 @@ def driver_form(token):
         "pti/driver.html", title=f"PTI · Unit {truck['unit_number']}", truck=truck, token=token,
         sections=pti.SECTIONS, drivers=driver_options(truck["company_id"]), previous=previous,
         previous_defects=pti.defects_of(previous) if previous else [], kinds=pti.KINDS,
-        certifications=pti.CERTIFICATIONS,
+        certifications=pti.CERTIFICATIONS, na_allowed=pti.NA_ALLOWED,
     )
 
 
@@ -259,6 +262,8 @@ def driver_submit(token):
     missing_notes = []
     for key in pti.ITEMS:
         state = forms.pick(request.form.get(f"item_{key}"), STATES, "ok")
+        if state == "na" and key not in pti.NA_ALLOWED:
+            state = "ok"
         note = forms.text(request.form.get(f"note_{key}"), 500)
         results[key] = {"state": state}
         if note:
@@ -267,6 +272,12 @@ def driver_submit(token):
             missing_notes.append(pti.ITEMS[key])
     if missing_notes:
         flash("Write what is wrong for: " + ", ".join(missing_notes), "bad")
+        return redirect(back)
+    no_proof = [title for key, title in pti.SECTION_KEYS.items() if not pti.has_file(request.files.getlist(key))]
+    no_proof += [pti.ITEMS[key] + " (defect)" for key, value in results.items()
+                 if value["state"] == "defect" and not pti.has_file(request.files.getlist(f"photo_{key}"))]
+    if no_proof:
+        flash("A photo or video is required for: " + ", ".join(no_proof), "bad")
         return redirect(back)
     has_defect = any(value["state"] == "defect" for value in results.values())
     safe = request.form.get("safe_to_drive")
@@ -288,12 +299,16 @@ def driver_submit(token):
     item = pti.create(truck, values, session["user_id"] if session else None, client_ip())
     saved = 0
     for field, uploads in request.files.lists():
-        if not field.startswith("photo_"):
+        if field.startswith("photo_"):
+            key = field[len("photo_"):]
+        elif field in pti.SECTION_KEYS:
+            key = field
+        else:
             continue
         for upload in uploads:
             if saved >= pti.MAX_PHOTOS or not upload or not upload.filename:
                 continue
-            if pti.save_photo(truck["company_id"], item["id"], field[len("photo_"):], upload):
+            if pti.save_photo(truck["company_id"], item["id"], key, upload):
                 saved += 1
     if item["defect_count"]:
         pti.alert(item["id"])

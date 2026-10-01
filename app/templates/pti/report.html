@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% macro media(list, label) %}{% for photo in list %}<a href="/pti/photo/{{ photo.id }}">{% if photo.kind == 'video' %}<video class="pti-video" src="/pti/photo/{{ photo.id }}" controls preload="metadata"></video>{% else %}<img class="pti-thumb" src="/pti/photo/{{ photo.id }}" alt="{{ label }}">{% endif %}</a>{% endfor %}{% endmacro %}
 {% block body %}
 <div class="page-head">
   <div><h1>PTI #{{ item.id }} · Unit {{ item.unit_number or '—' }}</h1>
@@ -56,17 +57,39 @@
 {% endif %}
 
 <section class="panel">
+  <div class="panel-head"><h2>AI photo check</h2><span class="subtle">{{ item.ai_result.model if item.ai_result else '' }}</span></div>
+  {% if item.ai_result %}
+  <div class="pad">
+    <p>{% if item.ai_result.needs_attention %}<span class="badge bad">needs a look</span>{% else %}<span class="badge ok">nothing found</span>{% endif %} {{ item.ai_result.summary }}</p>
+  </div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Photo of</th><th>Driver marked</th><th>AI saw</th><th>Note</th></tr></thead>
+    <tbody>{% for finding in item.ai_result.findings %}
+      <tr><td><a href="/pti/photo/{{ finding.photo_id }}">{{ finding.label }}</a></td><td>{{ finding.marked }}</td>
+        <td><span class="badge {{ {'ok': 'ok', 'issue': 'bad', 'wrong_photo': 'bad', 'unclear': 'warn'}[finding.verdict] }}">{{ finding.verdict|replace('_', ' ') }}</span></td>
+        <td>{{ finding.note }}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  <p class="subtle pad">AI can miss things and can be wrong. It is a second look, not the inspection.</p>
+  {% elif item.ai_status == 'over_budget' %}<p class="empty">Waiting: today's AI spending cap is used up. It runs when the cap resets.</p>
+  {% elif item.ai_status == 'failed' %}<p class="empty">The AI check could not run on these photos.</p>
+  {% elif item.ai_status in ('no_photos', 'no_key') %}<p class="empty">No photos to check.</p>
+  {% else %}<p class="empty">Checking the photos — this takes a few minutes after the PTI is sent.</p>{% endif %}
+</section>
+
+<section class="panel">
   <div class="panel-head"><h2>Checklist</h2></div>
   <div class="table-wrap"><table>
     <tbody>
-      {% for title, lines in sections %}
+      {% for title, lines, section_key in sections %}
       <tr class="pti-group"><th colspan="3">{{ title }}</th></tr>
+      {% if section_key %}<tr><td colspan="3">{% if photos.get(section_key) %}{{ media(photos.get(section_key), title) }}{% else %}<span class="badge muted">no section photo</span>{% endif %}</td></tr>{% endif %}
       {% for line in lines %}
       <tr>
         <td>{{ line.label }}</td>
         <td>{% if line.state == 'defect' %}<span class="badge bad">defect</span>{% elif line.state == 'na' %}<span class="badge muted">n/a</span>{% else %}<span class="badge ok">ok</span>{% endif %}</td>
         <td>{{ line.note or '' }}
-          {% for photo in photos.get(line.key, []) %}<a href="/pti/photo/{{ photo.id }}"><img class="pti-thumb" src="/pti/photo/{{ photo.id }}" alt="Photo of {{ line.label }}"></a>{% endfor %}</td>
+          {{ media(photos.get(line.key, []), line.label) }}</td>
       </tr>
       {% endfor %}
       {% endfor %}
@@ -78,7 +101,7 @@
 <section class="panel">
   <div class="panel-head"><h2>Notes and photos</h2></div>
   {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}
-  <div class="pad">{% for photo in photos.get('general', []) + photos.get('', []) %}<a href="/pti/photo/{{ photo.id }}"><img class="pti-thumb" src="/pti/photo/{{ photo.id }}" alt="PTI photo"></a>{% endfor %}</div>
+  <div class="pad">{{ media(photos.get('general', []) + photos.get('', []), 'PTI photo') }}</div>
 </section>
 {% endif %}
 {% endblock %}
