@@ -81,6 +81,15 @@ def build(company, today):
                    + (", driver said NOT safe" if p["safe_to_drive"] is False else "")
                    + f", {p['submitted_at'].astimezone(tz).strftime('%d %b')} — {config.APP_URL}/pti/report/{p['id']}")
         for p in open_defects(company_id)])
+    waiting = rows(
+        """select i.id, i.kind, i.ai_status, t.unit_number from inspections i join trucks t on t.id = i.truck_id
+           where i.company_id = %s and i.review_status is null and i.source = 'kaido'
+           order by (i.ai_status = 'flagged') desc, i.submitted_at""",
+        (company_id,),
+    )
+    lines += _section(f"PTIs waiting for review: {len(waiting)}", [
+        _unit_line(w["unit_number"], ("AI flagged — " if w["ai_status"] == "flagged" else "")
+                   + f"{config.APP_URL}/pti/report/{w['id']}") for w in waiting])
     lines += _section("Service overdue", overdue)
     lines += _section("Work scheduled for today or earlier, not done", [
         _unit_line(w["unit_number"], f"{work_types.label(w['kind'])}, #{w['id']}, set for {w['scheduled_for'].strftime('%d %b')}")

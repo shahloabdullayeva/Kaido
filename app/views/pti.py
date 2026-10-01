@@ -2,7 +2,7 @@ from urllib.parse import urlencode
 
 from flask import Blueprint, flash, g, redirect, render_template, request, send_file
 
-from .. import forms, pti, pti_driver
+from .. import forms, pti, pti_ai, pti_driver
 from ..audit import audit, client_ip
 from ..auth import login_required, throttle
 from ..db import one, rows
@@ -20,13 +20,15 @@ STATES = ("ok", "defect", "na")
 @login_required
 @company_required
 def index():
-    show = forms.pick(request.args.get("show"), ["open", "all", "defects"], "all")
+    show = forms.pick(request.args.get("show"), ["open", "all", "defects", "review"], "all")
     day, board = pti.today_board(g.company)
     clause = ""
     if show == "open":
         clause = " and i.defect_count > 0 and i.certified_at is null"
     elif show == "defects":
         clause = " and i.defect_count > 0"
+    elif show == "review":
+        clause = " and i.review_status is null"
     items = rows(
         f"""select i.*, t.unit_number,
                    (select count(*) from inspection_photos p where p.inspection_id = i.id and p.kind = 'photo') as photo_count,
@@ -119,6 +121,52 @@ def work_order(inspection_id):
     audit("pti.work_order", "inspection", inspection_id, {"order": order["id"]})
     flash(f"Work order #{order['id']} opened from this PTI.", "ok")
     return redirect(f"/maintenance/{order['id']}")
+
+
+@bp.post("/pti/report/<int:inspection_id>/review")
+@login_required
+@role_required("admin")
+def review(inspection_id):
+    item = one("select * from inspections where id = %s and company_id = %s", (inspection_id, g.company["id"]))
+    if not item:
+        return render_template("errors/404.html"), 404
+    decision = forms.pick(request.form.get("decision"), ["approved", "rejected"], None)
+    note = forms.text(request.form.get("review_note"), 1000)
+    if not decision:
+        return redirect(f"/pti/report/{inspection_id}")
+    if decision == "rejected" and not note:
+        flash("Write why it is rejected — the driver sees this in the truck's group.", "bad")
+        return redirect(f"/pti/report/{inspection_id}")
+    execute(
+        """update inspections set review_status = %s, review_note = %s, reviewed_by = %s, reviewed_name = %s,
+             reviewed_at = now() where id = %s and company_id = %s""",
+        (decision, note, g.session["user_id"], g.session["name"], inspection_id, g.company["id"]),
+    )
+    audit("pti.reviewed", "inspection", inspection_id, {"decision": decision})
+    if decision == "rejected":
+        told = pti_driver.rejected(item, note)
+        flash("Rejected." + (" The driver was told in the truck's group to do it again." if told
+                             else " This truck has no Telegram group, so tell the driver yourself."), "ok")
+    else:
+        flash("Approved.", "ok")
+    return redirect(f"/pti/report/{inspection_id}")
+
+
+@bp.post("/pti/report/<int:inspection_id>/ai-check")
+@login_required
+@role_required("admin")
+def ai_check(inspection_id):
+    item = one("select id from inspections where id = %s and company_id = %s", (inspection_id, g.company["id"]))
+    if not item:
+        return render_template("errors/404.html"), 404
+    if pti_ai.over_budget():
+        flash("Today's AI spending cap is used up, so the check cannot run again until tomorrow.", "bad")
+        return redirect(f"/pti/report/{inspection_id}")
+    execute("update inspections set ai_checked_at = null, ai_status = null where id = %s", (inspection_id,))
+    result = pti_ai.review(inspection_id)
+    audit("pti.ai_recheck", "inspection", inspection_id)
+    flash("AI check done." if result else "The AI check could not run on these photos.", "ok" if result else "bad")
+    return redirect(f"/pti/report/{inspection_id}")
 
 
 @bp.get("/pti/photo/<int:photo_id>")

@@ -163,6 +163,21 @@ def completed(inspection):
     return bool(send(truck["telegram_chat_id"], "\n".join(lines)).get("ok"))
 
 
+def rejected(inspection, reason):
+    truck = one(TRUCK_SQL + " where t.id = %s", (inspection["truck_id"],))
+    if not truck or not truck["telegram_chat_id"]:
+        return False
+    kind = pti.KINDS.get(inspection["kind"], "Inspection").lower()
+    tag = mention(truck)
+    zone = zone_for(one("select timezone from companies where id = %s", (truck["company_id"],))["timezone"])
+    when = inspection["submitted_at"].astimezone(zone).strftime("%d %b %H:%M")
+    lines = [f"❌ <b>Unit {escape(truck['unit_number'])}</b> — {kind} from {when} was not accepted"
+             + (f" {tag}" if tag else ""),
+             f"Reason: {escape(reason)}",
+             f"<a href=\"{escape(pti.link_for(pti.ensure_token(truck)))}\">Do the PTI again</a> with clear photos of the truck."]
+    return bool(send(truck["telegram_chat_id"], "\n".join(lines)).get("ok"))
+
+
 BUILDERS = {"morning": morning, "evening": evening, "nudge": nudge}
 
 

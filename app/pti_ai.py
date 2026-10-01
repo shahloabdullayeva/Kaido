@@ -54,6 +54,10 @@ def available():
     return advisor.available()
 
 
+def over_budget():
+    return advisor.over_budget()
+
+
 def _jpeg_b64(path):
     from PIL import Image
     image = Image.open(path)

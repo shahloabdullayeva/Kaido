@@ -35,13 +35,14 @@
           <option value="all" {% if show == 'all' %}selected{% endif %}>Every report</option>
           <option value="defects" {% if show == 'defects' %}selected{% endif %}>With defects</option>
           <option value="open" {% if show == 'open' %}selected{% endif %}>Defects not signed off</option>
+          <option value="review" {% if show == 'review' %}selected{% endif %}>Waiting for review</option>
         </select>
       </label>
     </form>
   </div>
   {% if items %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Unit</th><th>Type</th><th>Driver</th><th>Result</th><th>Photos</th><th>AI check</th><th>Sign-off</th><th>When</th></tr></thead>
+    <thead><tr><th>Unit</th><th>Type</th><th>Driver</th><th>Result</th><th>Photos</th><th>AI check</th><th>Review</th><th>Sign-off</th><th>When</th></tr></thead>
     <tbody>
       {% for item in items %}
       <tr>
@@ -54,6 +55,7 @@
             {% else %}<span class="badge warn">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}</span>{% endif %}</td>
         <td><a href="/pti/report/{{ item.id }}">{{ item.photo_count }} photo{{ '' if item.photo_count == 1 else 's' }}{% if item.video_count %}, {{ item.video_count }} video{{ '' if item.video_count == 1 else 's' }}{% endif %}</a></td>
         <td>{% if item.ai_status == 'flagged' %}<span class="badge bad">flagged</span>{% elif item.ai_status == 'clear' %}<span class="badge ok">clear</span>{% elif item.ai_status == 'over_budget' %}<span class="badge warn">waiting</span>{% elif item.ai_status in ('failed', 'no_photos', 'no_key') %}<span class="badge muted">not run</span>{% elif item.source == 'kaido' and not item.ai_checked_at %}<span class="badge muted">checking</span>{% else %}—{% endif %}</td>
+        <td>{% if item.review_status == 'approved' %}<span class="badge ok">approved</span>{% elif item.review_status == 'rejected' %}<span class="badge bad">rejected</span>{% else %}<span class="badge warn">to review</span>{% endif %}</td>
         <td>{% if not item.defect_count %}—{% elif item.certified_at %}<span class="badge ok">{{ 'repaired' if item.certification == 'repaired' else 'not needed' }}</span>{% else %}<span class="badge bad">open</span>{% endif %}</td>
         <td>{{ item.submitted_at|stamp }}</td>
       </tr>

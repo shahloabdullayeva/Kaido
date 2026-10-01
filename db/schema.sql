@@ -673,3 +673,9 @@ alter table inspection_photos add column if not exists bytes bigint;
 alter table inspections add column if not exists ai_status text;
 alter table inspections add column if not exists ai_result jsonb;
 alter table inspections add column if not exists ai_checked_at timestamptz;
+
+alter table inspections add column if not exists review_status text check (review_status in ('approved', 'rejected'));
+alter table inspections add column if not exists review_note text;
+alter table inspections add column if not exists reviewed_by int references users(id) on delete set null;
+alter table inspections add column if not exists reviewed_name text;
+alter table inspections add column if not exists reviewed_at timestamptz;

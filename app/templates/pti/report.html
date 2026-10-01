@@ -19,6 +19,29 @@
     <div class="stat-hint">{% if reviewed %}reviewed PTI #{{ reviewed.id }} before driving{% endif %}</div></div>
 </div>
 
+<section class="panel">
+  <div class="panel-head"><h2>Review</h2>{% if item.review_status %}<span class="badge {{ 'ok' if item.review_status == 'approved' else 'bad' }}">{{ item.review_status }}</span>{% endif %}</div>
+  {% if item.review_status %}
+  <div class="detail-list">
+    <div><span>Decision</span><strong>{{ 'Approved' if item.review_status == 'approved' else 'Rejected — driver asked to redo it' }}</strong></div>
+    <div><span>By</span><strong>{{ item.reviewed_name }}</strong></div>
+    <div><span>When</span><strong>{{ item.reviewed_at|stamp }}</strong></div>
+    {% if item.review_note %}<div><span>Note</span><strong>{{ item.review_note }}</strong></div>{% endif %}
+  </div>
+  {% endif %}
+  {% if at_least(role, 'admin') %}
+  <form method="post" action="/pti/report/{{ item.id }}/review">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <p class="muted">{{ 'Change the decision if needed.' if item.review_status else 'Look at the photos and the AI check below, then approve it, or reject it and the driver is asked to do it again.' }}</p>
+    <div class="form-grid"><label class="field full"><span>Note (required to reject — the driver sees it)</span><input name="review_note" maxlength="1000" placeholder="e.g. Photos show a keyboard, not the truck"></label></div>
+    <div class="form-actions">
+      <button class="btn" type="submit" name="decision" value="approved">Approve</button>
+      <button class="btn danger" type="submit" name="decision" value="rejected" data-busy="Rejecting…">Reject — driver redoes it</button>
+    </div>
+  </form>
+  {% endif %}
+</section>
+
 {% if item.defect_count %}
 <section class="panel">
   <div class="panel-head"><h2>Repair sign-off</h2>
@@ -57,7 +80,8 @@
 {% endif %}
 
 <section class="panel">
-  <div class="panel-head"><h2>AI photo check</h2><span class="subtle">{{ item.ai_result.model if item.ai_result else '' }}</span></div>
+  <div class="panel-head"><h2>AI photo check</h2>
+    {% if at_least(role, 'admin') and item.source == 'kaido' %}<form method="post" action="/pti/report/{{ item.id }}/ai-check" data-confirm="Run the AI photo check again? It costs a few cents."><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost small" type="submit" data-busy="Checking… about 10 seconds">Run AI check again</button></form>{% endif %}</div>
   {% if item.ai_result %}
   <div class="pad">
     <p>{% if item.ai_result.needs_attention %}<span class="badge bad">needs a look</span>{% else %}<span class="badge ok">nothing found</span>{% endif %} {{ item.ai_result.summary }}</p>
