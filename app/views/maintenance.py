@@ -135,7 +135,9 @@ def new():
     g.google_map = google_places.available()
     return render_template("maintenance/form.html", title="New work order", active="/maintenance",
                            groups=GROUPS, statuses=STATUSES,
-                           truck_id=forms.integer(request.args.get("truck_id")), order=None, **form_choices())
+                           truck_id=forms.integer(request.args.get("truck_id")), order=None,
+                           prefill_description=forms.text(request.args.get("description"), 2000),
+                           pti_id=forms.integer(request.args.get("pti")), **form_choices())
 
 
 @bp.post("/maintenance")
@@ -183,6 +185,13 @@ def create():
     apply_completion(order, truck)
     audit("maintenance.created", "maintenance_order", order["id"], {"unit": truck["unit_number"], "kind": kind, "status": status})
     flash("Work order saved.", "ok")
+    pti_id = forms.integer(request.form.get("pti_id"))
+    if pti_id:
+        execute(
+            """update inspections set maintenance_order_id = %s
+               where id = %s and company_id = %s and truck_id = %s and maintenance_order_id is null""",
+            (order["id"], pti_id, g.company["id"], truck_id),
+        )
     return redirect(f"/maintenance/{order['id']}")
 
 

@@ -548,9 +548,11 @@ const load = async (truckId, params) => {
   followUp(run, truckId, query, meter);
 };
 
+const findNow = new URLSearchParams(window.location.search).has('find');
+
 const refreshShops = () => {
   if (!realTruck()) { dropMap(); panel.hidden = true; return; }
-  if (isOil()) { panel.hidden = false; load(trucks.value); } else askFirst();
+  if (isOil() || findNow) { panel.hidden = false; load(trucks.value); } else askFirst();
 };
 
 if (panel && body && trucks) {

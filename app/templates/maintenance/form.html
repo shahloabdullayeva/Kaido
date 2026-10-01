@@ -16,6 +16,7 @@
   <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}" data-truck-fill>
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <input type="hidden" name="shop_where" value="{{ order.shop_where or '' if editing else '' }}">
+    {% if pti_id and not editing %}<input type="hidden" name="pti_id" value="{{ pti_id }}">{% endif %}
     <input type="hidden" name="shop_lat" value="{{ order.shop_lat if editing and order.shop_lat is not none else '' }}">
     <input type="hidden" name="shop_lon" value="{{ order.shop_lon if editing and order.shop_lon is not none else '' }}">
     <div class="form-grid">
@@ -94,7 +95,7 @@
       {{ field('Cost', 'cost', order.cost if editing else '', type='number', attrs='step="0.01" min="0"') }}
       {{ field('Next due date', 'next_due_on', (order.next_due_on|date_input) if editing else '', type='date') }}
       {{ field('Next due odometer', 'next_due_odometer', order.next_due_odometer if editing else '', type='number', attrs='min="0"') }}
-      {{ field('What was done', 'description', order.description if editing else '', type='textarea', required=True, full=True) }}
+      {{ field('What was done', 'description', order.description if editing else (prefill_description or ''), type='textarea', required=True, full=True) }}
     </div>
     <div class="form-actions"><button class="btn" type="submit">{{ 'Save changes' if editing else 'Save work order' }}</button>
       <a class="btn ghost" href="/maintenance">Cancel</a></div>

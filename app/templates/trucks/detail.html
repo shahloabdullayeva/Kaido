@@ -15,6 +15,7 @@
     {% if at_least(role, 'admin') %}
     <a class="btn ghost" href="/fuel/new?truck_id={{ truck.id }}">Log fuel</a>
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
+    <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;find=1#shop-panel">Nearby shops (map)</a>
     <a class="btn ghost" href="/breakdowns/new?truck_id={{ truck.id }}">Breakdown</a>
     {% endif %}
     {% if at_least(role, 'admin') %}<a class="btn" href="/trucks/{{ truck.id }}/edit">Edit</a>{% endif %}

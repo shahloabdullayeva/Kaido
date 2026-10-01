@@ -46,9 +46,12 @@
 <section class="panel">
   <div class="panel-head"><h2>Repair sign-off</h2>
     {% if item.maintenance_order_id %}<a class="btn ghost small" href="/maintenance/{{ item.maintenance_order_id }}">Work order #{{ item.maintenance_order_id }} ({{ item.order_status|label }})</a>
-    {% elif at_least(role, 'admin') %}
-    <form method="post" action="/pti/report/{{ item.id }}/work-order"><input type="hidden" name="csrf" value="{{ session.csrf }}">
-      <button class="btn ghost small" type="submit">Open a work order</button></form>
+    {% elif at_least(role, 'admin') and item.truck_id %}
+    <div class="actions-row">
+      <a class="btn small" href="/maintenance/new?truck_id={{ item.truck_id }}&amp;find=1&amp;pti={{ item.id }}&amp;description={{ ('PTI #' ~ item.id ~ ' defects — ' ~ (defects|map(attribute='label')|join('; ')))|urlencode }}#shop-panel">Nearby shops (map)</a>
+      <form method="post" action="/pti/report/{{ item.id }}/work-order"><input type="hidden" name="csrf" value="{{ session.csrf }}">
+        <button class="btn ghost small" type="submit">Open a work order</button></form>
+    </div>
     {% endif %}
   </div>
   {% if item.certified_at %}
