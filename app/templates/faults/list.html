@@ -23,7 +23,7 @@
     <thead><tr><th>Unit</th><th>Code</th><th>Description</th><th>Lamp</th><th>Severity</th><th>First seen</th><th>Last seen</th><th class="right"></th></tr></thead>
     <tbody>
       {% for fault in items %}
-      <tr>
+      <tr class="clickrow" data-href="/faults/{{ fault.id }}">
         <td><a class="rowlink" href="/trucks/{{ fault.truck_id }}">{{ fault.unit_number }}</a>
           <div class="subtle">{{ fault.make or '' }} {{ fault.model or '' }}</div></td>
         <td><a class="rowlink mono" href="/faults/{{ fault.id }}">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ ' / FMI ' ~ fault.fmi) }}</a>

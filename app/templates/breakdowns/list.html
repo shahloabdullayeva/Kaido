@@ -21,7 +21,7 @@
     <thead><tr><th>Unit</th><th>What happened</th><th>Where</th><th>Severity</th><th>Status</th><th>When</th><th class="right">Cost</th></tr></thead>
     <tbody>
       {% for item in items %}
-      <tr>
+      <tr class="clickrow" data-href="/breakdowns/{{ item.id }}">
         <td><a class="rowlink" href="/breakdowns/{{ item.id }}">{{ item.unit_number }}</a>
           <div class="subtle">{{ item.driver_name or 'no driver' }}</div></td>
         <td>{{ (item.description or '')[:70] }}</td>

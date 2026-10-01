@@ -83,7 +83,7 @@
       <thead><tr><th>Date</th><th>Work</th><th class="right">Odometer</th><th class="right">Cost</th></tr></thead>
       <tbody>
         {% for order in history %}
-        <tr>
+        <tr class="clickrow" data-href="/maintenance/{{ order.id }}">
           <td>{{ (order.performed_on or order.scheduled_for)|day }}
             <div class="subtle"><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></div></td>
           <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.kind|work }}</a>
@@ -106,7 +106,7 @@
       <thead><tr><th>Code</th><th>Severity</th><th>Seen</th><th>State</th></tr></thead>
       <tbody>
         {% for fault in faults %}
-        <tr>
+        <tr class="clickrow" data-href="/faults/{{ fault.id }}">
           <td><span class="mono">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ '/' ~ fault.fmi) }}</span>
             <div class="subtle">{{ (fault.description or '')[:60] }}</div></td>
           <td><span class="badge {{ fault.severity|tone }}">{{ fault.severity }}</span></td>
@@ -153,7 +153,7 @@
     <thead><tr><th>When</th><th>Type</th><th>Driver</th><th>Result</th></tr></thead>
     <tbody>
       {% for item in inspections %}
-      <tr><td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.submitted_at|stamp }}</a></td>
+      <tr class="clickrow" data-href="/pti/report/{{ item.id }}"><td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.submitted_at|stamp }}</a></td>
         <td>{{ pti_kinds.get(item.kind, 'Inspection') }}</td><td>{{ item.driver_name or '—' }}</td>
         <td>{% if not item.defect_count %}<span class="badge ok">no defects</span>
           {% elif item.certified_at %}<span class="badge muted">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, signed off</span>
@@ -187,7 +187,7 @@
       <thead><tr><th>When</th><th>What</th><th>Status</th><th class="right">Cost</th></tr></thead>
       <tbody>
         {% for item in breakdowns %}
-        <tr><td>{{ item.occurred_at|day }}</td>
+        <tr class="clickrow" data-href="/breakdowns/{{ item.id }}"><td>{{ item.occurred_at|day }}</td>
           <td><a class="rowlink" href="/breakdowns/{{ item.id }}">{{ (item.description or '')[:50] }}</a></td>
           <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
           <td class="right">{{ ((item.repair_cost or 0) + (item.towing_cost or 0))|money }}</td></tr>

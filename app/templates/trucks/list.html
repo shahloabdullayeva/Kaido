@@ -30,7 +30,7 @@
     <thead><tr><th>Unit</th><th>Vehicle</th><th>Driver</th><th>Status</th><th>Service</th><th class="right">Odometer</th></tr></thead>
     <tbody>
       {% for truck in fleet %}
-      <tr>
+      <tr class="clickrow" data-href="/trucks/{{ truck.id }}">
         <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a>
           {% if truck.samsara_id %}<div class="subtle">Samsara linked</div>{% endif %}
           {% if truck.is_outside %}<div class="subtle"><span class="badge info">outside</span> {{ truck.outside_carrier or '' }}</div>{% endif %}</td>

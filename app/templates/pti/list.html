@@ -13,7 +13,7 @@
     <thead><tr><th>Unit</th><th>Driver</th><th class="right">Moved today</th><th>Pre-trip</th><th>Last PTI</th></tr></thead>
     <tbody>
       {% for truck in board %}
-      <tr>
+      <tr class="clickrow" data-href="/trucks/{{ truck.id }}">
         <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a></td>
         <td>{{ truck.driver_name or '—' }}</td>
         <td class="right">{{ truck.moved|number }} mi</td>

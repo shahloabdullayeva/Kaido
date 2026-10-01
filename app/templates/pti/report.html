@@ -92,7 +92,7 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Photo of</th><th>Driver marked</th><th>AI saw</th><th>Note</th></tr></thead>
     <tbody>{% for finding in item.ai_result.findings %}
-      <tr><td><a href="/pti/photo/{{ finding.photo_id }}">{{ finding.label }}</a></td><td>{{ finding.marked }}</td>
+      <tr class="clickrow" data-href="/pti/photo/{{ finding.photo_id }}"><td><a href="/pti/photo/{{ finding.photo_id }}">{{ finding.label }}</a></td><td>{{ finding.marked }}</td>
         <td><span class="badge {{ {'ok': 'ok', 'issue': 'bad', 'wrong_photo': 'bad', 'unclear': 'warn'}[finding.verdict] }}">{{ finding.verdict|replace('_', ' ') }}</span></td>
         <td>{{ finding.note }}</td></tr>
     {% endfor %}</tbody>

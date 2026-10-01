@@ -38,7 +38,11 @@ def memberships_for(user_id, platform_role):
 
 
 def default_company_id(user_id):
-    row = one("select company_id from memberships where user_id = %s order by id limit 1", (user_id,))
+    row = one(
+        """select m.company_id from memberships m join users u on u.id = m.user_id
+           where m.user_id = %s order by (m.company_id = u.default_company_id) desc nulls last, m.id limit 1""",
+        (user_id,),
+    )
     return row["company_id"] if row else None
 
 

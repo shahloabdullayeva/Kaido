@@ -11,7 +11,7 @@
     <thead><tr><th>Unit</th><th>Driver</th><th>Send</th></tr></thead>
     <tbody>
       {% for card in cards %}
-      <tr>
+      <tr class="clickrow" data-href="/trucks/{{ card.id }}">
         <td><a class="rowlink" href="/trucks/{{ card.id }}">{{ card.unit }}</a></td>
         <td>{{ card.driver or '—' }}</td>
         <td><div class="actions-row">

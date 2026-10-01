@@ -1,0 +1,70 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head"><div><h1>Settings</h1><p>Your own preferences, and where every other setting lives.</p></div></div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Appearance</h2><span class="subtle">saved to your account, so it follows you to any device</span></div>
+  <form method="post" action="/settings/appearance">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="theme-pick">
+      {% for value, text in themes.items() %}
+      <label class="theme-option theme-{{ value }}">
+        <input type="radio" name="theme" value="{{ value }}" {% if (session.theme or 'auto') == value %}checked{% endif %}>
+        <span class="theme-swatch"><span></span><span></span><span></span></span>
+        <span>{{ text }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <p class="subtle">Drivers' PTI pages always follow their own phone's setting.</p>
+    <div class="form-actions"><button class="btn" type="submit">Save appearance</button></div>
+  </form>
+</section>
+
+{% if companies|length > 1 %}
+<section class="panel">
+  <div class="panel-head"><h2>Opens first</h2></div>
+  <form method="post" action="/settings/default-company">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      <label class="field"><span>Company Kaido opens on when you sign in</span>
+        <select name="company_id">{% for item in companies %}<option value="{{ item.id }}" {% if item.id == (session.default_company_id or company.id) %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></label>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Save</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head"><h2>Everything else</h2></div>
+  <div class="table-wrap"><table>
+    <tbody>
+      <tr class="clickrow" data-href="/account"><td><a class="rowlink" href="/account">Your account</a></td><td>Password, Telegram link, devices you are signed in on</td></tr>
+      {% if at_least(role, 'admin') %}
+      <tr class="clickrow" data-href="/company"><td><a class="rowlink" href="/company">Company</a></td><td>Name, DOT and MC numbers, timezone, people, daily follow-up, PTI messages to truck groups</td></tr>
+      <tr class="clickrow" data-href="/trucks/intervals"><td><a class="rowlink" href="/trucks/intervals">Service intervals</a></td><td>PM-A/B/C, oil, air dryer, transmission, coolant, DPF — miles and months</td></tr>
+      <tr class="clickrow" data-href="/trucks/baselines"><td><a class="rowlink" href="/trucks/baselines">Service baselines</a></td><td>Last service done on each truck, so due dates can be worked out</td></tr>
+      <tr class="clickrow" data-href="/pti/links"><td><a class="rowlink" href="/pti/links">PTI links</a></td><td>Each truck's PTI link and Telegram group code</td></tr>
+      <tr class="clickrow" data-href="/maintenance/saved-shops"><td><a class="rowlink" href="/maintenance/saved-shops">Saved shops</a></td><td>Shops your team trusts, listed first in every shop search</td></tr>
+      <tr class="clickrow" data-href="/integrations"><td><a class="rowlink" href="/integrations">Integrations</a></td><td>Samsara connection, truck and driver import, sync</td></tr>
+      {% endif %}
+    </tbody>
+  </table></div>
+</section>
+
+{% if site %}
+<section class="panel">
+  <div class="panel-head"><h2>Website</h2><span class="subtle">platform staff only · read only</span></div>
+  <div class="detail-list">
+    <div><span>Address</span><strong><a href="{{ site.url }}">{{ site.url }}</a></strong></div>
+    <div><span>Security certificate</span><strong>{% if site.certificate %}valid until {{ site.certificate|day }}, renews itself{% else %}could not check{% endif %}</strong></div>
+    <div><span>Telegram bot</span><strong>@{{ site.bot }}</strong></div>
+    <div><span>Last backup</span><strong>{{ site.last_backup|stamp if site.last_backup else 'none found' }}</strong><em class="subtle">Mondays and Thursdays 03:30, database and PTI photos, kept 4 weeks</em></div>
+    <div><span>AI</span><strong>{{ 'on' if site.ai_on else 'off — no API key' }}</strong></div>
+    <div><span>AI spend today</span><strong>${{ '%.2f'|format(site.ai_today) }} of ${{ '%.2f'|format(site.ai_cap) }} cap</strong></div>
+    <div><span>AI spend all time</span><strong>${{ '%.2f'|format(site.ai_total) }} over {{ site.ai_calls }} calls</strong></div>
+    <div><span>AI models</span><strong>{{ site.ai_photo_model }} for PTI photos, {{ site.ai_model }} for the rest</strong></div>
+  </div>
+  <p class="subtle pad">These come from the server's configuration. Ask Claude to change them.</p>
+</section>
+{% endif %}
+{% endblock %}

@@ -50,7 +50,7 @@
   <div class="table-wrap"><table>
     <thead><tr><th>Unit</th><th>Group</th><th>Driver tagged</th></tr></thead>
     <tbody>{% for truck in truck_groups %}
-      <tr><td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a></td><td>{{ truck.telegram_chat_title or '—' }}</td>
+      <tr class="clickrow" data-href="/trucks/{{ truck.id }}"><td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a></td><td>{{ truck.telegram_chat_title or '—' }}</td>
         <td>{% if truck.telegram_username %}@{{ truck.telegram_username }}{% elif truck.telegram_user_id %}{{ truck.driver_name }}{% else %}<span class="muted">not yet — driver sends /unit</span>{% endif %}</td></tr>
     {% endfor %}</tbody>
   </table></div>

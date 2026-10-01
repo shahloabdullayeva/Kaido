@@ -687,3 +687,8 @@ create table if not exists summaries (
   body text,
   sent_at timestamptz not null default now()
 );
+
+alter table users add column if not exists theme text not null default 'auto';
+alter table users drop constraint if exists users_theme_check;
+alter table users add constraint users_theme_check check (theme in ('auto', 'light', 'dark'));
+alter table users add column if not exists default_company_id int references companies(id) on delete set null;

@@ -11,7 +11,7 @@
     <thead><tr><th>Name</th><th>Contact</th><th>Trucks</th><th>Licence</th><th>Medical</th><th>Status</th></tr></thead>
     <tbody>
       {% for driver in drivers %}
-      <tr>
+      <tr class="clickrow" data-href="/drivers/{{ driver.id }}">
         <td><a class="rowlink" href="/drivers/{{ driver.id }}">{{ driver.name }}</a>
           {% if driver.telegram_username %}<div class="subtle">@{{ driver.telegram_username }}</div>{% endif %}</td>
         <td>{{ driver.phone or '—' }}<div class="subtle">{{ driver.email or '' }}</div></td>

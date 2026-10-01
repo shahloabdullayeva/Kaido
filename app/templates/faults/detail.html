@@ -45,7 +45,7 @@
   <div class="table-wrap"><table>
     <thead><tr><th>First seen</th><th>Last seen</th><th>Cleared</th><th class="right">Times</th></tr></thead>
     <tbody>{% for row in history %}
-      <tr><td>{% if row.id != fault.id %}<a href="/faults/{{ row.id }}">{{ row.first_seen_at|stamp }}</a>{% else %}{{ row.first_seen_at|stamp }} (this one){% endif %}</td>
+      <tr class="clickrow" data-href="/faults/{{ row.id }}"><td>{% if row.id != fault.id %}<a href="/faults/{{ row.id }}">{{ row.first_seen_at|stamp }}</a>{% else %}{{ row.first_seen_at|stamp }} (this one){% endif %}</td>
         <td>{{ row.last_seen_at|stamp }}</td><td>{{ row.cleared_at|stamp }}</td><td class="right">{{ row.occurrence_count or '—' }}</td></tr>
     {% endfor %}</tbody>
   </table></div>

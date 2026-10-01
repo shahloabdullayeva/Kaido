@@ -22,7 +22,7 @@
     <thead><tr><th>Date</th><th>Unit</th><th>Driver</th><th>Where</th><th>Type</th><th class="right">Gallons</th><th class="right">$/gal</th><th class="right">Total</th><th class="right">Odometer</th></tr></thead>
     <tbody>
       {% for entry in entries %}
-      <tr>
+      <tr class="clickrow" data-href="/trucks/{{ entry.truck_id }}">
         <td>{{ entry.purchased_at|day }}</td>
         <td><a class="rowlink" href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
         <td>{{ entry.driver_name or '—' }}</td>

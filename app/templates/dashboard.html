@@ -48,7 +48,7 @@
       <thead><tr><th>Unit</th><th>Status</th><th>Service</th><th class="right">Odometer</th></tr></thead>
       <tbody>
         {% for truck in attention %}
-        <tr>
+        <tr class="clickrow" data-href="/trucks/{{ truck.id }}">
           <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a>
             <div class="subtle">{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}</div></td>
           <td>
@@ -85,7 +85,7 @@
       <thead><tr><th>Unit</th><th>Status</th><th>Where</th><th>When</th></tr></thead>
       <tbody>
         {% for item in breakdowns %}
-        <tr>
+        <tr class="clickrow" data-href="/breakdowns/{{ item.id }}">
           <td><a class="rowlink" href="/breakdowns/{{ item.id }}">{{ item.unit_number }}</a>
             <div class="subtle">{{ item.driver_name or 'No driver' }}</div></td>
           <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
@@ -109,7 +109,7 @@
       <thead><tr><th>Unit</th><th>Code</th><th>Severity</th><th>Seen</th></tr></thead>
       <tbody>
         {% for fault in faults %}
-        <tr>
+        <tr class="clickrow" data-href="/faults/{{ fault.id }}">
           <td><a class="rowlink" href="/trucks/{{ fault.truck_id }}">{{ fault.unit_number }}</a></td>
           <td><span class="mono">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ ' FMI ' ~ fault.fmi) }}</span>
             <div class="subtle">{{ (fault.description or '')[:60] }}</div></td>
@@ -131,7 +131,7 @@
       <thead><tr><th>Document</th><th>Who</th><th>Expires</th></tr></thead>
       <tbody>
         {% for doc in documents %}
-        <tr>
+        <tr class="clickrow" data-href="{{ doc.href }}">
           <td>{{ doc.kind }}</td>
           <td><a class="rowlink" href="{{ doc.href }}">{{ doc.who }}</a></td>
           <td>{{ doc.on|day }}</td>
@@ -153,7 +153,7 @@
       <thead><tr><th>Unit</th><th>Work</th><th>Status</th><th>Due</th></tr></thead>
       <tbody>
         {% for order in upcoming %}
-        <tr>
+        <tr class="clickrow" data-href="/maintenance/{{ order.id }}">
           <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.unit_number }}</a></td>
           <td>{{ (order.description or '')[:50] }}</td>
           <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
@@ -174,7 +174,7 @@
       <thead><tr><th>Unit</th><th>When</th><th class="right">Gallons</th><th class="right">Total</th></tr></thead>
       <tbody>
         {% for entry in fuel %}
-        <tr>
+        <tr class="clickrow" data-href="/trucks/{{ entry.truck_id }}">
           <td><a class="rowlink" href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
           <td>{{ entry.purchased_at|ago }}</td>
           <td class="right">{{ entry.gallons|number(1) }}</td>

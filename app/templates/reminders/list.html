@@ -9,7 +9,7 @@
     <thead><tr><th>When</th><th>About</th><th>What</th><th>For</th><th class="right"></th></tr></thead>
     <tbody>
       {% for item in items %}
-      <tr>
+      <tr{% if item.href %} class="clickrow" data-href="{{ item.href }}#reminders"{% endif %}>
         <td class="nowrap">{{ item.local.strftime('%d %b %Y %H:%M') }}
           <div class="subtle">{% if item.sent_at %}sent {{ item.sent_at|ago }}{% else %}waiting{% endif %}</div></td>
         <td>{% if item.href %}<a class="rowlink" href="{{ item.href }}#reminders">{{ item.label }}</a>{% else %}{{ item.label }}{% endif %}</td>

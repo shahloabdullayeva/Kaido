@@ -10,10 +10,11 @@
   ('/reminders', 'Reminders', none),
   ('/reports', 'Reports', none),
   ('/integrations', 'Integrations', 'admin'),
-  ('/company', 'Company', 'admin')
+  ('/company', 'Company', 'admin'),
+  ('/settings', 'Settings', none)
 ] %}
 <!doctype html>
-<html lang="en">
+<html lang="en"{% if session and session.theme in ('light', 'dark') %} data-theme="{{ session.theme }}"{% endif %}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
