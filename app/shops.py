@@ -17,7 +17,13 @@ class OverpassBusy(Exception):
     pass
 
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_URLS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+)
+NEARBY_CACHE_DEGREES = 0.07
+FALLBACK_CACHE_DEGREES = 0.35
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 USER_AGENT = "Kaido/1.0 fleet maintenance (+https://kaido.shahlo.blog)"
@@ -190,19 +196,38 @@ def _cell(latitude, longitude):
     return f"{round(float(latitude), 2):.2f},{round(float(longitude), 2):.2f}"
 
 
-def _fetch(latitude, longitude, radius_m, attempts=3):
+def _fetch(latitude, longitude, radius_m):
     body = QUERY.format(radius=radius_m, lat=float(latitude), lon=float(longitude))
-    for attempt in range(1, attempts + 1):
-        _polite("overpass")
-        response = requests.post(OVERPASS_URL, data={"data": body},
-                                 headers={"User-Agent": USER_AGENT}, timeout=60)
-        if response.status_code in (429, 504) and attempt < attempts:
-            wait = int(response.headers.get("Retry-After") or 0) or attempt * 4
-            time.sleep(min(wait, 15))
+    for number, url in enumerate(OVERPASS_URLS):
+        if number == 0:
+            _polite("overpass")
+        try:
+            response = requests.post(url, data={"data": body}, headers={"User-Agent": USER_AGENT},
+                                     timeout=(6, 30 if number == 0 else 12))
+        except requests.RequestException as err:
+            log.warning("overpass %s failed: %s", url, err)
             continue
-        response.raise_for_status()
-        return response.json().get("elements") or []
+        if response.status_code != 200:
+            log.warning("overpass %s answered %s", url, response.status_code)
+            continue
+        try:
+            return response.json().get("elements") or []
+        except ValueError:
+            log.warning("overpass %s sent something that was not JSON", url)
     raise OverpassBusy("OpenStreetMap's free lookup service is busy right now")
+
+
+def _nearest_lookup(latitude, longitude, radius_m, degrees, days):
+    row = one(
+        """select payload from shop_lookups
+           where radius_m >= %s and (%s::int is null or fetched_at > now() - make_interval(days => %s::int))
+             and abs(split_part(cell, ',', 1)::numeric - %s) <= %s
+             and abs(split_part(cell, ',', 2)::numeric - %s) <= %s
+           order by abs(split_part(cell, ',', 1)::numeric - %s) + abs(split_part(cell, ',', 2)::numeric - %s), fetched_at desc
+           limit 1""",
+        (radius_m, days, days, float(latitude), degrees, float(longitude), degrees, float(latitude), float(longitude)),
+    )
+    return row["payload"] if row else None
 
 
 def raw_elements(latitude, longitude, radius_m):
@@ -213,12 +238,18 @@ def raw_elements(latitude, longitude, radius_m):
     )
     if fresh:
         return fresh["payload"], True
+    near = _nearest_lookup(latitude, longitude, radius_m, NEARBY_CACHE_DEGREES, CACHE_DAYS)
+    if near:
+        return near, True
     try:
         elements = _fetch(latitude, longitude, radius_m)
     except (OverpassBusy, requests.RequestException):
         stale = one("select payload from shop_lookups where cell = %s and radius_m = %s", (cell, radius_m))
         if stale:
             return stale["payload"], True
+        wider = _nearest_lookup(latitude, longitude, radius_m, FALLBACK_CACHE_DEGREES, None)
+        if wider:
+            return wider, True
         raise
     execute(
         """insert into shop_lookups (cell, radius_m, payload, fetched_at) values (%s, %s, %s, now())

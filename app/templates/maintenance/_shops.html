@@ -18,7 +18,7 @@
   Samsara has not reported a position for <strong>{{ truck.unit_number }}</strong>. Type where it is, or click the map.
   {%- endif %}
 </p>
-{% if problem %}<p class="empty">{{ problem }}</p>{% endif %}
+{% if problem %}<p class="empty">{{ problem }} <button type="button" class="btn small" data-shop-retry>Retry</button></p>{% endif %}
 <div id="shop-map"
      {% if origin %}data-lat="{{ origin.latitude }}" data-lon="{{ origin.longitude }}"
      data-label="{% if origin.source == 'samsara' %}{{ truck.unit_number }}{% if truck.driver_name %}, {{ truck.driver_name }}{% endif %}{% else %}Looking here{% endif %} — {{ origin.label }}"
@@ -68,6 +68,7 @@
 <p class="subtle" id="shop-foot" data-ai="{{ 'paused' if ai_paused else ('on' if ai_on else 'off') }}">Shops from {{ 'Google Maps' if meta and meta.source == 'google' else 'OpenStreetMap' }}{% if meta and meta.cached %}, cached{% endif %}.
   {% if saved_count %}<a href="/maintenance/saved-shops">{{ saved_count }} saved shop{{ 's' if saved_count != 1 }}</a> come first when nearby.{% else %}<a href="/maintenance/saved-shops">Save shops</a> to have them listed first.{% endif %}
   {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
+  {% if ai_on and not ai_paused and found %}<button type="button" class="btn small" data-shop-ai>Ask Claude which shop</button>{% endif %}
   <span id="shop-ai-state">{% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.{% elif ai_paused %}AI notes are paused — today's budget is spent. They come back tomorrow.{% endif %}</span></p>
   {% endif %}
 {% endif %}

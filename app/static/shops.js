@@ -416,6 +416,27 @@ const wireVendorPicks = () => {
 };
 
 const wireSearch = () => {
+  const retry = body.querySelector('[data-shop-retry]');
+  if (retry) retry.addEventListener('click', () => load(trucks.value, lastParams));
+  const ask = body.querySelector('[data-shop-ai]');
+  if (ask) {
+    ask.addEventListener('click', async () => {
+      const truckId = trucks.value;
+      const asking = new URLSearchParams(lastParams || {});
+      const kindName = kindSelect && kindSelect.selectedOptions[0] ? kindSelect.selectedOptions[0].textContent.trim() : '';
+      const job = [kindName, notesField ? notesField.value.trim() : ''].filter(Boolean).join(': ').slice(0, 300);
+      if (job) asking.set('job', job);
+      const query = asking.toString();
+      ask.disabled = true;
+      ask.textContent = 'Claude is comparing the shops…';
+      try {
+        fillAdvice(await getJson('/maintenance/shops/' + encodeURIComponent(truckId) + '/advice' + (query ? '?' + query : '')));
+      } catch (err) {
+        fillAdvice({ state: 'none' });
+      }
+      ask.remove();
+    });
+  }
   const home = body.querySelector('[data-shop-samsara]');
   if (home) home.addEventListener('click', () => load(trucks.value, {}));
   const input = body.querySelector('#shop-where');
@@ -479,25 +500,11 @@ const fillAddress = (row, data) => {
 
 const followUp = async (run, truckId, query, meter) => {
   const rows = [...body.querySelectorAll('.shop-list li[data-needs-address]')];
-  const foot = body.querySelector('#shop-foot');
-  const wantAi = foot && foot.dataset.ai === 'on' && body.querySelectorAll('.shop-list li').length > 0;
-  const units = rows.length + (wantAi ? 3 : 0);
-  if (!units) { meter.finish(body.querySelector('.shop-list') ? 'Shops found' : 'Done'); return; }
-  let done = 0;
-  let aiDone = !wantAi;
+  if (!rows.length) { meter.finish(body.querySelector('.shop-list') ? 'Shops found' : 'Done'); return; }
   let found = 0;
-  const words = () => {
-    const parts = [];
-    if (!aiDone) parts.push('Claude is comparing the shops');
-    if (found < rows.length) parts.push('finding addresses ' + found + ' of ' + rows.length);
-    return parts.join(' · ') || 'Finishing';
-  };
-  const step = () => meter.stage(50 + 50 * done / units, Math.min(99, 50 + 50 * (done + (aiDone ? 1 : 3)) / units), words());
+  const step = () => meter.stage(50 + 50 * found / rows.length, Math.min(99, 50 + 50 * (found + 1) / rows.length),
+    'Finding addresses ' + found + ' of ' + rows.length);
   step();
-  const advice = wantAi ? getJson('/maintenance/shops/' + encodeURIComponent(truckId) + '/advice' + (query ? '?' + query : ''))
-    .then((data) => { if (run === searchRun) fillAdvice(data); })
-    .catch(() => { if (run === searchRun) fillAdvice({ state: 'none' }); })
-    .finally(() => { aiDone = true; done += 3; if (run === searchRun) step(); }) : Promise.resolve();
   for (const row of rows) {
     if (run !== searchRun) return;
     const params = new URLSearchParams({ lat: row.dataset.lat, lon: row.dataset.lon, name: row.dataset.name });
@@ -507,10 +514,8 @@ const followUp = async (run, truckId, query, meter) => {
       fillAddress(row, { address: null });
     }
     found += 1;
-    done += 1;
     if (run === searchRun) step();
   }
-  await advice;
   if (run === searchRun) meter.finish('Done');
 };
 

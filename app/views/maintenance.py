@@ -395,7 +395,8 @@ def shops_advice(truck_id):
     origin, found, meta, problem = find_shops(truck)
     if not found:
         return jsonify({"state": "none"})
-    advice = advisor.shop_advice(dict(truck, location=origin["label"]), found, fleet_oil_average())
+    advice = advisor.shop_advice(dict(truck, location=origin["label"]), found, fleet_oil_average(),
+                                 job=forms.text(request.args.get("job"), 300))
     if not advice:
         return jsonify({"state": "none"})
     return jsonify({"state": "ok", "pick": advice.pick, "why": advice.why,

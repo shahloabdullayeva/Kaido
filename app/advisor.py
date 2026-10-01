@@ -121,7 +121,9 @@ def _ask(system, user, output_format, max_tokens=1200):
 
 SHOP_SYSTEM = (
     "You advise a truck fleet dispatcher choosing where to send a Class 8 tractor "
-    "for an oil and filter service. You are given the truck, its current position, "
+    "for the job you are given (an oil and filter service when no job is given). Pick a shop "
+    "that can actually do that job on a Class 8 truck: a tire job needs a tire or truck shop, "
+    "not a paint shop or a fuel-only stop. You are given the truck, its current position, "
     "and a numbered list of candidate shops pulled from Google Maps or OpenStreetMap, each with "
     "distance, opening hours where known, and the fleet's own past invoices at that "
     "shop. For each shop write one line of at most 18 words, and give its number. "
@@ -150,7 +152,7 @@ SHOP_SYSTEM = (
 )
 
 
-def shop_advice(truck, shops, fleet_average=None):
+def shop_advice(truck, shops, fleet_average=None, job=None):
     if not shops or not available():
         return None
     lines = []
@@ -186,8 +188,9 @@ def shop_advice(truck, shops, fleet_average=None):
         f"Truck {truck.get('unit_number')} ({' '.join(str(p) for p in [truck.get('year'), truck.get('make'), truck.get('model')] if p)})",
         f"Currently at: {truck.get('location') or 'position known, address not resolved'}",
         f"Odometer {truck.get('odometer'):,} miles" if truck.get("odometer") else "",
-        f"This fleet's average oil service costs ${fleet_average:.0f}" if fleet_average else
-        "This fleet has no oil invoices on record yet",
+        f"The job: {job}" if job else "The job: oil and filter service",
+        (f"This fleet's average oil service costs ${fleet_average:.0f}" if fleet_average else
+         "This fleet has no oil invoices on record yet") if not job or "oil" in job.lower() else "",
     ]
     user = "\n".join(part for part in context if part) + "\n\nCandidate shops:\n" + "\n".join(lines)
     return _ask(SHOP_SYSTEM, user, Advice)
