@@ -8,6 +8,7 @@ from ..auth import login_required, throttle
 from ..db import one, rows
 from ..db import insert as db_insert
 from ..db import execute
+from ..logs import get
 from ..tenancy import company_required, role_required, scoped_truck
 
 bp = Blueprint("pti", __name__)
@@ -296,6 +297,10 @@ def driver_submit(token):
                 saved += 1
     if item["defect_count"]:
         pti.alert(item["id"])
+    try:
+        pti_driver.completed(item)
+    except Exception:
+        get("pti").warning("group notice for inspection %s failed", item["id"], exc_info=True)
     audit("pti.submitted", "inspection", item["id"],
           {"unit": truck["unit_number"], "defects": item["defect_count"], "photos": saved},
           company_id=truck["company_id"], user_id=session["user_id"] if session else None,

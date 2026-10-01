@@ -144,6 +144,25 @@ def nudge(truck):
         "", "A pre-trip is required before driving each day (FMCSA 396.13)."])
 
 
+def completed(inspection):
+    truck = one(TRUCK_SQL + " where t.id = %s", (inspection["truck_id"],))
+    if not truck or not truck["telegram_chat_id"]:
+        return False
+    kind = pti.KINDS.get(inspection["kind"], "Inspection").lower()
+    who = mention(truck) if truck["driver_id"] and inspection["driver_id"] == truck["driver_id"] else ""
+    lines = [f"✅ <b>Unit {escape(truck['unit_number'])}</b> — {kind} done by {escape(inspection['driver_name'] or 'driver')}"
+             + (f" {who}" if who else "")]
+    found = pti.defects_of(inspection)
+    if not found:
+        lines.append("No defects.")
+    else:
+        lines.append(f"{'🛑 NOT SAFE TO DRIVE — ' if inspection['safe_to_drive'] is False else ''}"
+                     f"{len(found)} defect{'' if len(found) == 1 else 's'} reported:")
+        lines += [f"• {escape(d['label'])}" + (f" — {escape(d['note'][:120])}" if d["note"] else "") for d in found]
+        lines.append("The office has it and will sign off the repair.")
+    return bool(send(truck["telegram_chat_id"], "\n".join(lines)).get("ok"))
+
+
 BUILDERS = {"morning": morning, "evening": evening, "nudge": nudge}
 
 
