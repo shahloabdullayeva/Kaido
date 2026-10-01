@@ -4,6 +4,7 @@ Every billable request is written to `google_calls`; at GOOGLE_DAILY_CALLS the a
 asking Google for the day and the shop finder falls back to OpenStreetMap. The default
 cap keeps a month inside Google's free monthly allowance (see README → Google Maps).
 """
+import json
 import math
 import re
 from urllib.parse import parse_qs, unquote_plus, urljoin, urlparse
@@ -285,6 +286,55 @@ def read_link(url):
     if place_id:
         found["place_id"] = place_id
     return found
+
+
+LIST_URL = "https://www.google.com/maps/preview/entitylist/getlist"
+
+
+def list_id(full_url):
+    path = urlparse(full_url).path
+    found = re.search(r"/maps/placelists/list/([A-Za-z0-9_-]+)", path) or re.search(r"!11m1!2s([A-Za-z0-9_-]+)", full_url)
+    return found.group(1) if found else None
+
+
+def read_list(full_url, limit=2000):
+    """Every place in a shared Google Maps list: name, coordinates, the list owner's note."""
+    identifier = list_id(full_url)
+    if not identifier:
+        return None
+    try:
+        response = requests.get(
+            LIST_URL,
+            params={"authuser": "0", "hl": "en", "gl": "us",
+                    "pb": f"!1m4!1s{identifier}!2e1!3m1!1e1!2e2!3e2!4i{int(limit)}!16b1"},
+            headers={"User-Agent": "Mozilla/5.0 (Kaido link reader)"}, timeout=30,
+        )
+        response.raise_for_status()
+        text = response.text
+        data = json.loads(text[text.index("\n") + 1:])[0]
+    except (requests.RequestException, ValueError, IndexError) as err:
+        raise GoogleError("could not open that list: " + redact(str(err))[:100]) from None
+    owner = (data[3] or [None])[0] if len(data) > 3 else None
+    title = data[4] if len(data) > 4 else None
+    places = []
+    for entry in (data[8] if len(data) > 8 and data[8] else []):
+        try:
+            where = entry[1]
+            ids = where[6] if len(where) > 6 else None
+            latitude, longitude = float(where[5][2]), float(where[5][3])
+        except (TypeError, IndexError, ValueError):
+            continue
+        if not ids or not ids[1]:
+            continue
+        cid = int(ids[1]) & 0xFFFFFFFFFFFFFFFF
+        places.append({
+            "name": (entry[2] or "").replace("\n", " ").strip(),
+            "note": (entry[3] or "").strip() or None,
+            "latitude": latitude,
+            "longitude": longitude,
+            "url": f"https://maps.google.com/?cid={cid}",
+        })
+    return {"owner": owner, "title": title, "places": places, "url": full_url}
 
 
 def looks_like_link(text):

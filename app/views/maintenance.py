@@ -505,6 +505,38 @@ def saved_shops():
                            shops=shops, google_on=google_places.available())
 
 
+def save_list(link, note=None):
+    """Store every place in a shared Google Maps list. Returns (added, skipped, problem)."""
+    try:
+        full = google_places.expand_link(link)
+        listing = google_places.read_list(full)
+    except Exception as err:
+        log.warning("reading saved-shop list %r failed: %s", link, err)
+        return 0, 0, f"{link[:60]} — could not read the list ({str(err)[:80]})."
+    if listing is None:
+        return None, 0, None
+    existing = rows("select name, latitude, longitude from saved_shops where company_id = %s", (g.company["id"],))
+    seen = {(row["name"].strip().lower(), round(float(row["latitude"]), 3), round(float(row["longitude"]), 3)) for row in existing}
+    added = skipped = 0
+    source = " · ".join(part for part in [listing.get("owner"), listing.get("title")] if part)
+    for place in listing["places"]:
+        key = (place["name"].lower(), round(place["latitude"], 3), round(place["longitude"], 3))
+        if not place["name"] or key in seen:
+            skipped += 1
+            continue
+        seen.add(key)
+        insert(
+            """insert into saved_shops (company_id, name, latitude, longitude, maps_url, source_url, note, added_by)
+               values (%s, %s, %s, %s, %s, %s, %s, %s) returning id""",
+            (g.company["id"], forms.text(place["name"], 160), place["latitude"], place["longitude"], place["url"],
+             forms.text(link, 1000), forms.text(place["note"] or note, 300), g.session["user_id"]),
+        )
+        added += 1
+    audit("saved_shop.list_imported", "saved_shop", None,
+          {"list": source, "added": added, "skipped": skipped})
+    return added, skipped, None
+
+
 def save_shop(link=None, name=None, address=None, phone=None, note=None):
     """Store one shop from a Google Maps link or a name and address. Returns (row, problem)."""
     found = {"name": name, "latitude": None, "longitude": None, "place_id": None, "url": None}
@@ -559,7 +591,15 @@ def add_saved_shops():
     links = [line.strip() for line in (request.form.get("links") or "").splitlines() if line.strip()][:40]
     name, address = forms.text(request.form.get("name"), 160), forms.text(request.form.get("address"), 300)
     note, phone = request.form.get("note"), request.form.get("phone")
-    results = [save_shop(link=link, note=note) for link in links]
+    results = []
+    for link in links:
+        added, skipped, problem = save_list(link, note)
+        if added is None:
+            results.append(save_shop(link=link, note=note))
+        elif problem:
+            results.append((None, problem))
+        else:
+            flash(f"Imported {added} shops from the Google Maps list" + (f", skipped {skipped} already saved or not a shop" if skipped else "") + ".", "ok")
     if name or address:
         results.append(save_shop(name=name, address=address, phone=phone, note=note))
     added = [row["name"] for row, _problem in results if row]
