@@ -190,4 +190,5 @@ rather than an empty map.
 - The PTI page shows trucks that moved 10+ mi today with no pre-trip.
 - Samsara DVIRs now use the real endpoints `/dvirs/stream` and `/defects/stream` (the old `/fleet/defects/stream` guess was wrong). Neither org had a single DVIR in 90 days, so drivers are not doing them in the Samsara app.
 - Importing trucks from Samsara now runs a sync right away (BOOKIT showed 0 miles until the next cron).
+- Backups: Mon+Thu 03:30 server time (database + uploads/ photos), 4 weeks kept in /root/backups/fleet on the same server, then a Telegram summary to each company's admins (PTIs, AI checks, review, AI spend). AI cap stays $0.20/day (her decision, 1 Oct).
 - Truck Telegram groups: one group per truck (driver + office). Add @kaidofleet_bot and send `/truck <code>` (code on the truck page); the driver sends `/unit` once to be tagged. A group only ever gets its own truck's reminders. Pre-trip/post-trip on the company's picked days (default Mon+Thu, 06:00/20:00, US company timezone), plus a one-off nudge any day the truck drives 10+ mi with no pre-trip. Never post a fleet-wide list to a group: that went to Unit 003's group once on 1 Oct.

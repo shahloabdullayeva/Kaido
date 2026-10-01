@@ -679,3 +679,11 @@ alter table inspections add column if not exists review_note text;
 alter table inspections add column if not exists reviewed_by int references users(id) on delete set null;
 alter table inspections add column if not exists reviewed_name text;
 alter table inspections add column if not exists reviewed_at timestamptz;
+
+create table if not exists summaries (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  recipients int not null default 0,
+  body text,
+  sent_at timestamptz not null default now()
+);

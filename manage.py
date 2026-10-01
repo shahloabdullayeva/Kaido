@@ -206,6 +206,12 @@ def handle_group_update(update, send):
     return True
 
 
+def cmd_summary(args):
+    from app import summary
+    print(summary.run(args.backup or []))
+    return 0
+
+
 def cmd_pti_cleanup(args):
     from app import pti
     print(f"removed {pti.cleanup_media()} PTI photos/videos older than {pti.KEEP_MEDIA_DAYS} days")
@@ -386,6 +392,9 @@ def main():
 
     sub.add_parser("telegram-bot", help="link Telegram accounts").set_defaults(func=cmd_telegram)
     sub.add_parser("pti-cleanup", help="delete PTI photos/videos past the FMCSA 3 months").set_defaults(func=cmd_pti_cleanup)
+    summary_parser = sub.add_parser("summary", help="send the twice-weekly summary to company admins")
+    summary_parser.add_argument("--backup", nargs="*")
+    summary_parser.set_defaults(func=cmd_summary)
 
     demo = sub.add_parser("demo", help="add sample trucks, drivers, fuel and a breakdown")
     demo.add_argument("--company", required=True)
