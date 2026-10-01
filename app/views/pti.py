@@ -1,3 +1,5 @@
+from urllib.parse import quote, urlencode
+
 from flask import Blueprint, flash, g, redirect, render_template, request, send_file
 
 from .. import forms, pti
@@ -145,6 +147,29 @@ def stickers():
         url = pti.link_for(pti.ensure_token(truck))
         cards.append({"unit": truck["unit_number"], "url": url, "svg": pti.qr_svg(url)})
     return render_template("pti/stickers.html", title="PTI stickers", cards=cards)
+
+
+@bp.get("/pti/links")
+@login_required
+@role_required("admin")
+def links():
+    trucks = rows(
+        """select t.*, d.name as driver_name from trucks t left join drivers d on d.id = t.driver_id
+           where t.company_id = %s and t.status <> 'sold' and not t.is_outside
+           order by lower(t.unit_number)""",
+        (g.company["id"],),
+    )
+    cards = []
+    for truck in trucks:
+        url = pti.link_for(pti.ensure_token(truck))
+        message = (f"Unit {truck['unit_number']} PTI link. Save it and open it before every trip, "
+                   f"and after the trip too: {url}")
+        cards.append({"id": truck["id"], "unit": truck["unit_number"], "driver": truck["driver_name"],
+                      "url": url, "message": message,
+                      "whatsapp": "https://wa.me/?text=" + quote(message),
+                      "telegram": "https://t.me/share/url?" + urlencode({"url": url, "text": message})})
+    everything = "\n".join(f"Unit {c['unit']}: {c['url']}" for c in cards)
+    return render_template("pti/links.html", title="PTI links", active="/pti", cards=cards, everything=everything)
 
 
 @bp.post("/trucks/<int:truck_id>/pti-link")

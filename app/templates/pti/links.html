@@ -1,0 +1,36 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Send PTI links</h1><p>Each truck has its own link. Send it to the driver once — they save it and open it before and after every trip. No app, no login.</p></div>
+  <a class="btn ghost" href="/pti">Back to PTI</a>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Every truck</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Driver</th><th>Send</th></tr></thead>
+    <tbody>
+      {% for card in cards %}
+      <tr>
+        <td><a class="rowlink" href="/trucks/{{ card.id }}">{{ card.unit }}</a></td>
+        <td>{{ card.driver or '—' }}</td>
+        <td><div class="actions-row">
+          <a class="btn small" href="{{ card.whatsapp }}" target="_blank" rel="noopener">WhatsApp</a>
+          <a class="btn small" href="{{ card.telegram }}" target="_blank" rel="noopener">Telegram</a>
+          <button class="btn ghost small" type="button" data-copy="{{ card.message }}">Copy message</button>
+        </div></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>All links in one message</h2>
+    <button class="btn ghost small" type="button" data-copy-from="#all-links">Copy all</button></div>
+  <div class="pad">
+    <p class="muted">For a drivers' group chat. Each driver taps the line with their unit.</p>
+    <textarea id="all-links" class="pti-all" readonly>{{ everything }}</textarea>
+  </div>
+</section>
+{% endblock %}

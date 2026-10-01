@@ -128,6 +128,7 @@
   <div class="pad">
     <p>Driver link: <a class="mono" href="{{ pti_link }}">{{ pti_link }}</a></p>
     <div class="actions-row">
+      <button class="btn ghost small" type="button" data-copy="{{ pti_link }}">Copy link</button>
       <a class="btn ghost small" href="{{ pti_link }}">Fill in a PTI</a>
       <a class="btn ghost small" href="/pti/stickers?truck_id={{ truck.id }}">Print QR sticker</a>
       <form method="post" action="/trucks/{{ truck.id }}/pti-link" data-confirm="Make a new link? The current sticker in this truck will stop working.">

@@ -78,3 +78,28 @@ for (const form of document.querySelectorAll('form[data-autosubmit]')) {
     control.addEventListener('change', () => form.requestSubmit());
   }
 }
+
+const copyText = async (button, text) => {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (err) {
+    const area = document.createElement('textarea');
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+  }
+  const before = button.textContent;
+  button.textContent = 'Copied';
+  setTimeout(() => { button.textContent = before; }, 1500);
+};
+for (const button of document.querySelectorAll('[data-copy]')) {
+  button.addEventListener('click', () => copyText(button, button.dataset.copy));
+}
+for (const button of document.querySelectorAll('[data-copy-from]')) {
+  button.addEventListener('click', () => {
+    const source = document.querySelector(button.dataset.copyFrom);
+    if (source) copyText(button, source.value);
+  });
+}

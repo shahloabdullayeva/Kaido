@@ -2,7 +2,8 @@
 {% block body %}
 <div class="page-head">
   <div><h1>PTI</h1><p>Pre- and post-trip inspections. {{ open_count }} report{{ '' if open_count == 1 else 's' }} with defects not signed off.</p></div>
-  {% if at_least(role, 'admin') %}<a class="btn" href="/pti/stickers">Print QR stickers</a>{% endif %}
+  {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn" href="/pti/links">Send links to drivers</a>
+    <a class="btn ghost" href="/pti/stickers">QR stickers</a></div>{% endif %}
 </div>
 
 <section class="panel">
@@ -58,7 +59,7 @@
     </tbody>
   </table></div>
   {% else %}
-  <p class="empty">No PTIs yet. Print the QR stickers and put one in each cab — drivers scan it and fill in the checklist on their phone, no login.</p>
+  <p class="empty">No PTIs yet. Send each driver their truck's link from <a href="/pti/links">Send links to drivers</a> — they save it and fill in the checklist on their phone, no app and no login.</p>
   {% endif %}
 </section>
 {% endblock %}
