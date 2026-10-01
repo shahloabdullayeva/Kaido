@@ -548,7 +548,7 @@ const load = async (truckId, params) => {
   followUp(run, truckId, query, meter);
 };
 
-const findNow = new URLSearchParams(window.location.search).has('find');
+const findNow = new URLSearchParams(window.location.search).has('find') || (panel && panel.hasAttribute('data-find'));
 
 const refreshShops = () => {
   if (!realTruck()) { dropMap(); panel.hidden = true; return; }

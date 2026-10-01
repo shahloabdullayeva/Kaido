@@ -103,3 +103,12 @@ for (const button of document.querySelectorAll('[data-copy-from]')) {
     if (source) copyText(button, source.value);
   });
 }
+
+for (const row of document.querySelectorAll('tr[data-href]')) {
+  row.addEventListener('click', (event) => {
+    if (event.target.closest('a, button, input, select, textarea, label, form')) return;
+    if (window.getSelection && String(window.getSelection()).length) return;
+    if (event.ctrlKey || event.metaKey) window.open(row.dataset.href, '_blank');
+    else window.location.href = row.dataset.href;
+  });
+}

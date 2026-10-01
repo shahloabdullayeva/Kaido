@@ -45,7 +45,7 @@
     <thead><tr><th>Unit</th><th>Type</th><th>Driver</th><th>Result</th><th>Photos</th><th>AI check</th><th>Review</th><th>Sign-off</th><th>When</th></tr></thead>
     <tbody>
       {% for item in items %}
-      <tr>
+      <tr class="clickrow" data-href="/pti/report/{{ item.id }}" title="Open PTI #{{ item.id }}">
         <td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.unit_number or '—' }}</a>
           {% if item.source == 'samsara' %}<div class="subtle">from Samsara</div>{% endif %}</td>
         <td>{{ kinds.get(item.kind, 'Inspection') }}</td>

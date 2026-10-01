@@ -28,7 +28,7 @@
     <thead><tr><th>Unit</th><th>Driver</th><th>Work</th><th>Status</th><th>Date</th><th>Vendor</th><th class="right">Odometer</th><th class="right">Cost</th></tr></thead>
     <tbody>
       {% for order in orders %}
-      <tr>
+      <tr class="clickrow" data-href="/maintenance/{{ order.id }}" title="Open work order #{{ order.id }}">
         <td><a class="rowlink" href="/trucks/{{ order.truck_id }}">{{ order.unit_number }}</a></td>
         <td>{{ order.driver_name or '—' }}</td>
         <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ kind_labels.get(order.kind, order.kind) }}</a>
