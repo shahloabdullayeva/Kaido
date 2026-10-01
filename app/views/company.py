@@ -98,7 +98,7 @@ def index():
     code = None if company["driver_chat_id"] else pti_driver.link_code(company)
     return render_template("company/index.html", title="Company", active="/company",
                            company=company, members=members, log=log, roles=ROLES, role_labels=ROLE_LABELS,
-                           driver_code=code, bot_name=config.TELEGRAM_BOT_USERNAME)
+                           driver_code=code, bot_name=config.TELEGRAM_BOT_USERNAME, weekdays=pti_driver.WEEKDAYS)
 
 
 @bp.post("/company")
@@ -163,13 +163,14 @@ def drivers_group():
     morning = morning if morning is not None and 0 <= morning <= 12 else 6
     evening = evening if evening is not None and 13 <= evening <= 23 else 20
     enabled = forms.checkbox(request.form.get("pti_messages_enabled"))
+    days = sorted({day for day in (forms.integer(v) for v in request.form.getlist("pti_days")) if day and 1 <= day <= 7})
     execute(
         """update companies set pti_messages_enabled = %s, pti_morning_hour = %s, pti_evening_hour = %s,
-             updated_at = now() where id = %s""",
-        (enabled, morning, evening, g.company["id"]),
+             pti_days = %s, updated_at = now() where id = %s""",
+        (enabled, morning, evening, days, g.company["id"]),
     )
     audit("company.driver_messages", "company", g.company["id"],
-          {"enabled": enabled, "morning": morning, "evening": evening})
+          {"enabled": enabled, "morning": morning, "evening": evening, "days": days})
     flash("Driver PTI messages saved.", "ok")
     return redirect("/company")
 

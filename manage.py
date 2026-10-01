@@ -185,6 +185,13 @@ def handle_group_update(update, send):
         pti_driver.move_group(chat["id"], message["migrate_to_chat_id"])
         return True
     parts = (message.get("text") or "").split()
+    if parts and parts[0].split("@")[0] == "/unit":
+        if len(parts) < 2:
+            send(chat["id"], "Send /unit followed by your truck number, for example /unit 003")
+            return True
+        _truck, reply = pti_driver.claim_unit(chat["id"], message.get("from") or {}, " ".join(parts[1:]))
+        send(chat["id"], reply, reply_to_message_id=message.get("message_id"))
+        return True
     if not parts or parts[0].split("@")[0] != "/drivers":
         return True
     if len(parts) < 2:

@@ -649,3 +649,7 @@ begin
           'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
           'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)';
 end $$;
+
+alter table companies add column if not exists pti_days int[] not null default '{1,4}';
+
+alter table drivers add column if not exists telegram_user_id bigint;
