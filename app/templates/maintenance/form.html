@@ -105,7 +105,7 @@
   <div class="panel-head"><h2>Which oil</h2><span class="subtle">suggested by Claude from the make, model and engine</span></div>
   <div id="oil-body"></div>
 </section>
-<section class="panel" id="shop-panel" hidden{% if editing and order.status != 'done' %} data-find{% endif %}>
+<section class="panel" id="shop-panel" hidden{% if editing and order.status != 'done' and not order.vendor %} data-find{% endif %}>
   <div class="panel-head"><h2>Where to send it</h2><span class="subtle" id="shop-status"></span></div>
   <div class="progress pad" id="shop-progress" hidden></div>
   <div id="shop-body"></div>

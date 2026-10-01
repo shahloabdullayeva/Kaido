@@ -38,7 +38,7 @@
     <div class="shop-row">
       <span class="shop-name">{{ shop.name }}</span>
       <span class="badge {{ 'ok' if shop.open_state == 'open' else ('warn' if shop.open_state == 'unknown' else 'bad') }}">{{ shop.hours_text }}</span>
-      {% if shop.saved %}<span class="badge ok">saved{% if shop.saved.by %} by {{ shop.saved.by }}{% endif %}</span>{% endif %}
+      {% if shop.saved %}<span class="badge ok">saved</span>{% endif %}
       {% if shop.truck_fit != 'yes' %}<span class="badge warn">truck fit unconfirmed — phone ahead</span>{% endif %}
     </div>
     <div class="shop-address" data-address>{% if shop.address_complete %}{{ shop.address }}{% else %}<span class="subtle">{{ shop.address ~ " — " if shop.address }}finding the full address…</span>{% endif %}</div>

@@ -383,3 +383,7 @@ tr.clickrow:hover td { background: var(--info-bg); }
 .theme-auto .theme-swatch span:nth-child(2) { background: #808080; }
 .theme-auto .theme-swatch span:nth-child(3) { background: #1c1c1c; }
 .detail-list em { display: block; }
+#saved-map { height: 460px; border-top: 1px solid var(--face-dark); border-bottom: 1px solid var(--face-dark); }
+.dot.saved { background: #60a5fa; border-color: #1d4ed8; }
+.dot.truck { background: #ffcc00; }
+.table-search { width: 260px; max-width: 60%; }

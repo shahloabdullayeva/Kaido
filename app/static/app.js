@@ -26,7 +26,8 @@ for (const input of document.querySelectorAll('input[data-filter]')) {
     const table = document.querySelector(input.dataset.filter);
     if (!table) return;
     for (const row of table.querySelectorAll('tbody tr')) {
-      row.hidden = term.length > 0 && !row.textContent.toLowerCase().includes(term);
+      const typed = [...row.querySelectorAll('input:not([type=hidden])')].map((box) => box.value).join(' ');
+      row.hidden = term.length > 0 && !(row.textContent + ' ' + typed).toLowerCase().includes(term);
     }
   });
 }

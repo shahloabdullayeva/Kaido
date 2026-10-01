@@ -1,5 +1,7 @@
 {% extends "layout.html" %}
 {% from "_macros.html" import field %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script><script src="/static/saved_map.js"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
   <div><h1>Saved shops</h1>
@@ -25,13 +27,21 @@
   </form>
 </section>
 {% endif %}
+{% if shops %}
 <section class="panel">
-  <div class="panel-head"><h2>{{ shops|length }} saved</h2></div>
+  <div class="panel-head"><h2>Map</h2><span class="subtle">{{ shops|length }} saved shops · {{ truck_pins|length }} trucks where Samsara last saw them</span></div>
+  <div id="saved-map" data-shops='{{ pins|json_attr }}' data-trucks='{{ truck_pins|json_attr }}'></div>
+  <p class="map-legend subtle"><span class="dot saved"></span> saved shop <span class="dot truck"></span> truck — click a shop for its note and Google Maps</p>
+</section>
+{% endif %}
+<section class="panel">
+  <div class="panel-head"><h2>{{ shops|length }} saved</h2>
+    {% if shops %}<input type="search" class="table-search" placeholder="Search name, note, address…" data-filter="#saved-table">{% endif %}</div>
   {% if not shops %}
   <p class="empty">Nothing saved yet.</p>
   {% else %}
-  <div class="table-wrap"><table>
-    <thead><tr><th>Shop</th><th>Address</th><th>Phone</th><th>Note</th><th>Added</th><th></th></tr></thead>
+  <div class="table-wrap"><table id="saved-table">
+    <thead><tr><th>Shop</th><th>Address</th><th>Phone</th><th>Note</th><th>Saved by</th><th></th></tr></thead>
     <tbody>
       {% for shop in shops %}
       <tr>
@@ -40,7 +50,7 @@
         <td>{{ shop.address or '—' }}<br><a class="subtle" href="{{ shop.maps_url or ('https://www.google.com/maps/search/?api=1&query=' ~ shop.latitude ~ ',' ~ shop.longitude) }}" target="_blank" rel="noopener noreferrer">Google Maps</a></td>
         <td><input form="saved-{{ shop.id }}" name="phone" value="{{ shop.phone or '' }}" maxlength="40" type="tel" aria-label="Phone"></td>
         <td><input form="saved-{{ shop.id }}" name="note" value="{{ shop.note or '' }}" maxlength="300" aria-label="Note"></td>
-        <td class="subtle">{{ shop.added_by_name or '—' }}<br>{{ shop.created_at|day }}</td>
+        <td class="subtle">{{ shop.saved_by_name or '—' }}{% if shop.saved_on %}<br>{{ shop.saved_on|day }}{% endif %}</td>
         <td><form method="post" action="/maintenance/saved-shops/{{ shop.id }}" id="saved-{{ shop.id }}" class="actions-row">
           <input type="hidden" name="csrf" value="{{ session.csrf }}">
           <button class="btn ghost small" type="submit">Save</button>
@@ -51,7 +61,7 @@
         <td>{{ shop.address or '—' }}</td>
         <td>{{ shop.phone or '—' }}</td>
         <td>{{ shop.note or '' }}</td>
-        <td class="subtle">{{ shop.added_by_name or '—' }}<br>{{ shop.created_at|day }}</td>
+        <td class="subtle">{{ shop.saved_by_name or '—' }}{% if shop.saved_on %}<br>{{ shop.saved_on|day }}{% endif %}</td>
         <td></td>
         {% endif %}
       </tr>

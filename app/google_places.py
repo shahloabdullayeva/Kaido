@@ -5,6 +5,7 @@ asking Google for the day and the shop finder falls back to OpenStreetMap. The d
 cap keeps a month inside Google's free monthly allowance (see README → Google Maps).
 """
 import json
+from datetime import datetime, timezone
 import math
 import re
 from urllib.parse import parse_qs, unquote_plus, urljoin, urlparse
@@ -327,7 +328,15 @@ def read_list(full_url, limit=2000):
         if not ids or not ids[1]:
             continue
         cid = int(ids[1]) & 0xFFFFFFFFFFFFFFFF
+        saved_on = None
+        try:
+            saved_on = datetime.fromtimestamp(int(entry[9][0]), tz=timezone.utc)
+        except (TypeError, IndexError, ValueError):
+            pass
+        by = entry[12][0] if len(entry) > 12 and entry[12] else owner
         places.append({
+            "saved_on": saved_on,
+            "by": by,
             "name": (entry[2] or "").replace("\n", " ").strip(),
             "note": (entry[3] or "").strip() or None,
             "latitude": latitude,

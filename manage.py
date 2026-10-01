@@ -212,6 +212,35 @@ def cmd_summary(args):
     return 0
 
 
+def cmd_saved_shop_details(args):
+    import time
+    from app import shops
+    todo = rows(
+        """select distinct round(latitude, 5) as lat, round(longitude, 5) as lon from saved_shops
+           where address is null and details_checked_at is null limit %s""",
+        (args.limit,),
+    )
+    filled = failed = 0
+    for spot in todo:
+        try:
+            label = shops.reverse(spot["lat"], spot["lon"])
+        except Exception as err:
+            failed += 1
+            print(f"{spot['lat']},{spot['lon']}: {err}")
+            if failed >= 10:
+                break
+            time.sleep(5)
+            continue
+        execute(
+            """update saved_shops set address = coalesce(address, %s), details_checked_at = now()
+               where round(latitude, 5) = %s and round(longitude, 5) = %s""",
+            (label, spot["lat"], spot["lon"]),
+        )
+        filled += 1 if label else 0
+    print(f"addresses filled for {filled} of {len(todo)} places, {failed} failed")
+    return 0
+
+
 def cmd_pti_cleanup(args):
     from app import pti
     print(f"removed {pti.cleanup_media()} PTI photos/videos older than {pti.KEEP_MEDIA_DAYS} days")
@@ -392,6 +421,9 @@ def main():
 
     sub.add_parser("telegram-bot", help="link Telegram accounts").set_defaults(func=cmd_telegram)
     sub.add_parser("pti-cleanup", help="delete PTI photos/videos past the FMCSA 3 months").set_defaults(func=cmd_pti_cleanup)
+    details_parser = sub.add_parser("saved-shop-details", help="fill missing saved-shop addresses from OpenStreetMap")
+    details_parser.add_argument("--limit", type=int, default=2000)
+    details_parser.set_defaults(func=cmd_saved_shop_details)
     summary_parser = sub.add_parser("summary", help="send the twice-weekly summary to company admins")
     summary_parser.add_argument("--backup", nargs="*")
     summary_parser.set_defaults(func=cmd_summary)

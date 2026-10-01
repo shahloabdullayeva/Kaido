@@ -501,8 +501,38 @@ def saved_shops():
            where s.company_id = %s order by s.name""",
         (g.company["id"],),
     )
+    pins = [{"id": shop["id"], "name": shop["name"], "note": shop["note"], "by": shop["saved_by_name"],
+             "address": shop["address"], "phone": shop["phone"],
+             "lat": float(shop["latitude"]), "lon": float(shop["longitude"]),
+             "url": shop["maps_url"] or f"https://www.google.com/maps/search/?api=1&query={shop['latitude']},{shop['longitude']}"}
+            for shop in shops]
+    trucks = [{"id": truck["id"], "unit": truck["unit_number"], "lat": float(truck["latitude"]), "lon": float(truck["longitude"])}
+              for truck in rows("""select id, unit_number, latitude, longitude from trucks
+                                   where company_id = %s and latitude is not null and status <> 'sold' and not is_outside""",
+                                (g.company["id"],))]
     return render_template("maintenance/saved_shops.html", title="Saved shops", active="/maintenance",
-                           shops=shops, google_on=google_places.available())
+                           shops=shops, pins=pins, truck_pins=trucks, google_on=google_places.available())
+
+
+def credit_earlier(place):
+    """A shop already saved from another list goes to whoever saved it first; notes are combined."""
+    row = one(
+        """select id, saved_by_name, saved_on, note from saved_shops
+           where company_id = %s and lower(name) = lower(%s)
+             and round(latitude, 3) = round(%s::numeric, 3) and round(longitude, 3) = round(%s::numeric, 3)""",
+        (g.company["id"], place["name"], place["latitude"], place["longitude"]),
+    )
+    if not row:
+        return
+    note = row["note"]
+    if place.get("note") and place["note"] not in (note or ""):
+        note = f"{note} · {place['by']}: {place['note']}" if note else place["note"]
+    earlier = place.get("saved_on") and (not row["saved_on"] or place["saved_on"] < row["saved_on"])
+    execute(
+        """update saved_shops set note = %s, saved_by_name = %s, saved_on = %s where id = %s""",
+        (forms.text(note, 600), forms.text(place.get("by"), 120) if earlier else row["saved_by_name"],
+         place["saved_on"] if earlier else row["saved_on"], row["id"]),
+    )
 
 
 def save_list(link, note=None):
@@ -521,15 +551,19 @@ def save_list(link, note=None):
     source = " · ".join(part for part in [listing.get("owner"), listing.get("title")] if part)
     for place in listing["places"]:
         key = (place["name"].lower(), round(place["latitude"], 3), round(place["longitude"], 3))
+        if place["name"] and key in seen:
+            credit_earlier(place)
         if not place["name"] or key in seen:
             skipped += 1
             continue
         seen.add(key)
         insert(
-            """insert into saved_shops (company_id, name, latitude, longitude, maps_url, source_url, note, added_by)
-               values (%s, %s, %s, %s, %s, %s, %s, %s) returning id""",
+            """insert into saved_shops (company_id, name, latitude, longitude, maps_url, source_url, note, added_by,
+                 saved_by_name, saved_on)
+               values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id""",
             (g.company["id"], forms.text(place["name"], 160), place["latitude"], place["longitude"], place["url"],
-             forms.text(link, 1000), forms.text(place["note"] or note, 300), g.session["user_id"]),
+             forms.text(link, 1000), forms.text(place["note"] or note, 300), g.session["user_id"],
+             forms.text(place.get("by"), 120), place.get("saved_on")),
         )
         added += 1
     audit("saved_shop.list_imported", "saved_shop", None,
