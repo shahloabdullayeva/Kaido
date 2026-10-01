@@ -142,6 +142,10 @@ SHOP_SYSTEM = (
     "'Truck fit unconfirmed' means the map data does not say whether the bay takes a "
     "Class 8 tractor — say to phone ahead, do not assume it fits. "
     "A shop marked 24/7 is worth preferring when the truck is moving at night. "
+    "Love's Truck Care, Speedco, TA Truck Service and Petro do roadside help and light mechanical work only: "
+    "they never tow, do not take heavy repairs (engine, transmission, major electrical, body), and may not "
+    "stock the exact oil or part, so for those say to call first. A truck that cannot drive needs a tow "
+    "company or mobile road service, never a truck stop. "
     "Write plain English a dispatcher would say out loud, never the raw tag words. "
     "If the only honest thing to say is that nobody knows whether the bay fits a "
     "Class 8, say exactly that and nothing else. "
@@ -161,6 +165,7 @@ def shop_advice(truck, shops, fleet_average=None, job=None):
             f"{shop['name']}",
             f"{shop['miles']} miles away",
             KINDS.get(shop.get("kind"), "an unlisted kind of shop"),
+            {"tow": "towing company", "road": "mobile road service", "light": "roadside and light repair only, no towing"}.get(shop.get("service"), ""),
             ("takes Class 8" if shop["truck_fit"] == "yes" else "truck fit unconfirmed"),
             shop["hours_text"],
         ]

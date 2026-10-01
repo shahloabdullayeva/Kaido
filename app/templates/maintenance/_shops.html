@@ -41,7 +41,7 @@
       <span class="shop-name">{{ shop.name }}</span>
       <span class="badge {{ 'ok' if shop.open_state == 'open' else ('warn' if shop.open_state == 'unknown' else 'bad') }}">{{ shop.hours_text }}</span>
       {% if shop.saved %}<span class="badge ok">saved</span>{% endif %}
-      {% if shop.service == 'tow' %}<span class="badge bad">towing</span>{% elif shop.service == 'road' %}<span class="badge info">road service</span>{% endif %}
+      {% if shop.service == 'tow' %}<span class="badge bad">towing</span>{% elif shop.service == 'road' %}<span class="badge info">road service</span>{% elif shop.service == 'light' %}<span class="badge warn" title="{{ light_note }}">roadside &amp; light repair</span>{% endif %}
       {% if shop.truck_fit != 'yes' %}<span class="badge warn">truck fit unconfirmed — phone ahead</span>{% endif %}
     </div>
     <div class="shop-address" data-address>{% if shop.address_complete %}{{ shop.address }}{% else %}<span class="subtle">{{ shop.address ~ " — " if shop.address }}finding the full address…</span>{% endif %}</div>

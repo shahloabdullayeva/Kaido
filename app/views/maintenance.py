@@ -382,7 +382,7 @@ def shops(truck_id):
                            fleet_average=fleet_oil_average(), ai_on=advisor.available(),
                            ai_paused=advisor.over_budget(), problem=problem,
                            drive=forms.pick(request.args.get("drive"), ["yes", "no"], None),
-                           services=shop_search.SERVICES)
+                           services=shop_search.SERVICES, light_note=shop_search.LIGHT_NOTE)
 
 
 @bp.get("/maintenance/shops/<int:truck_id>/advice")
