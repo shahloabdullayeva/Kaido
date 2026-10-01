@@ -696,3 +696,5 @@ alter table users add column if not exists default_company_id int references com
 alter table saved_shops add column if not exists saved_by_name text;
 alter table saved_shops add column if not exists saved_on timestamptz;
 alter table saved_shops add column if not exists details_checked_at timestamptz;
+
+alter table trucks add column if not exists driver_from_name boolean not null default false;

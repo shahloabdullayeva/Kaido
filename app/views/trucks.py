@@ -317,7 +317,9 @@ def update(truck_id):
              engine_checked_at = case when vin is distinct from %(vin)s::text then null else engine_checked_at end,
              make = %(make)s, model = %(model)s,
              year = %(year)s, plate = %(plate)s, plate_state = %(plate_state)s, status = %(status)s,
-             duty_cycle = %(duty_cycle)s, driver_id = %(driver_id)s, fuel_card_last4 = %(fuel_card_last4)s,
+             duty_cycle = %(duty_cycle)s,
+             driver_from_name = (driver_from_name and driver_id is not distinct from %(driver_id)s),
+             driver_id = %(driver_id)s, fuel_card_last4 = %(fuel_card_last4)s,
              oil_interval_miles = %(oil_interval_miles)s, registration_expires = %(registration_expires)s,
              annual_inspection_on = %(annual_inspection_on)s, insurance_expires = %(insurance_expires)s,
              notes = %(notes)s, updated_at = now()

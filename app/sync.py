@@ -12,7 +12,7 @@ STAT_TYPES = ["obdOdometerMeters", "gpsOdometerMeters", "faultCodes", "engineSta
 
 UNIT_PATTERN = re.compile(r"#\s*(\d+[A-Za-z]?)")
 NAME_PREFIXES = re.compile(r"^\s*(bmg|llap|unit|truck)\b[\s.:#-]*", re.I)
-PAREN_PATTERN = re.compile(r"\([^)]*\)")
+PAREN_PATTERN = re.compile(r"\([^)]*\)|\[[^\]]*\]")
 SERIAL_PATTERN = re.compile(r"^[A-Z0-9]{3,}(-[A-Z0-9]{2,}){1,}$")
 HONORIFICS = {"aka", "\u0430\u043a\u0430", "opa", "jr", "sr"}
 NOT_NAMES = {
@@ -66,8 +66,9 @@ def driver_names(vehicle_name):
 
 def import_drivers(company_id):
     links = rows(
-        """select v.external_name, v.truck_id, t.driver_id
+        """select v.external_name, v.truck_id, t.driver_id, t.driver_from_name, d.name as driver_name
            from vehicle_links v join trucks t on t.id = v.truck_id
+           left join drivers d on d.id = t.driver_id
            where v.company_id = %s and v.truck_id is not null""",
         (company_id,),
     )
@@ -95,8 +96,10 @@ def import_drivers(company_id):
                 created += 1
             if primary is None:
                 primary = driver_id
-        if primary and not link["driver_id"]:
-            execute("update trucks set driver_id = %s, updated_at = now() where id = %s", (primary, link["truck_id"]))
+        named_now = link["driver_from_name"] and (link["driver_name"] or "").lower() not in {n.lower() for n in names}
+        if primary and (not link["driver_id"] or named_now):
+            execute("update trucks set driver_id = %s, driver_from_name = true, updated_at = now() where id = %s",
+                    (primary, link["truck_id"]))
             assigned += 1
     return {"created": created, "assigned": assigned}
 
@@ -376,6 +379,7 @@ def sync_company(company_id):
     try:
         client, _integration = client_for(company_id)
         counters["vehicles"] = link_vehicles(company_id, client)
+        counters["drivers"] = import_drivers(company_id)["assigned"]
         stats = client.vehicle_stats(STAT_TYPES)
         for stat in stats:
             external_id = str(stat.get("id") or "")
