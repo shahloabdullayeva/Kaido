@@ -387,3 +387,5 @@ tr.clickrow:hover td { background: var(--info-bg); }
 .dot.saved { background: #60a5fa; border-color: #1d4ed8; }
 .dot.truck { background: #ffcc00; }
 .table-search { width: 260px; max-width: 60%; }
+.shop-drive { padding: 6px 10px; margin: 8px 10px 0; border: 1px solid var(--face-dark); background: var(--shade); }
+.shop-ask p { margin: 0 0 8px; }

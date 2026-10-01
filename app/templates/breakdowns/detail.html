@@ -9,6 +9,7 @@
   <div class="pill-row">
     <span class="badge {{ item.status|tone }}">{{ item.status|label }}</span>
     <span class="badge {{ item.severity|tone }}">{{ item.severity }} severity</span>
+    {% if item.status != 'resolved' and at_least(role, 'admin') %}<a class="btn" href="/maintenance/new?truck_id={{ item.truck_id }}&amp;find=1&amp;drive=no&amp;description={{ ('Breakdown #' ~ item.id ~ ' — ' ~ (item.description or ''))[:300]|urlencode }}#shop-panel">Find towing (map)</a>{% endif %}
     <a class="btn ghost" href="/breakdowns/{{ item.id }}/pdf">Download PDF</a>
   </div>
 </div>

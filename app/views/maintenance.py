@@ -137,7 +137,8 @@ def new():
                            groups=GROUPS, statuses=STATUSES,
                            truck_id=forms.integer(request.args.get("truck_id")), order=None,
                            prefill_description=forms.text(request.args.get("description"), 2000),
-                           pti_id=forms.integer(request.args.get("pti")), **form_choices())
+                           pti_id=forms.integer(request.args.get("pti")),
+                           drive=forms.pick(request.args.get("drive"), ["yes", "no"], None), **form_choices())
 
 
 @bp.post("/maintenance")
@@ -352,6 +353,7 @@ def find_shops(truck):
         shop["maps"] = shop.get("maps") or shop_search.maps_link(shop)
         address = shop.get("address") or ""
         shop["address_complete"] = shop.get("source") == "google" or bool(address[:1].isdigit() and "," in address)
+    found = shop_search.by_drive(found, forms.pick(request.args.get("drive"), ["yes", "no"], None))
     return origin, found, meta, problem
 
 
@@ -378,7 +380,9 @@ def shops(truck_id):
                            saved_count=one("select count(*) as n from saved_shops where company_id = %s",
                                            (g.company["id"],))["n"],
                            fleet_average=fleet_oil_average(), ai_on=advisor.available(),
-                           ai_paused=advisor.over_budget(), problem=problem)
+                           ai_paused=advisor.over_budget(), problem=problem,
+                           drive=forms.pick(request.args.get("drive"), ["yes", "no"], None),
+                           services=shop_search.SERVICES)
 
 
 @bp.get("/maintenance/shops/<int:truck_id>/advice")
@@ -395,8 +399,10 @@ def shops_advice(truck_id):
     origin, found, meta, problem = find_shops(truck)
     if not found:
         return jsonify({"state": "none"})
-    advice = advisor.shop_advice(dict(truck, location=origin["label"]), found, fleet_oil_average(),
-                                 job=forms.text(request.args.get("job"), 300))
+    job = forms.text(request.args.get("job"), 300)
+    if request.args.get("drive") == "no":
+        job = (job + " — " if job else "") + "the truck cannot drive, so it needs a tow truck or mobile road service first"
+    advice = advisor.shop_advice(dict(truck, location=origin["label"]), found, fleet_oil_average(), job=job)
     if not advice:
         return jsonify({"state": "none"})
     return jsonify({"state": "ok", "pick": advice.pick, "why": advice.why,

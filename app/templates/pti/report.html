@@ -48,7 +48,7 @@
     {% if item.maintenance_order_id %}<a class="btn ghost small" href="/maintenance/{{ item.maintenance_order_id }}">Work order #{{ item.maintenance_order_id }} ({{ item.order_status|label }})</a>
     {% elif at_least(role, 'admin') and item.truck_id %}
     <div class="actions-row">
-      <a class="btn small" href="/maintenance/new?truck_id={{ item.truck_id }}&amp;find=1&amp;pti={{ item.id }}&amp;description={{ ('PTI #' ~ item.id ~ ' defects — ' ~ (defects|map(attribute='label')|join('; ')))|urlencode }}#shop-panel">Nearby shops (map)</a>
+      <a class="btn small" href="/maintenance/new?truck_id={{ item.truck_id }}&amp;find=1&amp;pti={{ item.id }}{% if item.safe_to_drive is false %}&amp;drive=no{% endif %}&amp;description={{ ('PTI #' ~ item.id ~ ' defects — ' ~ (defects|map(attribute='label')|join('; ')))|urlencode }}#shop-panel">{{ 'Find towing (map)' if item.safe_to_drive is false else 'Nearby shops (map)' }}</a>
       <form method="post" action="/pti/report/{{ item.id }}/work-order"><input type="hidden" name="csrf" value="{{ session.csrf }}">
         <button class="btn ghost small" type="submit">Open a work order</button></form>
     </div>

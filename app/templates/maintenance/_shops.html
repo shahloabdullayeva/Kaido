@@ -4,6 +4,8 @@
   <button type="button" class="btn" data-shop-search>Look here</button>
   {% if origin and origin.source != 'samsara' and truck.latitude is not none %}<button type="button" class="btn ghost" data-shop-samsara>Back to where Samsara has {{ truck.unit_number }}</button>{% endif %}
 </div>
+{% if drive %}<p class="shop-drive">{% if drive == 'no' %}<strong>Truck cannot drive</strong> — towing and road service first, then shops to tow it to.{% else %}<strong>Truck can drive</strong> — repair shops only, towing hidden.{% endif %}
+  <button type="button" class="btn ghost small" data-shop-drive="{{ 'yes' if drive == 'no' else 'no' }}">{{ 'It can drive after all' if drive == 'no' else 'It cannot drive — show towing' }}</button></p>{% endif %}
 <p class="subtle shop-origin">
   {%- if origin and origin.source == 'samsara' %}
   <strong>{{ truck.unit_number }}</strong> is at {{ origin.label }}{% if origin.at %}, reported {{ origin.at|ago }}{% endif %}.
@@ -39,6 +41,7 @@
       <span class="shop-name">{{ shop.name }}</span>
       <span class="badge {{ 'ok' if shop.open_state == 'open' else ('warn' if shop.open_state == 'unknown' else 'bad') }}">{{ shop.hours_text }}</span>
       {% if shop.saved %}<span class="badge ok">saved</span>{% endif %}
+      {% if shop.service == 'tow' %}<span class="badge bad">towing</span>{% elif shop.service == 'road' %}<span class="badge info">road service</span>{% endif %}
       {% if shop.truck_fit != 'yes' %}<span class="badge warn">truck fit unconfirmed — phone ahead</span>{% endif %}
     </div>
     <div class="shop-address" data-address>{% if shop.address_complete %}{{ shop.address }}{% else %}<span class="subtle">{{ shop.address ~ " — " if shop.address }}finding the full address…</span>{% endif %}</div>

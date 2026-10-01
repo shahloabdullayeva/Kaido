@@ -42,8 +42,36 @@ QUERY = """[out:json][timeout:50];
   nwr["shop"="car_repair"](around:{radius},{lat},{lon});
   nwr["shop"="tyres"](around:{radius},{lat},{lon});
   nwr["amenity"="fuel"]["hgv"="yes"](around:{radius},{lat},{lon});
+  nwr["service:vehicle:towing"="yes"](around:{radius},{lat},{lon});
+  nwr["name"~"towing|wrecker",i](around:{radius},{lat},{lon});
 );
 out center tags;"""
+
+TOW_WORDS = re.compile(r"\btow(s|ing|ed)?\b|wrecker|recovery|roll ?back|winch", re.I)
+ROAD_WORDS = re.compile(r"mobile|road ?service|road ?side|24 ?/ ?7|24 ?hrs?\b|24 hour|call ?out", re.I)
+REPAIR_WORDS = re.compile(r"repair|mechanic|diesel|tire|tyre|truck (and|&) trailer|service center|alignment", re.I)
+SERVICES = {"tow": "towing", "road": "road service", "shop": "shop"}
+
+
+def service_of(shop):
+    text = " ".join(str(part) for part in [shop.get("name"), (shop.get("saved") or {}).get("note"), shop.get("kind")] if part)
+    if TOW_WORDS.search(text):
+        return "tow"
+    if ROAD_WORDS.search(text):
+        return "road"
+    return "shop"
+
+
+def by_drive(found, drive):
+    for shop in found:
+        shop["service"] = service_of(shop)
+    if drive == "yes":
+        return [shop for shop in found if shop["service"] != "tow" or REPAIR_WORDS.search(shop.get("name") or "")]
+    if drive == "no":
+        order = {"tow": 0, "road": 1, "shop": 2}
+        return sorted(found, key=lambda shop: (order[shop["service"]], shop.get("miles") or 0))
+    return found
+
 
 TRUCK_BRANDS = ("ta truck", "ta travel", "petro", "love", "pilot", "flying j",
                 "speedco", "tires? plus truck", "boss shop", "sapp bros",

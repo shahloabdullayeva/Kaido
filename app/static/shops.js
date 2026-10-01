@@ -416,6 +416,8 @@ const wireVendorPicks = () => {
 };
 
 const wireSearch = () => {
+  const flip = body.querySelector('[data-shop-drive]');
+  if (flip) flip.addEventListener('click', () => { driveChoice = flip.dataset.shopDrive; load(trucks.value, lastParams); });
   const retry = body.querySelector('[data-shop-retry]');
   if (retry) retry.addEventListener('click', () => load(trucks.value, lastParams));
   const ask = body.querySelector('[data-shop-ai]');
@@ -522,6 +524,9 @@ const followUp = async (run, truckId, query, meter) => {
 const load = async (truckId, params) => {
   if (!truckId) return;
   if (params === undefined) params = remembered() || {};
+  if (!isOil() && !driveChoice) { askDrive(() => load(truckId, params)); return; }
+  params = { ...params };
+  if (driveChoice && !isOil()) params.drive = driveChoice; else delete params.drive;
   lastParams = params;
   const run = ++searchRun;
   dropMap();
@@ -554,10 +559,40 @@ const load = async (truckId, params) => {
 };
 
 const findNow = new URLSearchParams(window.location.search).has('find') || (panel && panel.hasAttribute('data-find'));
+let driveChoice = new URLSearchParams(window.location.search).get('drive') || (panel && panel.dataset.drive) || null;
+
+const askDrive = (next) => {
+  dropMap();
+  setStatus('');
+  if (progressHost) progressHost.hidden = true;
+  body.textContent = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'pad shop-ask';
+  const question = document.createElement('p');
+  question.innerHTML = '<strong>Can ' + unitLabel().replace(/[<>&]/g, '') + ' drive to a shop?</strong> Ask the driver first.';
+  const yes = document.createElement('button');
+  yes.type = 'button';
+  yes.className = 'btn';
+  yes.textContent = 'Yes, it can drive';
+  const no = document.createElement('button');
+  no.type = 'button';
+  no.className = 'btn danger';
+  no.textContent = 'No — find towing / road service';
+  yes.addEventListener('click', () => { driveChoice = 'yes'; next(); });
+  no.addEventListener('click', () => { driveChoice = 'no'; next(); });
+  const row = document.createElement('div');
+  row.className = 'actions-row';
+  row.append(yes, no);
+  wrap.append(question, row);
+  body.append(wrap);
+  panel.hidden = false;
+};
 
 const refreshShops = () => {
   if (!realTruck()) { dropMap(); panel.hidden = true; return; }
-  if (isOil() || findNow) { panel.hidden = false; load(trucks.value); } else askFirst();
+  if (isOil()) { panel.hidden = false; load(trucks.value); }
+  else if (findNow) { if (driveChoice) { panel.hidden = false; load(trucks.value); } else askDrive(() => load(trucks.value)); }
+  else askFirst();
 };
 
 if (panel && body && trucks) {
