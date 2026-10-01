@@ -620,3 +620,32 @@ begin
       'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
   end loop;
 end $$;
+
+alter table companies add column if not exists driver_chat_id bigint;
+alter table companies add column if not exists driver_chat_title text;
+alter table companies add column if not exists driver_link_code text;
+alter table companies add column if not exists pti_messages_enabled boolean not null default true;
+alter table companies add column if not exists pti_morning_hour int not null default 6;
+alter table companies add column if not exists pti_evening_hour int not null default 20;
+
+create table if not exists pti_messages (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  local_day date not null,
+  kind text not null check (kind in ('morning', 'evening', 'nudge')),
+  truck_id int not null default 0,
+  ok boolean not null default false,
+  sent_at timestamptz not null default now(),
+  unique (company_id, local_day, kind, truck_id)
+);
+
+do $$
+begin
+  execute 'alter table pti_messages enable row level security';
+  execute 'alter table pti_messages force row level security';
+  execute 'drop policy if exists company_lock on pti_messages';
+  execute 'create policy company_lock on pti_messages using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+          'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+          'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+          'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)';
+end $$;

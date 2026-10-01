@@ -314,3 +314,4 @@ body.pti-print { background: #fff; padding: 12px; }
 .pti-states input { width: auto; margin: 0; }
 .pti-card [hidden] { display: none !important; }
 .pti-all { min-height: 220px; font-family: var(--mono); }
+.pti-code { font-size: 16px; border: 1px dashed var(--ink); padding: 6px 10px; display: inline-block; }

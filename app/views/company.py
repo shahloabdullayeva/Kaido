@@ -1,6 +1,7 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms
+from .. import forms, pti_driver
+from ..config import config
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -94,8 +95,10 @@ def index():
            where a.company_id = %s order by a.created_at desc limit 50""",
         (g.company["id"],),
     )
+    code = None if company["driver_chat_id"] else pti_driver.link_code(company)
     return render_template("company/index.html", title="Company", active="/company",
-                           company=company, members=members, log=log, roles=ROLES, role_labels=ROLE_LABELS)
+                           company=company, members=members, log=log, roles=ROLES, role_labels=ROLE_LABELS,
+                           driver_code=code, bot_name=config.TELEGRAM_BOT_USERNAME)
 
 
 @bp.post("/company")
@@ -148,6 +151,59 @@ def followup_preview():
         flash(f"Today's follow-up sent to {people} {'person' if people == 1 else 'people'} on Telegram.", "ok")
     else:
         flash("Nobody in this company has Telegram linked, so the follow-up had nowhere to go.", "bad")
+    return redirect("/company")
+
+
+@bp.post("/company/drivers-group")
+@login_required
+@role_required("admin")
+def drivers_group():
+    morning = forms.integer(request.form.get("pti_morning_hour"))
+    evening = forms.integer(request.form.get("pti_evening_hour"))
+    morning = morning if morning is not None and 0 <= morning <= 12 else 6
+    evening = evening if evening is not None and 13 <= evening <= 23 else 20
+    enabled = forms.checkbox(request.form.get("pti_messages_enabled"))
+    execute(
+        """update companies set pti_messages_enabled = %s, pti_morning_hour = %s, pti_evening_hour = %s,
+             updated_at = now() where id = %s""",
+        (enabled, morning, evening, g.company["id"]),
+    )
+    audit("company.driver_messages", "company", g.company["id"],
+          {"enabled": enabled, "morning": morning, "evening": evening})
+    flash("Driver PTI messages saved.", "ok")
+    return redirect("/company")
+
+
+@bp.post("/company/drivers-group/send")
+@login_required
+@role_required("admin")
+def drivers_group_send():
+    company = one("select * from companies where id = %s", (g.company["id"],))
+    which = forms.pick(request.form.get("which"), ["morning", "evening"], "morning")
+    target = forms.pick(request.form.get("to"), ["me", "group"], "me")
+    chat = company["driver_chat_id"] if target == "group" else g.session["telegram_chat_id"]
+    if not chat:
+        flash("Link your Telegram on your account page first." if target == "me"
+              else "No drivers' group is connected yet.", "bad")
+        return redirect("/company")
+    build = pti_driver.morning if which == "morning" else pti_driver.evening
+    ok = pti_driver.deliver(chat, build(company))
+    audit("company.driver_message_sent", "company", g.company["id"], {"which": which, "to": target, "ok": ok})
+    if ok:
+        flash(f"The {which} PTI message was sent to {'your Telegram' if target == 'me' else company['driver_chat_title'] or 'the group'}.", "ok")
+    else:
+        flash("Telegram did not accept the message. If the bot was removed from the group, connect it again.", "bad")
+    return redirect("/company")
+
+
+@bp.post("/company/drivers-group/disconnect")
+@login_required
+@role_required("admin")
+def drivers_group_disconnect():
+    execute("update companies set driver_chat_id = null, driver_chat_title = null, updated_at = now() where id = %s",
+            (g.company["id"],))
+    audit("company.driver_group_removed", "company", g.company["id"])
+    flash("Drivers' group disconnected. No more PTI messages will go there.", "ok")
     return redirect("/company")
 
 

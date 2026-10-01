@@ -1,4 +1,4 @@
-from urllib.parse import quote, urlencode
+from urllib.parse import urlencode
 
 from flask import Blueprint, flash, g, redirect, render_template, request, send_file
 
@@ -166,7 +166,6 @@ def links():
                    f"and after the trip too: {url}")
         cards.append({"id": truck["id"], "unit": truck["unit_number"], "driver": truck["driver_name"],
                       "url": url, "message": message,
-                      "whatsapp": "https://wa.me/?text=" + quote(message),
                       "telegram": "https://t.me/share/url?" + urlencode({"url": url, "text": message})})
     everything = "\n".join(f"Unit {c['unit']}: {c['url']}" for c in cards)
     return render_template("pti/links.html", title="PTI links", active="/pti", cards=cards, everything=everything)

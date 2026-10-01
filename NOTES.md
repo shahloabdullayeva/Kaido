@@ -190,3 +190,4 @@ rather than an empty map.
 - The PTI page shows trucks that moved 10+ mi today with no pre-trip.
 - Samsara DVIRs now use the real endpoints `/dvirs/stream` and `/defects/stream` (the old `/fleet/defects/stream` guess was wrong). Neither org had a single DVIR in 90 days, so drivers are not doing them in the Samsara app.
 - Importing trucks from Samsara now runs a sync right away (BOOKIT showed 0 miles until the next cron).
+- Drivers' Telegram group (Company page): add @kaidofleet_bot to the group and send `/drivers <code>` there. Kaido then posts each morning (pre-trip, FMCSA 396.13), each evening (post-trip, 396.11) and nudges once for any truck that drives 10+ mi with no pre-trip. Everything runs on the company's US timezone, from the 5-minute follow-up cron, and the `pti_messages` table stops repeats. Removing the bot clears the link. Telegram only, no WhatsApp.

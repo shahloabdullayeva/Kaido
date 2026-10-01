@@ -161,9 +161,41 @@ def cmd_followup(args):
     reminded = reminders.send_due()
     alerted = followup.send_fault_alerts()
     sent = followup.run()
-    if reminded or alerted or sent:
-        print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}")
+    from app import pti_driver
+    drivers = pti_driver.run()
+    if reminded or alerted or sent or drivers:
+        print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}, driver PTI messages {drivers}")
     return 0
+
+
+def handle_group_update(update, send):
+    from app import pti_driver
+    member = update.get("my_chat_member")
+    if member:
+        status = (member.get("new_chat_member") or {}).get("status")
+        chat = member.get("chat") or {}
+        if status in ("left", "kicked") and chat.get("id"):
+            pti_driver.forget_group(chat["id"])
+        return True
+    message = update.get("message") or {}
+    chat = message.get("chat") or {}
+    if chat.get("type") not in ("group", "supergroup"):
+        return False
+    if message.get("migrate_to_chat_id"):
+        pti_driver.move_group(chat["id"], message["migrate_to_chat_id"])
+        return True
+    parts = (message.get("text") or "").split()
+    if not parts or parts[0].split("@")[0] != "/drivers":
+        return True
+    if len(parts) < 2:
+        send(chat["id"], "Send /drivers followed by the code from the Company page in Kaido.")
+        return True
+    company = pti_driver.claim_group(parts[1], chat)
+    if not company:
+        send(chat["id"], "That code is not valid. Copy it again from the Company page in Kaido.")
+        return True
+    send(chat["id"], f"Connected to {company['name']}. PTI reminders for the drivers will come to this group.")
+    return True
 
 
 def cmd_telegram(args):
@@ -189,6 +221,8 @@ def cmd_telegram(args):
             continue
         for update in updates:
             offset = update["update_id"] + 1
+            if handle_group_update(update, send):
+                continue
             message = update.get("message") or {}
             text = (message.get("text") or "").strip()
             chat = message.get("chat") or {}

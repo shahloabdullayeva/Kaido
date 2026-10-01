@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Send PTI links</h1><p>Each truck has its own link. Send it to the driver once — they save it and open it before and after every trip. No app, no login.</p></div>
+  <div><h1>Send PTI links</h1><p>Each truck has its own link. Once the drivers' group is connected on the <a href="/company">Company page</a>, Kaido posts these links there every morning and evening by itself. Use this page to send one driver their link on Telegram.</p></div>
   <a class="btn ghost" href="/pti">Back to PTI</a>
 </div>
 
@@ -15,7 +15,6 @@
         <td><a class="rowlink" href="/trucks/{{ card.id }}">{{ card.unit }}</a></td>
         <td>{{ card.driver or '—' }}</td>
         <td><div class="actions-row">
-          <a class="btn small" href="{{ card.whatsapp }}" target="_blank" rel="noopener">WhatsApp</a>
           <a class="btn small" href="{{ card.telegram }}" target="_blank" rel="noopener">Telegram</a>
           <button class="btn ghost small" type="button" data-copy="{{ card.message }}">Copy message</button>
         </div></td>

@@ -2,7 +2,7 @@
 {% block body %}
 <div class="page-head">
   <div><h1>PTI</h1><p>Pre- and post-trip inspections. {{ open_count }} report{{ '' if open_count == 1 else 's' }} with defects not signed off.</p></div>
-  {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn" href="/pti/links">Send links to drivers</a>
+  {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn" href="/pti/links">Driver links</a>
     <a class="btn ghost" href="/pti/stickers">QR stickers</a></div>{% endif %}
 </div>
 
