@@ -11,7 +11,8 @@ from .security import decrypt, encrypt
 STAT_TYPES = ["obdOdometerMeters", "gpsOdometerMeters", "faultCodes", "engineStates", "gps", "fuelPercents"]
 
 UNIT_PATTERN = re.compile(r"#\s*(\d+[A-Za-z]?)")
-NAME_PREFIXES = re.compile(r"^\s*(bmg|llap|unit|truck)\b[\s.:#-]*", re.I)
+NAME_PREFIXES = re.compile(r"^[\s.:#-]*(bmg|llap|unit|truck|who)\b[\s.:#-]*", re.I)
+PAY_PATTERN = re.compile(r"\b\d+(\.\d+)?\s*(cpm|c/m|cents?|%)", re.I)
 PAREN_PATTERN = re.compile(r"\([^)]*\)|\[[^\]]*\]")
 SERIAL_PATTERN = re.compile(r"^[A-Z0-9]{3,}(-[A-Z0-9]{2,}){1,}$")
 HONORIFICS = {"aka", "\u0430\u043a\u0430", "opa", "jr", "sr"}
@@ -40,6 +41,7 @@ def driver_names(vehicle_name):
     if not vehicle_name:
         return []
     text = PAREN_PATTERN.sub(" ", vehicle_name)
+    text = PAY_PATTERN.sub(" ", text)
     text = UNIT_PATTERN.sub(" ", text)
     for _ in range(3):
         stripped = NAME_PREFIXES.sub("", text)
