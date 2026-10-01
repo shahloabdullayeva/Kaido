@@ -53,7 +53,7 @@
 
 {% if site %}
 <section class="panel">
-  <div class="panel-head"><h2>Website</h2><span class="subtle">platform staff only · read only</span></div>
+  <div class="panel-head"><h2>Website</h2><span class="subtle">only people given access · read only</span></div>
   <div class="detail-list">
     <div><span>Address</span><strong><a href="{{ site.url }}">{{ site.url }}</a></strong></div>
     <div><span>Security certificate</span><strong>{% if site.certificate %}valid until {{ site.certificate|day }}, renews itself{% else %}could not check{% endif %}</strong></div>

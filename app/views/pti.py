@@ -72,13 +72,17 @@ def report(inspection_id):
              if key not in pti.ITEMS and isinstance(value, dict)]
     if extra:
         sections.append(("Reported in Samsara" if item["source"] == "samsara" else "Earlier checklist items", extra, None))
+    history = rows(
+        "select * from inspection_reviews where inspection_id = %s order by created_at desc, id desc",
+        (inspection_id,),
+    )
     reviewed = None
     if item["reviewed_previous_id"]:
         reviewed = one("select id, submitted_at, driver_name from inspections where id = %s", (item["reviewed_previous_id"],))
     return render_template(
         "pti/report.html", title=f"PTI #{item['id']}", active="/pti", item=item, sections=sections,
         defects=pti.defects_of(item), photos=by_item, kinds=pti.KINDS, certifications=pti.CERTIFICATIONS,
-        reviewed=reviewed,
+        reviewed=reviewed, history=history,
     )
 
 
@@ -141,6 +145,11 @@ def review(inspection_id):
         """update inspections set review_status = %s, review_note = %s, reviewed_by = %s, reviewed_name = %s,
              reviewed_at = now() where id = %s and company_id = %s""",
         (decision, note, g.session["user_id"], g.session["name"], inspection_id, g.company["id"]),
+    )
+    execute(
+        """insert into inspection_reviews (company_id, inspection_id, decision, note, reviewed_by, reviewed_name)
+           values (%s, %s, %s, %s, %s, %s)""",
+        (g.company["id"], inspection_id, decision, note, g.session["user_id"], g.session["name"]),
     )
     audit("pti.reviewed", "inspection", inspection_id, {"decision": decision})
     if decision == "rejected":

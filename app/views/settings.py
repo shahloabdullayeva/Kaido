@@ -61,8 +61,9 @@ def website():
 @bp.get("/settings")
 @login_required
 def index():
+    allowed = is_platform() or g.session.get("can_see_site")
     return render_template("settings/index.html", title="Settings", active="/settings", themes=THEMES,
-                           site=website() if is_platform() else None)
+                           site=website() if allowed else None)
 
 
 @bp.post("/settings/appearance")

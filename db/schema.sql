@@ -698,3 +698,28 @@ alter table saved_shops add column if not exists saved_on timestamptz;
 alter table saved_shops add column if not exists details_checked_at timestamptz;
 
 alter table trucks add column if not exists driver_from_name boolean not null default false;
+
+create table if not exists inspection_reviews (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  inspection_id bigint not null references inspections(id) on delete cascade,
+  decision text not null check (decision in ('approved', 'rejected')),
+  note text,
+  reviewed_by int references users(id) on delete set null,
+  reviewed_name text,
+  created_at timestamptz not null default now()
+);
+create index if not exists inspection_reviews_idx on inspection_reviews (inspection_id, created_at);
+
+do $$
+begin
+  execute 'alter table inspection_reviews enable row level security';
+  execute 'alter table inspection_reviews force row level security';
+  execute 'drop policy if exists company_lock on inspection_reviews';
+  execute 'create policy company_lock on inspection_reviews using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+          'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+          'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+          'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)';
+end $$;
+
+alter table users add column if not exists can_see_site boolean not null default false;

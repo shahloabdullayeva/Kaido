@@ -29,6 +29,15 @@
     {% if item.review_note %}<div><span>Note</span><strong>{{ item.review_note }}</strong></div>{% endif %}
   </div>
   {% endif %}
+  {% if history %}
+  <ul class="timeline">
+    {% for step in history %}
+    <li><div class="when">{{ step.created_at|stamp }} · {{ step.reviewed_name or 'someone' }}{% if loop.first %} · current{% endif %}</div>
+      <span class="badge {{ 'ok' if step.decision == 'approved' else 'bad' }}">{{ step.decision }}</span>
+      {% if step.note %}{{ step.note }}{% else %}<span class="subtle">no note</span>{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
   {% if at_least(role, 'admin') %}
   <form method="post" action="/pti/report/{{ item.id }}/review">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
