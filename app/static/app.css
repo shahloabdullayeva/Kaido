@@ -392,18 +392,18 @@ tr.clickrow:hover td { background: var(--info-bg); }
 
 .notif { position: relative; }
 .notif-button {
-  display: flex; align-items: center; gap: 6px;
-  padding: 2px 8px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 2px 8px; min-height: 26px;
   background: var(--paper); color: var(--ink);
   border: 1px solid var(--face-dark);
   font: inherit; font-size: 11px; cursor: pointer;
 }
 .notif-button:hover { background: var(--hover); }
 .notif-button[aria-expanded="true"] { border-color: var(--ink); }
-.pixcat { width: 0; height: 22px; flex: none; overflow: visible; opacity: 0; margin-right: -6px; transition: width 0.35s steps(4), opacity 0.2s, margin 0.35s; }
-.notif.has .pixcat { width: 28px; opacity: 1; margin-right: 0; }
+.pixcat { width: 0; height: 38px; flex: none; overflow: visible; opacity: 0; margin-right: -6px; transition: width 0.35s steps(4), opacity 0.2s, margin 0.35s; }
+.notif.has .pixcat { width: 70px; opacity: 1; margin-right: 0; }
 .pixcat-fur { fill: #111111; }
-.pixcat-eye { fill: #c6e43a; }
+.pixcat-eye { fill: #d4ef3c; }
 .pixcat-nose { fill: #e48aa4; }
 :root[data-theme="dark"] .pixcat { filter: drop-shadow(1px 0 0 #b8b8b8) drop-shadow(-1px 0 0 #b8b8b8) drop-shadow(0 1px 0 #b8b8b8) drop-shadow(0 -1px 0 #b8b8b8); }
 @media (prefers-color-scheme: dark) {
@@ -413,11 +413,12 @@ tr.clickrow:hover td { background: var(--info-bg); }
 .pixcat-paw { opacity: 0; }
 .notif.has .pixcat { animation: pixcat-hop 1.4s steps(2) infinite; }
 .notif.has .pixcat-paw { animation: pixcat-wave 0.5s steps(1) 0.8s 10; }
+.notif.has .pixcat-arm { animation: pixcat-wave 0.5s steps(1) 0.55s 10; }
 .notif.arrive .pixcat { animation: pixcat-arrive 0.8s steps(5) 1, pixcat-hop 1.4s steps(2) 0.8s infinite; }
 @keyframes pixcat-blink { 0%, 92% { opacity: 0; } 94%, 100% { opacity: 1; } 96% { opacity: 0; } }
 @keyframes pixcat-wave { 0% { opacity: 1; } 50% { opacity: 0; } }
-@keyframes pixcat-hop { 0% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
-@keyframes pixcat-arrive { 0% { transform: translateY(16px); clip-path: inset(0 0 100% 0); } 100% { transform: translateY(0); clip-path: inset(0); } }
+@keyframes pixcat-hop { 0% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes pixcat-arrive { 0% { transform: translateY(30px); clip-path: inset(0 0 100% 0); } 100% { transform: translateY(0); clip-path: inset(0); } }
 .notif-count {
   min-width: 16px; padding: 0 4px;
   background: var(--bad); color: #ffffff;
@@ -440,11 +441,23 @@ tr.clickrow:hover td { background: var(--info-bg); }
 .notif-item:last-child { border-bottom: 0; }
 .notif-hi { margin: 0 0 4px; font-weight: bold; font-size: 14px; }
 .notif-text { margin: 0 0 8px; font-size: 13px; white-space: pre-line; line-height: 1.45; max-height: 50vh; overflow-y: auto; }
+.notif-history { border-top: 2px solid var(--ink); max-height: 40vh; overflow-y: auto; }
+.notif-history-head {
+  margin: 0; padding: 6px 12px 2px;
+  font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: var(--muted);
+}
+.notif-history ul { list-style: none; margin: 0; padding: 0 0 4px; }
+.notif-history li { padding: 6px 12px; border-bottom: 1px solid var(--shade); }
+.notif-history li:last-child { border-bottom: 0; }
+.notif-when { display: block; font-size: 10px; color: var(--muted); }
+.notif-old { margin: 2px 0 0; font-family: var(--serif); font-size: 12px; white-space: pre-line; line-height: 1.4; }
+.notif-panel.full .notif-history, .notif-panel.past .notif-empty { border-top-width: 2px; }
+.notif-panel.past .notif-empty { display: none; }
 @media (max-width: 640px) {
   .notif-label { display: none; }
   .notif-panel { position: fixed; left: 12px; right: 12px; width: auto; }
   .notif-panel::before { left: var(--notif-arrow, 14px); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pixcat, .pixcat-lid, .pixcat-paw { animation: none !important; }
+  .pixcat, .pixcat-lid, .pixcat-paw, .pixcat-arm { animation: none !important; }
 }

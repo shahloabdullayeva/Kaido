@@ -310,8 +310,14 @@ def cmd_cat(args):
     if not message:
         print("empty message", file=sys.stderr)
         return 1
-    note_id = cat.send(user["id"], message, args.kind)
-    print(f"cat #{note_id} waiting for {user['name']} on their next page load")
+    sender = None
+    if args.sender:
+        sender = one("select id from users where lower(email) = lower(%s) or lower(name) = lower(%s)", (args.sender, args.sender))
+        if not sender:
+            print(f"no user {args.sender}", file=sys.stderr)
+            return 1
+    note_id = cat.send(user["id"], message, args.kind, sender["id"] if sender else None)
+    print(f"cat #{note_id} on its way to {user['name']}; an open page shows it within 15 seconds")
 
 
 def cmd_demo(args):
@@ -445,6 +451,7 @@ def main():
 
     cat_parser = sub.add_parser("cat", help="send a note the cat brings to someone in the app")
     cat_parser.add_argument("--to", required=True, help="email or name")
+    cat_parser.add_argument("--from", dest="sender", help="email or name shown as the sender in history")
     cat_parser.add_argument("--kind", choices=["note", "reminder"], default="note")
     cat_parser.add_argument("message", nargs="?", help="the text; read from stdin when left out")
     cat_parser.set_defaults(func=cmd_cat)

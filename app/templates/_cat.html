@@ -1,33 +1,11 @@
-<div class="notif" id="notif" data-csrf="{{ session.csrf }}">
+<div class="notif" id="notif" data-csrf="{{ session.csrf }}" data-version="{{ cat_version }}">
   <button type="button" class="notif-button" aria-expanded="false" aria-controls="notif-panel">
-    <svg class="pixcat" viewBox="0 -1 14 11" shape-rendering="crispEdges" aria-hidden="true">
-      <g class="pixcat-fur">
-      <rect x="1" y="0" width="1" height="1"/>
-      <rect x="7" y="0" width="1" height="1"/>
-      <rect x="1" y="1" width="2" height="1"/>
-      <rect x="6" y="1" width="2" height="1"/>
-      <rect x="1" y="2" width="7" height="1"/>
-      <rect x="1" y="3" width="1" height="1"/>
-      <rect x="3" y="3" width="3" height="1"/>
-      <rect x="7" y="3" width="1" height="1"/>
-      <rect x="1" y="4" width="3" height="1"/>
-      <rect x="5" y="4" width="3" height="1"/>
-      <rect x="12" y="4" width="1" height="1"/>
-      <rect x="2" y="5" width="5" height="1"/>
-      <rect x="12" y="5" width="1" height="1"/>
-      <rect x="2" y="6" width="9" height="1"/>
-      <rect x="12" y="6" width="1" height="1"/>
-      <rect x="2" y="7" width="11" height="1"/>
-      <rect x="2" y="8" width="10" height="1"/>
-      <rect x="2" y="9" width="1" height="1"/>
-      <rect x="4" y="9" width="1" height="1"/>
-      <rect x="9" y="9" width="1" height="1"/>
-      <rect x="11" y="9" width="1" height="1"/>
-      </g>
-      <g class="pixcat-eye"><rect x="2" y="3" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/></g>
-      <g class="pixcat-fur pixcat-lid"><rect x="2" y="3" width="1" height="1"/><rect x="6" y="3" width="1" height="1"/></g>
-      <g class="pixcat-nose"><rect x="4" y="4" width="1" height="1"/></g>
-      <g class="pixcat-fur pixcat-paw"><rect x="0" y="3" width="1" height="2"/><rect x="1" y="5" width="1" height="1"/></g>
+    <svg class="pixcat" viewBox="0 -1 20 11" shape-rendering="crispEdges" aria-hidden="true">
+      <g class="pixcat-fur"><rect x="4" y="0" width="1" height="1"/><rect x="13" y="0" width="1" height="1"/><rect x="4" y="1" width="2" height="1"/><rect x="12" y="1" width="2" height="1"/><rect x="4" y="2" width="10" height="1"/><rect x="4" y="3" width="2" height="1"/><rect x="7" y="3" width="4" height="1"/><rect x="12" y="3" width="2" height="1"/><rect x="4" y="4" width="2" height="1"/><rect x="7" y="4" width="4" height="1"/><rect x="12" y="4" width="2" height="1"/><rect x="18" y="4" width="1" height="1"/><rect x="4" y="5" width="12" height="1"/><rect x="18" y="5" width="1" height="1"/><rect x="4" y="6" width="10" height="1"/><rect x="17" y="6" width="1" height="1"/><rect x="4" y="7" width="13" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="7" y="8" width="1" height="1"/><rect x="10" y="8" width="1" height="1"/><rect x="12" y="8" width="1" height="1"/><rect x="5" y="9" width="1" height="1"/><rect x="7" y="9" width="1" height="1"/><rect x="10" y="9" width="1" height="1"/><rect x="12" y="9" width="1" height="1"/></g>
+      <g class="pixcat-eye"><rect x="6" y="3" width="1" height="1"/><rect x="11" y="3" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="11" y="4" width="1" height="1"/></g>
+      <g class="pixcat-fur pixcat-lid"><rect x="6" y="3" width="1" height="1"/><rect x="11" y="3" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="11" y="4" width="1" height="1"/></g>
+      <g class="pixcat-fur pixcat-arm"><rect x="2" y="5" width="2" height="1"/></g>
+      <g class="pixcat-fur pixcat-paw"><rect x="2" y="2" width="1" height="3"/><rect x="3" y="4" width="1" height="1"/></g>
     </svg>
     <span class="notif-label">Notification center</span>
     <span class="notif-count" hidden></span>
@@ -35,5 +13,9 @@
   <div class="notif-panel" id="notif-panel" hidden>
     <p class="notif-empty">Nothing new. The cat will bring your reminders here.</p>
     <div class="notif-list"></div>
+    <div class="notif-history" hidden>
+      <p class="notif-history-head">Earlier</p>
+      <ul></ul>
+    </div>
   </div>
 </div>

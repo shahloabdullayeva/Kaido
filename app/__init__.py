@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, request, url_for
 
-from . import filters, logs, reminders
+from . import cat, filters, logs, reminders
 from .auth import ANON_CSRF_COOKIE, SESSION_COOKIE, load_session
 from .config import IS_PROD, config
 from .security import csrf_matches, random_token
@@ -105,6 +105,7 @@ def create_app():
             "anon_csrf": anon_csrf,
             "app_config": config,
             "reminder_panel": reminder_panel,
+            "cat_version": cat.VERSION,
             "audiences": reminders.AUDIENCES,
         }
 

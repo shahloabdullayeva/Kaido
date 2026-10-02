@@ -5,8 +5,37 @@
   const panel = notif.querySelector('.notif-panel');
   const list = notif.querySelector('.notif-list');
   const count = notif.querySelector('.notif-count');
+  const historyBox = notif.querySelector('.notif-history');
+  const historyList = historyBox.querySelector('ul');
   const seen = new Set();
   let first = true;
+  let dirty = false;
+
+  document.addEventListener('input', function (event) {
+    if (event.target.closest && event.target.closest('form')) dirty = true;
+  });
+  document.addEventListener('submit', function () { dirty = false; });
+
+  function stamp(iso) {
+    return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  }
+
+  function showHistory(items) {
+    historyList.textContent = '';
+    for (const note of items) {
+      const row = document.createElement('li');
+      const when = document.createElement('span');
+      when.className = 'notif-when';
+      when.textContent = stamp(note.when) + (note.sender ? ' \u00b7 from ' + note.sender : '') + (note.kind === 'reminder' ? ' \u00b7 reminder' : '');
+      const text = document.createElement('p');
+      text.className = 'notif-old';
+      text.textContent = note.message;
+      row.append(when, text);
+      historyList.append(row);
+    }
+    historyBox.hidden = items.length === 0;
+    panel.classList.toggle('past', items.length > 0);
+  }
 
   function place() {
     if (window.innerWidth > 640) {
@@ -52,6 +81,7 @@
       fetch('/cat/' + note.id + '/done', { method: 'POST', body: payload, credentials: 'same-origin' });
       box.remove();
       refreshState();
+      setTimeout(check, 400);
       if (!list.children.length) setTimeout(function () { setOpen(false); }, 600);
     });
     box.append(hi, text, ok);
@@ -69,6 +99,11 @@
       .then(function (response) { return response.ok ? response.json() : null; })
       .then(function (data) {
         if (!data) return;
+        if (data.version && notif.dataset.version && data.version !== notif.dataset.version && !dirty) {
+          window.location.reload();
+          return;
+        }
+        showHistory(data.history || []);
         let fresh = false;
         for (const note of data.notes) {
           if (seen.has(note.id)) continue;
