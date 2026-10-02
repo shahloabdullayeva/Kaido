@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, request, url_for
 
-from . import filters, logs, reminders
+from . import cat, filters, logs, reminders
 from .auth import ANON_CSRF_COOKIE, SESSION_COOKIE, load_session
 from .config import IS_PROD, config
 from .security import csrf_matches, random_token
@@ -92,6 +92,12 @@ def create_app():
         return {"rows": items, "default": reminders.default_when(company),
                 "zone": company.get("timezone") or config.TIMEZONE}
 
+    def cat_note():
+        session = getattr(g, "session", None)
+        if not session or request.method != "GET":
+            return None
+        return cat.pending(session["user_id"])
+
     @app.context_processor
     def context():
         return {
@@ -106,6 +112,7 @@ def create_app():
             "app_config": config,
             "reminder_panel": reminder_panel,
             "audiences": reminders.AUDIENCES,
+            "cat_note": cat_note,
         }
 
     from .views.auth import bp as auth_bp
@@ -123,11 +130,12 @@ def create_app():
     from .views.reports import bp as reports_bp
     from .views.trucks import bp as trucks_bp
     from .views.pti import bp as pti_bp
+    from .views.cat import bp as cat_bp
     from .views.settings import bp as settings_bp
 
     for blueprint in (auth_bp, dashboard_bp, trucks_bp, drivers_bp, fuel_bp,
                       maintenance_bp, breakdowns_bp, faults_bp, integrations_bp,
-                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp):
+                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp, cat_bp):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(404)

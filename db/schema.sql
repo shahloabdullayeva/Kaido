@@ -723,3 +723,15 @@ begin
 end $$;
 
 alter table users add column if not exists can_see_site boolean not null default false;
+
+create table if not exists cat_notes (
+  id bigserial primary key,
+  user_id int not null references users(id) on delete cascade,
+  kind text not null default 'note' check (kind in ('note', 'reminder')),
+  message text not null,
+  sent_by int references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  shown_at timestamptz,
+  done_at timestamptz
+);
+create index if not exists cat_notes_pending_idx on cat_notes (user_id, created_at) where done_at is null;

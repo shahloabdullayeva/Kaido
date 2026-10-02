@@ -60,7 +60,10 @@
 {% endwith %}
 {% block body %}{% endblock %}
 </main>
+{% set cat_letter = cat_note() %}
+{% if cat_letter %}{% include "_cat.html" %}{% endif %}
 <script src="/static/app.js"></script>
+{% if cat_letter %}<script src="/static/cat.js"></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>

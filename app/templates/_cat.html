@@ -1,0 +1,40 @@
+<div class="cat" id="cat" data-id="{{ cat_letter.id }}" data-csrf="{{ session.csrf }}" hidden>
+  <div class="cat-bubble" role="dialog" aria-live="polite" aria-label="{{ 'Reminder' if cat_letter.kind == 'reminder' else 'A note for you' }}">
+    <button type="button" class="cat-close" aria-label="Close">&times;</button>
+    <p class="cat-hi">Hi {{ session.name }}!</p>
+    <p class="cat-text">{{ cat_letter.message }}</p>
+    <button type="button" class="btn cat-ok">{{ 'Got it' if cat_letter.kind == 'reminder' else 'Okay' }} &#9829;</button>
+  </div>
+  <svg class="cat-art" viewBox="0 0 150 170" aria-hidden="true">
+    <path class="cat-fur cat-tail" d="M120 150 C150 140 150 100 132 92 C124 89 122 98 130 102 C140 108 138 132 116 138 Z"/>
+    <ellipse class="cat-fur" cx="78" cy="138" rx="46" ry="38"/>
+    <ellipse class="cat-fur" cx="58" cy="168" rx="14" ry="9"/>
+    <ellipse class="cat-fur" cx="98" cy="168" rx="14" ry="9"/>
+    <g class="cat-paw">
+      <path class="cat-fur" d="M40 120 C30 100 22 80 20 66 C18 58 30 54 34 62 C38 74 46 96 54 114 Z"/>
+      <ellipse class="cat-fur" cx="26" cy="60" rx="11" ry="10"/>
+      <ellipse class="cat-bean" cx="26" cy="62" rx="4" ry="3.2"/>
+      <circle class="cat-bean" cx="19" cy="55" r="2"/>
+      <circle class="cat-bean" cx="25" cy="52" r="2"/>
+      <circle class="cat-bean" cx="32" cy="54" r="2"/>
+    </g>
+    <path class="cat-fur" d="M48 56 L44 14 L72 38 Z"/>
+    <path class="cat-fur" d="M108 56 L114 14 L86 38 Z"/>
+    <path class="cat-ear" d="M52 48 L50 24 L66 38 Z"/>
+    <path class="cat-ear" d="M104 48 L108 24 L92 38 Z"/>
+    <ellipse class="cat-fur" cx="78" cy="70" rx="40" ry="35"/>
+    <g class="cat-eyes">
+      <ellipse class="cat-eye" cx="62" cy="66" rx="8" ry="9"/>
+      <ellipse class="cat-eye" cx="94" cy="66" rx="8" ry="9"/>
+      <ellipse class="cat-pupil" cx="62" cy="67" rx="2.4" ry="7"/>
+      <ellipse class="cat-pupil" cx="94" cy="67" rx="2.4" ry="7"/>
+      <circle class="cat-glint" cx="64.5" cy="62" r="1.6"/>
+      <circle class="cat-glint" cx="96.5" cy="62" r="1.6"/>
+    </g>
+    <path class="cat-nose" d="M74 80 L82 80 L78 85 Z"/>
+    <path class="cat-mouth" d="M78 85 Q74 91 69 88 M78 85 Q82 91 87 88"/>
+    <path class="cat-whisker" d="M40 80 L60 82 M40 88 L60 86 M116 80 L96 82 M116 88 L96 86"/>
+    <ellipse class="cat-blush" cx="56" cy="84" rx="5" ry="2.6"/>
+    <ellipse class="cat-blush" cx="100" cy="84" rx="5" ry="2.6"/>
+  </svg>
+</div>

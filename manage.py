@@ -299,6 +299,21 @@ def cmd_telegram(args):
                 send(chat_id, "Send /link followed by the code from your Kaido account page.")
 
 
+def cmd_cat(args):
+    from app import cat
+    user = one("select id, name from users where lower(email) = lower(%s) or lower(name) = lower(%s)", (args.to, args.to))
+    if not user:
+        print(f"no user {args.to}", file=sys.stderr)
+        return 1
+    message = args.message if args.message is not None else sys.stdin.read()
+    message = message.strip()
+    if not message:
+        print("empty message", file=sys.stderr)
+        return 1
+    note_id = cat.send(user["id"], message, args.kind)
+    print(f"cat #{note_id} waiting for {user['name']} on their next page load")
+
+
 def cmd_demo(args):
     company = one("select * from companies where lower(name) = lower(%s)", (args.company,))
     if not company:
@@ -427,6 +442,12 @@ def main():
     summary_parser = sub.add_parser("summary", help="send the twice-weekly summary to company admins")
     summary_parser.add_argument("--backup", nargs="*")
     summary_parser.set_defaults(func=cmd_summary)
+
+    cat_parser = sub.add_parser("cat", help="send a note the cat brings to someone in the app")
+    cat_parser.add_argument("--to", required=True, help="email or name")
+    cat_parser.add_argument("--kind", choices=["note", "reminder"], default="note")
+    cat_parser.add_argument("message", nargs="?", help="the text; read from stdin when left out")
+    cat_parser.set_defaults(func=cmd_cat)
 
     demo = sub.add_parser("demo", help="add sample trucks, drivers, fuel and a breakdown")
     demo.add_argument("--company", required=True)
