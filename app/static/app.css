@@ -439,6 +439,7 @@ tr.clickrow:hover td { background: var(--info-bg); }
 .notif-panel.full .notif-empty { display: none; }
 .notif-item { padding: 10px 12px; border-bottom: 1px solid var(--face-dark); font-family: var(--serif); }
 .notif-item:last-child { border-bottom: 0; }
+.notif-item ~ .notif-item { display: none; }
 .notif-hi { margin: 0 0 4px; font-weight: bold; font-size: 14px; }
 .notif-text { margin: 0 0 8px; font-size: 13px; white-space: pre-line; line-height: 1.45; max-height: 50vh; overflow-y: auto; }
 .notif-history { border-top: 2px solid var(--ink); max-height: 40vh; overflow-y: auto; }
