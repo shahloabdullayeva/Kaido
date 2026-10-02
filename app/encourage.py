@@ -35,7 +35,7 @@ MESSAGES = [
     "If nobody said it today: thank you. What you do makes a difference.",
     "You chose to keep going today. That choice, made again and again, is how big things get built.",
     "There's a fleet out there running a little smoother because of today's work. Proud of you.",
-    "You don't need a perfect day to be proud of it. Today was yours. Well done.",
+    "You gave today everything it asked for, and a little more. I'm proud of you.",
     "Every record entered, every alert answered, every truck checked. It adds up, and it's adding up to something good.",
     "You handled today with more patience than it deserved. Proud of you.",
     "The version of you from a year ago would be amazed at what you're running now.",
