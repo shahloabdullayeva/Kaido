@@ -121,13 +121,15 @@
       .catch(function () {});
   }
 
-  button.addEventListener('click', function () { setOpen(panel.hidden); });
+  function unread() { return list.children.length > 0; }
+
+  button.addEventListener('click', function () { if (panel.hidden || !unread()) setOpen(panel.hidden); });
   window.addEventListener('resize', function () { if (!panel.hidden) place(); });
   document.addEventListener('click', function (event) {
-    if (!notif.contains(event.target)) setOpen(false);
+    if (!notif.contains(event.target) && !unread()) setOpen(false);
   });
   document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') setOpen(false);
+    if (event.key === 'Escape' && !unread()) setOpen(false);
   });
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) check();
