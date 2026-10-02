@@ -11,6 +11,7 @@ from .logs import get
 log = get("advisor")
 
 MODEL = config.AI_MODEL
+CHAT_MODEL = config.AI_CHAT_MODEL
 MAX_SHOPS = 8
 KINDS = {
     "truck_repair": "a truck repair shop",
@@ -24,6 +25,8 @@ PRICES = {
     "claude-haiku-4-5": (1.0, 5.0),
     "claude-sonnet-5": (2.0, 10.0),
     "claude-opus-5": (5.0, 25.0),
+    "claude-sonnet-5-5": (2.0, 10.0),
+    "claude-opus-5-5": (4.0, 20.0),
 }
 
 
@@ -58,15 +61,15 @@ def over_budget():
     return spent_today() >= config.AI_DAILY_USD
 
 
-def _cost(usage):
-    per_input, per_output = PRICES.get(MODEL, (5.0, 25.0))
+def _cost(usage, model=MODEL):
+    per_input, per_output = PRICES.get(model, (5.0, 25.0))
     return (usage.input_tokens * per_input + usage.output_tokens * per_output) / 1_000_000
 
 
-def _remember(usage):
+def _remember(usage, model=MODEL):
     execute(
         "insert into ai_usage (model, input_tokens, output_tokens, cost_usd) values (%s, %s, %s, %s)",
-        (MODEL, usage.input_tokens, usage.output_tokens, _cost(usage)),
+        (model, usage.input_tokens, usage.output_tokens, _cost(usage, model)),
     )
 
 
@@ -324,7 +327,16 @@ CHAT_SYSTEM = (
     "you to write something (a message to a driver or a shop, a note for a work order), write it "
     "ready to paste. Due dates and mileages in the data are already calculated; repeat them, do not "
     "recalculate. Write plain text only: no markdown, no asterisks, no headings, no horizontal lines. "
-    "Use simple numbered or dashed lists when a list helps."
+    "Use simple numbered or dashed lists when a list helps. "
+    "TONE AND LANGUAGE: talk like a friendly, experienced colleague, conversational and warm, not "
+    "a manual. Answer in the language of their last message. When they write in Uzbek, answer in "
+    "natural everyday Uzbek the way people in Tashkent talk at work, in the same script they used "
+    "(Latin unless they wrote Cyrillic), using the truck and part words Uzbek drivers and mechanics "
+    "actually say; keep an English part or fault name when there is no common Uzbek word for it. "
+    "They may mix Uzbek, Russian and English; that is normal, follow them. Anything written to paste "
+    "for a shop, a driver or anyone in America is always in English, even when the chat is in "
+    "Uzbek, unless they name another language; put one short line in their language before it "
+    "saying what it is. Never draw separator lines such as --- or ===."
 )
 CHAT_TURNS = 12
 
@@ -337,15 +349,17 @@ def chat_reply(context, history, question):
     messages = [{"role": turn["role"], "content": turn["content"]} for turn in history[-CHAT_TURNS:]]
     messages.append({"role": "user", "content": question})
     try:
+        extra = {} if CHAT_MODEL.startswith("claude-haiku") else {"output_config": {"effort": "low"}}
         response = _client().messages.create(
-            model=MODEL,
-            max_tokens=700,
+            model=CHAT_MODEL,
+            max_tokens=4000,
             system=CHAT_SYSTEM + "\n\n" + context,
             messages=messages,
+            **extra,
         )
     except Exception as err:
-        log.warning("%s chat failed: %s", MODEL, err)
+        log.warning("%s chat failed: %s", CHAT_MODEL, err)
         return None, "The assistant did not answer just now. Try again in a minute."
-    _remember(response.usage)
+    _remember(response.usage, CHAT_MODEL)
     text = "".join(block.text for block in response.content if getattr(block, "type", "") == "text").strip()
     return text or None, None if text else "The assistant came back empty. Try asking another way."

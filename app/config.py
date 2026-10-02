@@ -52,6 +52,7 @@ class Config:
     SAMSARA_BASE_URL = os.environ.get("SAMSARA_BASE_URL", "https://api.samsara.com")
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
     AI_MODEL = os.environ.get("AI_MODEL", "claude-haiku-4-5")
+    AI_CHAT_MODEL = os.environ.get("AI_CHAT_MODEL", "") or os.environ.get("AI_MODEL", "claude-haiku-4-5")
     AI_DAILY_USD = float(os.environ.get("AI_DAILY_USD", "0.20"))
     SHOP_RADIUS_MILES = _int("SHOP_RADIUS_MILES", 50)
     DIESEL_PRICE = float(os.environ.get("DIESEL_PRICE", "3.85"))
