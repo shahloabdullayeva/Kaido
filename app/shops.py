@@ -19,8 +19,7 @@ class OverpassBusy(Exception):
 
 OVERPASS_URLS = (
     "https://overpass-api.de/api/interpreter",
-    "https://overpass.private.coffee/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
+    "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 )
 NEARBY_CACHE_DEGREES = 0.07
 FALLBACK_CACHE_DEGREES = 0.35
@@ -35,17 +34,18 @@ GOOGLE_GEOCODE_DAYS = 30
 GOOGLE_QUERIES = ("semi truck repair shop", "truck stop")
 EARTH_MILES = 3958.7613
 
-QUERY = """[out:json][timeout:50];
+QUERY = """[out:json][timeout:45][bbox:{box}];
 (
-  nwr["shop"="truck_repair"](around:{radius},{lat},{lon});
-  nwr["amenity"="truck_stop"](around:{radius},{lat},{lon});
-  nwr["shop"="car_repair"](around:{radius},{lat},{lon});
-  nwr["shop"="tyres"](around:{radius},{lat},{lon});
-  nwr["amenity"="fuel"]["hgv"="yes"](around:{radius},{lat},{lon});
-  nwr["service:vehicle:towing"="yes"](around:{radius},{lat},{lon});
-  nwr["name"~"towing|wrecker",i](around:{radius},{lat},{lon});
+  nwr["shop"="truck_repair"];
+  nwr["amenity"="truck_stop"];
+  nwr["shop"="tyres"];
+  nwr["amenity"="fuel"]["hgv"="yes"];
+  nwr["service:vehicle:towing"="yes"];
+  nwr["shop"="car_repair"]({near});
 );
 out center tags;"""
+CAR_REPAIR_MILES = 25
+OVERPASS_RETRY_WAIT = 10
 
 TOW_WORDS = re.compile(r"\btow(s|ing|ed)?\b|wrecker|recovery|roll ?back|winch", re.I)
 ROAD_WORDS = re.compile(r"mobile|road ?service|road ?side|24 ?/ ?7|24 ?hrs?\b|24 hour|call ?out", re.I)
@@ -228,14 +228,25 @@ def _cell(latitude, longitude):
     return f"{round(float(latitude), 2):.2f},{round(float(longitude), 2):.2f}"
 
 
+def _box(latitude, longitude, miles):
+    lat, lon = float(latitude), float(longitude)
+    dlat = miles / 69.0
+    dlon = miles / (69.0 * max(math.cos(math.radians(lat)), 0.01))
+    return f"{lat - dlat:.5f},{lon - dlon:.5f},{lat + dlat:.5f},{lon + dlon:.5f}"
+
+
 def _fetch(latitude, longitude, radius_m):
-    body = QUERY.format(radius=radius_m, lat=float(latitude), lon=float(longitude))
-    for number, url in enumerate(OVERPASS_URLS):
+    miles = radius_m / 1609.344
+    body = QUERY.format(box=_box(latitude, longitude, miles),
+                        near=_box(latitude, longitude, min(miles, CAR_REPAIR_MILES)))
+    for number, url in enumerate(OVERPASS_URLS * 2):
         if number == 0:
             _polite("overpass")
+        elif number == len(OVERPASS_URLS):
+            time.sleep(OVERPASS_RETRY_WAIT)
         try:
             response = requests.post(url, data={"data": body}, headers={"User-Agent": USER_AGENT},
-                                     timeout=(6, 30 if number == 0 else 12))
+                                     timeout=(6, 50))
         except requests.RequestException as err:
             log.warning("overpass %s failed: %s", url, err)
             continue
@@ -243,9 +254,15 @@ def _fetch(latitude, longitude, radius_m):
             log.warning("overpass %s answered %s", url, response.status_code)
             continue
         try:
-            return response.json().get("elements") or []
+            payload = response.json()
         except ValueError:
             log.warning("overpass %s sent something that was not JSON", url)
+            continue
+        remark = payload.get("remark") or ""
+        if "error" in remark.lower() or "timed out" in remark.lower():
+            log.warning("overpass %s gave up: %s", url, remark)
+            continue
+        return payload.get("elements") or []
     raise OverpassBusy("OpenStreetMap's free lookup service is busy right now")
 
 
@@ -624,6 +641,9 @@ def _collect(latitude, longitude, radius_miles, limit):
             " ".join(part for part in [tags.get("addr:housenumber"), tags.get("addr:street")] if part),
             tags.get("addr:city"), tags.get("addr:state"),
         ] if part)
+        miles = haversine(latitude, longitude, lat, lon)
+        if miles > radius_miles:
+            continue
         fit = _truck_fit(tags, name)
         if fit == "no":
             continue
@@ -634,7 +654,7 @@ def _collect(latitude, longitude, radius_miles, limit):
             "kind": tags.get("shop") or tags.get("amenity"),
             "latitude": lat,
             "longitude": lon,
-            "miles": round(haversine(latitude, longitude, lat, lon), 1),
+            "miles": round(miles, 1),
             "address": address or None,
             "phone": (tags.get("phone") or tags.get("contact:phone") or "").split(";")[0].strip() or None,
             "website": tags.get("website") or tags.get("contact:website"),
