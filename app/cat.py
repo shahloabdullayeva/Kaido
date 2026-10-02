@@ -1,16 +1,19 @@
-from .db import execute, insert, one
+from .db import execute, insert, rows
 
 
 def pending(user_id):
-    note = one(
+    notes = rows(
         """select id, kind, message from cat_notes
            where user_id = %s and done_at is null
-           order by created_at limit 1""",
+           order by created_at""",
         (user_id,),
     )
-    if note:
-        execute("update cat_notes set shown_at = coalesce(shown_at, now()) where id = %s", (note["id"],))
-    return note
+    if notes:
+        execute(
+            "update cat_notes set shown_at = coalesce(shown_at, now()) where id = any(%s)",
+            ([note["id"] for note in notes],),
+        )
+    return notes
 
 
 def send(user_id, message, kind="note", sent_by=None):

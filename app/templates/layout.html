@@ -48,6 +48,7 @@
     {% if is_platform %}<a href="/platform" {% if active == '/platform' %}class="on"{% endif %}>Platform</a>{% endif %}
   </nav>
   <div class="who">
+    {% include "_cat.html" %}
     <a href="/account">{{ session.name }}<span class="role">{{ 'platform ' + session.platform_role if session.platform_role else (role or '') }}</span></a>
     <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="link">Sign out</button></form>
   </div>
@@ -60,10 +61,8 @@
 {% endwith %}
 {% block body %}{% endblock %}
 </main>
-{% set cat_letter = cat_note() %}
-{% if cat_letter %}{% include "_cat.html" %}{% endif %}
 <script src="/static/app.js"></script>
-{% if cat_letter %}<script src="/static/cat.js"></script>{% endif %}
+<script src="/static/cat.js"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

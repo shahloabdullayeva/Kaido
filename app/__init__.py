@@ -1,6 +1,6 @@
 from flask import Flask, g, redirect, render_template, request, url_for
 
-from . import cat, filters, logs, reminders
+from . import filters, logs, reminders
 from .auth import ANON_CSRF_COOKIE, SESSION_COOKIE, load_session
 from .config import IS_PROD, config
 from .security import csrf_matches, random_token
@@ -92,12 +92,6 @@ def create_app():
         return {"rows": items, "default": reminders.default_when(company),
                 "zone": company.get("timezone") or config.TIMEZONE}
 
-    def cat_note():
-        session = getattr(g, "session", None)
-        if not session or request.method != "GET":
-            return None
-        return cat.pending(session["user_id"])
-
     @app.context_processor
     def context():
         return {
@@ -112,7 +106,6 @@ def create_app():
             "app_config": config,
             "reminder_panel": reminder_panel,
             "audiences": reminders.AUDIENCES,
-            "cat_note": cat_note,
         }
 
     from .views.auth import bp as auth_bp
