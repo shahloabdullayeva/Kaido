@@ -133,6 +133,53 @@ closed automatically. Run it from the Integrations page, or on a schedule:
 
     */15 * * * * /root/kaido/bin/sync.sh
 
+## Horizon ELD
+
+For carriers whose drivers are on Horizon ELD (hosconnect.com) as well as, or instead
+of, Samsara. Horizon covers every driver on the ELD; Samsara may only cover some of
+the trucks, so the two are merged rather than run side by side.
+
+    manage.py horizon-connect --company BOOKIT --user <api user> --password <api password> --company-key <Company:...>
+    manage.py horizon-sync --company BOOKIT
+
+The API user, password and company id come from Horizon's API settings. They are
+stored together, AES-GCM encrypted, in `integrations.credential`. The company id
+is the whole string including its `Company:` prefix.
+
+A sync pulls `/drivers`, `/vehicles`, `/latest_driver_statuses` and
+`/latest_vehicle_statuses`:
+
+- **Vehicles** are matched to trucks by VIN, then by unit number. A truck is only
+  created when Horizon gives a VIN, so a messy unit name never makes a duplicate.
+- **Drivers** are linked through `driver_links` and keep their Kaido record; a
+  name typed in Kaido is never overwritten by a different one.
+- **HOS** goes to `hos_status`: duty status and the break, drive, shift and cycle
+  clocks, plus the last position the ELD reported.
+- **The live truck wins.** When the same unit exists twice (once from Samsara, once
+  from Horizon), both are kept and the driver goes to whichever one reported its
+  position most recently. Horizon only moves a truck's position forward, never back.
+
+Horizon has no fault codes or DVIRs; those stay with Samsara. `bin/sync.sh` runs
+`horizon-sync --all` right after the Samsara sync, and a Samsara failure does not
+stop it.
+
+## Drivers
+
+Samsara has no proper driver records for most carriers, so drivers are read from
+the vehicle names on every sync: "BMG Unit #001B - Khalifa Mboup",
+"4207 Darren Fillmore (Mercury)", "1323 Taric". The parser knows the local
+conventions: *aka* is an honorific, not a surname; O/O means owner-operator; `&`
+and `/` separate team drivers; brackets name the sub-carrier; pay notes like
+"80 cpm" are dropped.
+
+A driver who came from a truck name follows that truck when it is renamed
+(`trucks.driver_from_name`). A driver set by hand, by Telegram `/unit`, or by
+Horizon is never overwritten by the name parser.
+
+Drivers and trucks from outside the company (`is_outside`, `outside_carrier`) can
+have work orders like any other, so every repair lives in one place, but they stay
+off the fleet map and the totals.
+
 ## Commands
 
     manage.py migrate                     apply db/schema.sql
