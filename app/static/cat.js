@@ -88,6 +88,21 @@
     return box;
   }
 
+  function updated() {
+    if (document.getElementById('kaido-updated')) return;
+    const bar = document.createElement('div');
+    bar.id = 'kaido-updated';
+    bar.className = 'updated-bar';
+    const text = document.createElement('span');
+    text.textContent = 'Kaido was updated. Save what you are typing, then refresh this page.';
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.textContent = 'Refresh now';
+    go.addEventListener('click', function () { window.location.reload(); });
+    bar.append(text, go);
+    document.body.prepend(bar);
+  }
+
   function arrive() {
     notif.classList.remove('arrive');
     void notif.offsetWidth;
@@ -99,9 +114,12 @@
       .then(function (response) { return response.ok ? response.json() : null; })
       .then(function (data) {
         if (!data) return;
-        if (data.version && notif.dataset.version && data.version !== notif.dataset.version && !dirty) {
-          window.location.reload();
-          return;
+        if (data.version && notif.dataset.version && data.version !== notif.dataset.version) {
+          if (!dirty) {
+            window.location.reload();
+            return;
+          }
+          updated();
         }
         showHistory(data.history || []);
         let fresh = false;

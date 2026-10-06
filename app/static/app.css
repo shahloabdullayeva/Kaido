@@ -462,3 +462,18 @@ tr.clickrow:hover td { background: var(--info-bg); }
 @media (prefers-reduced-motion: reduce) {
   .pixcat, .pixcat-lid, .pixcat-paw, .pixcat-arm { animation: none !important; }
 }
+
+.updated-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  background: var(--warn-bg);
+  color: var(--ink);
+  border-bottom: 2px solid var(--warn);
+  font-weight: bold;
+}
