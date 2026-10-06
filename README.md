@@ -166,8 +166,8 @@ stop it.
 ## Drivers
 
 Samsara has no proper driver records for most carriers, so drivers are read from
-the vehicle names on every sync: "BMG Unit #001B - Khalifa Mboup",
-"4207 Darren Fillmore (Mercury)", "1323 Taric". The parser knows the local
+the vehicle names on every sync: "BMG Unit #001B - Sam Reyes",
+"4207 Alex Carter (Mercury)", "1323 Omar". The parser knows the local
 conventions: *aka* is an honorific, not a surname; O/O means owner-operator; `&`
 and `/` separate team drivers; brackets name the sub-carrier; pay notes like
 "80 cpm" are dropped.
@@ -304,6 +304,50 @@ A Google Maps link also works in the shop finder's search box.
 on the work order when it is saved, so reopening the order searches there again rather
 than jumping back to the Samsara position. *Back to where Samsara has …* returns to it.
 
+## Pre-trip inspections
+
+Every truck has its own link (`/pti/<token>`, no login), sent to the driver over
+Telegram; replacing it kills the old one. The checklist is the 11 FMCSA 396.11 items
+in three sections. Each item needs a photo or a video (videos up to 50 MB), every
+defect needs a photo and a note, and N/A is only allowed on coupling.
+
+Claude (`AI_PHOTO_MODEL`, Opus 5.5 by default) checks every photo in the background
+job and flags any that do not show what the item asks for: about 1.5 to 4 cents a
+PTI, under the same `AI_DAILY_USD` cap as the rest. Checks past the cap wait for
+the next day.
+
+A defect sends a Telegram alert. An admin signs it off (repaired or not needed) and
+the next driver has to confirm they read it. The PTI page lists trucks that drove
+10+ miles today with no pre-trip. Photos and videos are deleted after 92 days
+(`manage.py pti-cleanup`), past the three months FMCSA asks for.
+
+**Truck groups.** Each truck has its own Telegram group with its driver and the
+office. Add @kaidofleet_bot, send `/truck <code>` (the code is on the truck page),
+and the driver sends `/unit` once. A group only ever hears about its own truck:
+pre-trip and post-trip reminders on the company's chosen days (Monday and Thursday
+by default), and a nudge any day the truck drives without one.
+
+## Notification center
+
+A black pixel cat waits behind the button left of your name in the top bar. When a
+note arrives it walks out, waves and opens the panel; the last 20 read notes stay
+under *Earlier*. Every page asks `/cat/pending` every 15 seconds.
+
+    manage.py cat --to John --from Charlotte "text"
+
+The same check carries a version of the templates and static files. When a deploy
+changes it, an open page reloads itself, so nobody needs a hard refresh. If you are
+in the middle of typing into a form it does not reload; a yellow bar asks you to
+save and refresh instead. CSS and JS are served `no-cache`, so the reload picks up
+the new files.
+
+## Settings
+
+Each user picks auto, light or dark on the Settings page. Dark mode is the same
+old-school look (Verdana, Georgia, bordered tables, beveled buttons) on a dark
+palette. Adding companies and the Website section are separate permissions
+(`users.can_add_companies`, `users.can_see_site`) and new users never get them.
+
 ## Error log
 
 Warnings and errors from the web app, the sync, the follow-up and the Telegram bot all
@@ -345,4 +389,4 @@ Service schedule, the daily follow-up and the fleet status report.
 ## Not built yet
 
 The EFS automatic feed (the report import works today), DVIR scope on the Samsara
-token, and Love's. See the build map.
+token, and Love's.
