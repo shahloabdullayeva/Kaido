@@ -16,6 +16,15 @@ for any truck and any driver, including ones from outside the company.
   company sets its own intervals; severe-duty trucks come due sooner.
 - **Samsara sync** every 15 minutes: odometer, GPS, J1939/OBD-II fault codes, DVIR
   defects. Stop-lamp faults go to Telegram the moment they are seen.
+- **Horizon ELD sync** every 15 minutes, next to Samsara: drivers, duty status and
+  the four HOS clocks (break, drive, shift, cycle), and which driver is in which truck.
+- **Drivers** are imported from the truck names on every sync and kept in step with
+  Horizon. Outside trucks and drivers can be logged too and stay off the fleet totals.
+- **Pre-trip inspections (PTI)** from the driver's phone through a per-truck link:
+  the 11 FMCSA 396.11 items, a photo or video for each, Claude checking the photos,
+  a Telegram alert on any defect, sign-off by an admin.
+- **Truck Telegram groups**: one group per truck, with its own PTI reminders and
+  nudges when the truck drives without a pre-trip.
 - **Fleet map** on the dashboard, coloured by what each truck needs.
 - **Where to send it**: nearby truck shops from OpenStreetMap with address, phone,
   a Call button, a Google Maps link and Claude's pick.
@@ -28,6 +37,11 @@ for any truck and any driver, including ones from outside the company.
   Excel or CSV.
 - **Company lock**: Postgres row-level security on every company table, so a
   carrier's users only ever see their own company.
+- **Notification center**: a pixel cat in the top bar brings notes and reminders,
+  with a history of the last 20.
+- **Dark mode**, chosen per user on the Settings page (auto, light or dark).
+- **Pages update themselves** after a deploy. No hard refresh is ever needed.
+- **Twice-weekly summary** to each company's admins, and nightly backups.
 
 ## Stack
 
@@ -46,6 +60,7 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       queries.py      service status, due dates for every tracked service, dashboard aggregates
       work_types.py   the 81 work types, their systems, and the service schedule defaults
       samsara.py      Samsara REST client and fault-code parser
+      horizon.py      Horizon ELD client and sync: drivers, vehicles, HOS clocks
       sync.py         the sync engine: vehicles, odometer, positions, faults, DVIR defects
       shops.py        OpenStreetMap shop search, opening-hours parser, lookup cache
       advisor.py      the Claude calls: shop notes and pick, fault explanations, oil, truck chat
@@ -55,10 +70,20 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       reports.py      report queries and PDF / Excel / CSV output
       fuel_import.py  EFS Transaction Report import
       sheets.py       reading uploaded Excel and CSV files
+      pti.py          pre-trip inspections: checklist, media, sign-off, reminders
+      pti_driver.py   the driver's side of a PTI, opened from the truck's link
+      pti_ai.py       Claude's check of every PTI photo
+      telegram.py     the bot: sign-in codes, account and truck-group linking
+      cat.py          the notification center and the page version check
+      summary.py      the twice-weekly summary to admins
+      encourage.py    the 8pm note from the cat
+      google_places.py  Google Places search, used when a key is set
+      audit.py        the audit trail
+      logs.py         error log with secrets stripped
       views/          one blueprint per section
       templates/      Jinja templates
-      static/         app.css, app.js, fleet.js, shops.js, favicon, vendor/leaflet
-    bin/              run, serve, sync, backup
+      static/         app.css, app.js, cat.js, fleet.js, shops.js, favicon, vendor/leaflet
+    bin/              run, serve, sync, followup, backup, encourage, golive
     db/schema.sql     the whole schema
     manage.py         CLI
 
@@ -115,7 +140,16 @@ closed automatically. Run it from the Integrations page, or on a schedule:
     manage.py add-company --name          add a carrier
     manage.py add-user --email --name --company --role
     manage.py sync --all                  pull from Samsara for every connected company
-    manage.py telegram-bot                link Telegram accounts
+    manage.py horizon-connect --company --user --password
+                                          store Horizon ELD credentials for a company
+    manage.py horizon-sync --all          pull drivers, vehicles and HOS from Horizon
+    manage.py followup [--show COMPANY]   send reminders, stop-lamp alerts and the follow-up
+    manage.py telegram-bot                link Telegram accounts and truck groups
+    manage.py cat --to WHO "text"         send a note through the notification center
+    manage.py summary                     the twice-weekly summary to admins
+    manage.py encourage                   the 8pm note
+    manage.py pti-cleanup                 delete PTI photos and videos past 92 days
+    manage.py saved-shop-details          fill missing saved-shop addresses
     manage.py demo --company              sample trucks, fuel and a breakdown
     manage.py ai-spend                    what the AI notes have cost so far
     manage.py google-usage                Google Maps calls today and this month
