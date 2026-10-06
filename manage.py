@@ -103,6 +103,34 @@ def cmd_sync(args):
     return 0
 
 
+def cmd_horizon_connect(args):
+    from app import horizon
+    company = one("select * from companies where lower(name) = lower(%s)", (args.company,))
+    if not company:
+        print(f"No company named {args.company}")
+        return 1
+    horizon.connect(company["id"], args.user, args.password, args.company_key)
+    print(f"Horizon connected for {company['name']}")
+    return 0
+
+
+def cmd_horizon_sync(args):
+    from app.horizon import sync_all, sync_company
+    if args.all:
+        results = sync_all()
+        if not results:
+            print("No company has Horizon connected.")
+        for name, result in results.items():
+            print(f"{name}: {result}")
+        return 0
+    company = one("select * from companies where lower(name) = lower(%s)", (args.company,))
+    if not company:
+        print(f"No company named {args.company}")
+        return 1
+    print(sync_company(company["id"]))
+    return 0
+
+
 def cmd_google_usage(args):
     from app import google_places
     from app.config import config
@@ -434,6 +462,18 @@ def main():
     sync.add_argument("--all", action="store_true")
     sync.set_defaults(func=cmd_sync)
 
+    hconnect = sub.add_parser("horizon-connect", help="store Horizon ELD credentials for a company")
+    hconnect.add_argument("--company", required=True)
+    hconnect.add_argument("--user", required=True)
+    hconnect.add_argument("--password", required=True)
+    hconnect.add_argument("--company-key", dest="company_key")
+    hconnect.set_defaults(func=cmd_horizon_connect)
+
+    hsync = sub.add_parser("horizon-sync", help="pull drivers, vehicles and HOS from Horizon ELD")
+    hsync.add_argument("--company")
+    hsync.add_argument("--all", action="store_true")
+    hsync.set_defaults(func=cmd_horizon_sync)
+
     sub.add_parser("google-usage", help="Google Maps calls today and this month").set_defaults(func=cmd_google_usage)
 
     spend = sub.add_parser("ai-spend", help="what the AI notes have cost so far")
@@ -476,7 +516,7 @@ def main():
     except KeyboardInterrupt:
         code = 130
     except Exception:
-        logs.get("manage").exception("manage.py %s failed", " ".join(sys.argv[1:]))
+        logs.get("manage").exception("manage.py %s failed", args.command)
         code = 1
     sys.exit(code)
 

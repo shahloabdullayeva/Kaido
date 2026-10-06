@@ -521,6 +521,44 @@ create table if not exists saved_shops (
 );
 create index if not exists saved_shops_company_idx on saved_shops (company_id);
 
+alter table integrations drop constraint if exists integrations_provider_check;
+alter table integrations add constraint integrations_provider_check check (provider in ('samsara','horizoneld'));
+
+create table if not exists driver_links (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  driver_id int references drivers(id) on delete set null,
+  provider text not null default 'horizoneld',
+  external_id text not null,
+  external_username text,
+  last_seen_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (company_id, provider, external_id)
+);
+create index if not exists driver_links_driver_idx on driver_links (driver_id);
+
+create table if not exists hos_status (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  driver_id int references drivers(id) on delete set null,
+  provider text not null default 'horizoneld',
+  external_user_id text not null,
+  duty_status text,
+  break_remaining numeric,
+  drive_remaining numeric,
+  shift_remaining numeric,
+  cycle_remaining numeric,
+  vehicle_external_id text,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  odometer int,
+  located_at timestamptz,
+  raw jsonb,
+  updated_at timestamptz not null default now(),
+  unique (company_id, provider, external_user_id)
+);
+create index if not exists hos_status_company_idx on hos_status (company_id, duty_status);
+
 do $$
 declare
   tenant text;
@@ -529,7 +567,7 @@ begin
     'drivers','trucks','odometer_readings','fuel_transactions','maintenance_orders','breakdowns',
     'breakdown_updates','integrations','vehicle_links','fault_events','dvir_defects','sync_runs',
     'reminders','followups','fault_alerts','fuel_imports','ai_chats','service_intervals',
-    'saved_shops'
+    'saved_shops','driver_links','hos_status'
   ] loop
     execute format('alter table %I enable row level security', tenant);
     execute format('alter table %I force row level security', tenant);

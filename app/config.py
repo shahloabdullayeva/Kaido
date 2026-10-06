@@ -50,6 +50,7 @@ class Config:
     TIMEZONE = os.environ.get("TIMEZONE", "America/Chicago")
     BEHIND_PROXY = os.environ.get("BEHIND_PROXY", "false").lower() == "true"
     SAMSARA_BASE_URL = os.environ.get("SAMSARA_BASE_URL", "https://api.samsara.com")
+    HORIZON_BASE_URL = os.environ.get("HORIZON_BASE_URL", "https://api.hosconnect.com/v1")
     ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
     AI_MODEL = os.environ.get("AI_MODEL", "claude-haiku-4-5")
     AI_CHAT_MODEL = os.environ.get("AI_CHAT_MODEL", "") or os.environ.get("AI_MODEL", "claude-haiku-4-5")
