@@ -94,6 +94,10 @@ def _store(key, payload):
     )
 
 
+def _effort(model):
+    return {} if model.startswith("claude-haiku-4") else {"output_config": {"effort": "low"}}
+
+
 def _ask(system, user, output_format, max_tokens=1200):
     if not available():
         return None
@@ -110,6 +114,7 @@ def _ask(system, user, output_format, max_tokens=1200):
             system=system,
             messages=[{"role": "user", "content": user}],
             output_format=output_format,
+            **_effort(MODEL),
         )
     except Exception as err:
         log.warning("%s call failed: %s", MODEL, err)
@@ -260,7 +265,7 @@ def fault_guide(fault, truck):
         "Truck: " + " ".join(str(p) for p in [truck.get("year"), truck.get("make"), truck.get("model")] if p),
         f"Odometer: {truck.get('odometer'):,} miles" if truck.get("odometer") else "",
     ] if part)
-    guide = _ask(FAULT_SYSTEM, user, FaultGuide, max_tokens=700)
+    guide = _ask(FAULT_SYSTEM, user, FaultGuide, max_tokens=1000)
     if guide is None:
         return None
     execute(
@@ -313,7 +318,7 @@ def oil_advice(truck):
         f"Duty cycle: {truck.get('duty_cycle') or 'standard'}",
         f"Fleet oil interval: {truck.get('oil_interval_miles') or 25000:,} miles",
     ] if part)
-    return _ask(OIL_SYSTEM, user, OilAdvice, max_tokens=600)
+    return _ask(OIL_SYSTEM, user, OilAdvice, max_tokens=1000)
 
 
 CHAT_SYSTEM = (
@@ -354,13 +359,12 @@ def chat_reply(context, history, question):
     messages = [{"role": turn["role"], "content": turn["content"]} for turn in history[-CHAT_TURNS:]]
     messages.append({"role": "user", "content": question})
     try:
-        extra = {} if CHAT_MODEL.startswith("claude-haiku") else {"output_config": {"effort": "low"}}
         response = _client().messages.create(
             model=CHAT_MODEL,
             max_tokens=2000,
             system=CHAT_SYSTEM + "\n\n" + context,
             messages=messages,
-            **extra,
+            **_effort(CHAT_MODEL),
         )
     except Exception as err:
         log.warning("%s chat failed: %s", CHAT_MODEL, err)

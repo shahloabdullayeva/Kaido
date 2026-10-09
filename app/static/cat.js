@@ -7,6 +7,10 @@
   const count = notif.querySelector('.notif-count');
   const historyBox = notif.querySelector('.notif-history');
   const historyList = historyBox.querySelector('ul');
+  const markAll = notif.querySelector('.notif-all');
+  const more = notif.querySelector('.notif-more');
+  const SHOWN = 5;
+  let expanded = false;
   const seen = new Set();
   let first = true;
   let dirty = false;
@@ -33,6 +37,10 @@
       row.append(when, text);
       historyList.append(row);
     }
+    const extra = Math.max(historyList.children.length - SHOWN, 0);
+    [...historyList.children].forEach(function (row, index) { row.hidden = !expanded && index >= SHOWN; });
+    more.hidden = expanded || extra === 0;
+    more.textContent = 'Show ' + extra + ' older';
     historyBox.hidden = items.length === 0;
     panel.classList.toggle('past', items.length > 0);
   }
@@ -58,7 +66,8 @@
     notif.classList.toggle('has', total > 0);
     panel.classList.toggle('full', total > 0);
     count.hidden = total === 0;
-    count.textContent = total;
+    count.textContent = total > 9 ? '9+' : total;
+    markAll.hidden = total < 2;
   }
 
   function item(note, name) {
@@ -140,6 +149,19 @@
   }
 
   function unread() { return list.children.length > 0; }
+
+  more.addEventListener('click', function () {
+    expanded = true;
+    for (const row of historyList.children) row.hidden = false;
+    more.hidden = true;
+  });
+
+  markAll.addEventListener('click', function () {
+    const payload = new FormData();
+    payload.append('csrf', notif.dataset.csrf);
+    fetch('/cat/done-all', { method: 'POST', body: payload, credentials: 'same-origin' })
+      .then(function () { list.textContent = ''; refreshState(); check(); });
+  });
 
   button.addEventListener('click', function () { if (panel.hidden || !unread()) setOpen(panel.hidden); });
   window.addEventListener('resize', function () { if (!panel.hidden) place(); });

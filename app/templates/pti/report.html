@@ -93,7 +93,7 @@
 
 <section class="panel">
   <div class="panel-head"><h2>AI photo check</h2>
-    {% if at_least(role, 'admin') and item.source == 'kaido' %}<form method="post" action="/pti/report/{{ item.id }}/ai-check" data-confirm="Run the AI photo check again? It costs a few cents."><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost small" type="submit" data-busy="Checking… about 10 seconds">Run AI check again</button></form>{% endif %}</div>
+    {% if at_least(role, 'admin') and item.source == 'kaido' %}<form method="post" action="/pti/report/{{ item.id }}/ai-check" data-confirm="{{ 'Run the AI photo check again? It costs a few cents.' if item.ai_result else 'Check these photos with AI? It costs a few cents.' }}"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn {{ 'ghost ' if item.ai_result }}small" type="submit" data-busy="Checking… about 10 seconds">{{ 'Run AI check again' if item.ai_result else 'Check photos with AI' }}</button></form>{% endif %}</div>
   {% if item.ai_result %}
   <div class="pad">
     <p>{% if item.ai_result.needs_attention %}<span class="badge bad">needs a look</span>{% else %}<span class="badge ok">nothing found</span>{% endif %} {{ item.ai_result.summary }}</p>
@@ -107,10 +107,10 @@
     {% endfor %}</tbody>
   </table></div>
   <p class="subtle pad">AI can miss things and can be wrong. It is a second look, not the inspection.</p>
-  {% elif item.ai_status == 'over_budget' %}<p class="empty">Waiting: today's AI spending cap is used up. It runs when the cap resets.</p>
+  {% elif item.ai_status == 'over_budget' %}<p class="empty">Today's AI spending cap is used up. Try again tomorrow.</p>
   {% elif item.ai_status == 'failed' %}<p class="empty">The AI check could not run on these photos.</p>
   {% elif item.ai_status in ('no_photos', 'no_key') %}<p class="empty">No photos to check.</p>
-  {% else %}<p class="empty">Checking the photos — this takes a few minutes after the PTI is sent.</p>{% endif %}
+  {% else %}<p class="empty">Not checked. The AI looks at the photos only when someone presses “Check photos with AI”.</p>{% endif %}
 </section>
 
 <section class="panel">

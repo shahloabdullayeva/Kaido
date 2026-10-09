@@ -10,7 +10,7 @@
 <div class="page-head">
   <div><h1>{{ 'Work order #' ~ order.id if editing else 'New work order' }}</h1>
     <p>Any truck and any driver, including ones outside your fleet. Marking it done records the odometer and, for a DOT annual, resets the inspection date.</p></div>
-  <div class="actions-row">{% if editing %}<a class="btn ghost" href="/maintenance/{{ order.id }}/pdf">Download PDF</a>{% endif %}
+  <div class="actions-row"><a class="btn" href="#invoice" data-upload-invoice>Upload invoice</a>
   <a class="btn ghost" href="/maintenance">Back</a></div>
 </div>
 {% if editing %}

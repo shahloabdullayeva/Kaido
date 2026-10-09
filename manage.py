@@ -189,12 +189,10 @@ def cmd_followup(args):
     reminded = reminders.send_due()
     alerted = followup.send_fault_alerts()
     sent = followup.run()
-    from app import pti_ai, pti_driver
+    from app import pti_driver
     drivers = pti_driver.run()
-    reviewed = pti_ai.run_pending()
-    if reminded or alerted or sent or drivers or reviewed:
-        print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}, driver PTI messages {drivers}, "
-              f"AI photo checks {reviewed}")
+    if reminded or alerted or sent or drivers:
+        print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}, driver PTI messages {drivers}")
     return 0
 
 

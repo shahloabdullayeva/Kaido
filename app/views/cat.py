@@ -24,6 +24,13 @@ def pending():
     return response
 
 
+@bp.post("/cat/done-all")
+@login_required
+def done_all():
+    cat.done_all(g.session["user_id"])
+    return "", 204
+
+
 @bp.post("/cat/<int:note_id>/done")
 @login_required
 def done(note_id):

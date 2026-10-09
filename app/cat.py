@@ -44,6 +44,10 @@ def done(note_id, user_id):
     )
 
 
+def done_all(user_id):
+    return execute("update cat_notes set done_at = now() where user_id = %s and done_at is null", (user_id,))
+
+
 def history(user_id, limit=20):
     return rows(
         """select n.id, n.kind, n.message, n.created_at, n.done_at, u.name as sender

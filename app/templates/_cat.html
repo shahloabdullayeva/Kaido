@@ -1,5 +1,5 @@
 <div class="notif" id="notif" data-csrf="{{ session.csrf }}" data-version="{{ cat_version }}">
-  <button type="button" class="notif-button" aria-expanded="false" aria-controls="notif-panel">
+  <button type="button" class="notif-button" aria-expanded="false" aria-controls="notif-panel" aria-label="Notifications" title="Notifications">
     <svg class="pixcat" viewBox="0 -1 20 11" shape-rendering="crispEdges" aria-hidden="true">
       <g class="pixcat-fur"><rect x="4" y="0" width="1" height="1"/><rect x="13" y="0" width="1" height="1"/><rect x="4" y="1" width="2" height="1"/><rect x="12" y="1" width="2" height="1"/><rect x="4" y="2" width="10" height="1"/><rect x="4" y="3" width="2" height="1"/><rect x="7" y="3" width="4" height="1"/><rect x="12" y="3" width="2" height="1"/><rect x="4" y="4" width="2" height="1"/><rect x="7" y="4" width="4" height="1"/><rect x="12" y="4" width="2" height="1"/><rect x="18" y="4" width="1" height="1"/><rect x="4" y="5" width="12" height="1"/><rect x="18" y="5" width="1" height="1"/><rect x="4" y="6" width="10" height="1"/><rect x="17" y="6" width="1" height="1"/><rect x="4" y="7" width="13" height="1"/><rect x="5" y="8" width="1" height="1"/><rect x="7" y="8" width="1" height="1"/><rect x="10" y="8" width="1" height="1"/><rect x="12" y="8" width="1" height="1"/><rect x="5" y="9" width="1" height="1"/><rect x="7" y="9" width="1" height="1"/><rect x="10" y="9" width="1" height="1"/><rect x="12" y="9" width="1" height="1"/></g>
       <g class="pixcat-eye"><rect x="6" y="3" width="1" height="1"/><rect x="11" y="3" width="1" height="1"/><rect x="6" y="4" width="1" height="1"/><rect x="11" y="4" width="1" height="1"/></g>
@@ -7,15 +7,17 @@
       <g class="pixcat-fur pixcat-arm"><rect x="2" y="5" width="2" height="1"/></g>
       <g class="pixcat-fur pixcat-paw"><rect x="2" y="2" width="1" height="3"/><rect x="3" y="4" width="1" height="1"/></g>
     </svg>
-    <span class="notif-label">Notification center</span>
+    <svg class="notif-bell" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
     <span class="notif-count" hidden></span>
   </button>
   <div class="notif-panel" id="notif-panel" hidden>
+    <div class="notif-head"><span>Notifications</span><button type="button" class="notif-all" hidden>Mark all read</button></div>
     <p class="notif-empty">Nothing new. The cat will bring your reminders here.</p>
     <div class="notif-list"></div>
     <div class="notif-history" hidden>
       <p class="notif-history-head">Earlier</p>
       <ul></ul>
+      <button type="button" class="notif-more" hidden></button>
     </div>
   </div>
 </div>

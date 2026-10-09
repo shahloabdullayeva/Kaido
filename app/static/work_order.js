@@ -79,11 +79,22 @@ if (workOrder) {
   if (drivers) drivers.addEventListener('change', fillContact);
   if (trucks) trucks.addEventListener('change', fillContact);
 
-  recalc();
-}
+  const fileInput = workOrder.querySelector('input[name=invoice_files]');
+  for (const link of document.querySelectorAll('[data-upload-invoice]')) {
+    link.addEventListener('click', (event) => {
+      if (!fileInput) return;
+      event.preventDefault();
+      fileInput.scrollIntoView({ block: 'center' });
+      fileInput.click();
+    });
+  }
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files.length && workOrder.querySelector('[name=description]').value.trim()) {
+        workOrder.querySelector('.form-actions .btn').textContent = 'Save and upload ' + fileInput.files.length + ' file' + (fileInput.files.length > 1 ? 's' : '');
+      }
+    });
+  }
 
-for (const form of document.querySelectorAll('form[data-confirm]')) {
-  form.addEventListener('submit', (event) => {
-    if (!window.confirm(form.dataset.confirm)) event.preventDefault();
-  });
+  recalc();
 }
