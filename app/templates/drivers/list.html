@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% from "_hos.html" import source_tag %}
 {% block body %}
 <div class="page-head">
   <div><h1>Drivers</h1><p>{{ drivers|length }} on file</p></div>
@@ -8,14 +9,18 @@
   <div class="panel-head"><label class="field"><span>Find</span><input data-filter="#driver-table" placeholder="Name, phone, licence"></label></div>
   {% if drivers %}
   <div class="table-wrap"><table id="driver-table">
-    <thead><tr><th>Name</th><th>Contact</th><th>Trucks</th><th>Licence</th><th>Medical</th><th>Status</th></tr></thead>
+    <thead><tr><th>Name</th><th>Contact</th><th>Trucks</th><th>Duty now</th><th>Drive / shift / cycle left</th><th>Licence</th><th>Medical</th><th>Status</th></tr></thead>
     <tbody>
       {% for driver in drivers %}
       <tr class="clickrow" data-href="/drivers/{{ driver.id }}">
         <td><a class="rowlink" href="/drivers/{{ driver.id }}">{{ driver.name }}</a>
-          {% if driver.telegram_username %}<div class="subtle">@{{ driver.telegram_username }}</div>{% endif %}</td>
+          {% if driver.telegram_username %}<div class="subtle">@{{ driver.telegram_username }}</div>{% endif %}
+          <div>{% if driver.in_horizon %}{{ source_tag('horizon') }}{% endif %}{% if driver.from_samsara %} {{ source_tag('samsara') }}{% endif %}</div></td>
         <td>{{ driver.phone or '—' }}<div class="subtle">{{ driver.email or '' }}</div></td>
         <td>{{ driver.units or '—' }}</td>
+        {% set h = hours.get(driver.id) %}
+        <td>{% if h %}<span class="badge {{ h.duty_tone }}">{{ h.duty_label }}</span><div class="subtle">{{ h.updated_at|ago }}</div>{% else %}<span class="subtle">—</span>{% endif %}</td>
+        <td class="hos-mini">{% if h %}<span class="hos-clock-mini {{ h.drive_tone }}">{{ h.drive }}</span> / {{ h.shift }} / {{ h.cycle }}{% else %}<span class="subtle">—</span>{% endif %}</td>
         <td>{{ driver.license_expires|day }}<div class="subtle mono">{{ driver.license_number or '' }}</div></td>
         <td>{{ driver.medical_expires|day }}</td>
         <td><span class="badge {{ driver.status|tone }}">{{ driver.status }}</span></td>

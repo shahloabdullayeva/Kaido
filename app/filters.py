@@ -108,8 +108,14 @@ def osm_hours(value):
     return text.replace(";", " ·").replace(",", ", ").replace("off", "closed")
 
 
+def source(value):
+    from .hos import SOURCES
+    return SOURCES.get(value or "", "Entered by hand" if value is None else str(value))
+
+
 def register(app):
     app.jinja_env.filters.update({
+        "source": source,
         "money": money,
         "miles": miles,
         "number": number,

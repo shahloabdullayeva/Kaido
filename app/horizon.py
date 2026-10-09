@@ -285,13 +285,14 @@ def sync_statuses(company_id, client, drivers_by_ext, trucks_by_ext):
         seen = status.get("time")
         if truck_id and seen and status.get("lat") is not None and status.get("lon") is not None:
             execute(
-                """update trucks set latitude = %s, longitude = %s, located_at = %s, updated_at = now()
+                """update trucks set latitude = %s, longitude = %s, located_at = %s, location_source = 'horizon', location = null,
+                     updated_at = now()
                    where id = %s and company_id = %s and (located_at is null or located_at < %s)""",
                 (status.get("lat"), status.get("lon"), seen, truck_id, company_id, seen),
             )
         if truck_id and driver_id:
             execute(
-                """update trucks t set driver_id = %s, driver_from_name = false, updated_at = now()
+                """update trucks t set driver_id = %s, driver_from_name = false, driver_source = 'horizon', updated_at = now()
                    where t.id = %s and t.company_id = %s
                      and not exists (
                        select 1 from trucks o
@@ -310,19 +311,19 @@ def sync_statuses(company_id, client, drivers_by_ext, trucks_by_ext):
             """insert into hos_status (company_id, driver_id, provider, external_user_id, duty_status,
                  break_remaining, drive_remaining, shift_remaining, cycle_remaining,
                  vehicle_external_id, latitude, longitude, odometer, located_at, raw, updated_at)
-               values (%s, %s, 'horizoneld', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now(), %s, now())
+               values (%s, %s, 'horizoneld', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, now())
                on conflict (company_id, provider, external_user_id) do update
                  set driver_id = excluded.driver_id, duty_status = excluded.duty_status,
                      break_remaining = excluded.break_remaining, drive_remaining = excluded.drive_remaining,
                      shift_remaining = excluded.shift_remaining, cycle_remaining = excluded.cycle_remaining,
                      vehicle_external_id = excluded.vehicle_external_id, latitude = excluded.latitude,
                      longitude = excluded.longitude, odometer = excluded.odometer,
-                     located_at = now(), raw = excluded.raw, updated_at = now()""",
+                     located_at = excluded.located_at, raw = excluded.raw, updated_at = now()""",
             (
                 company_id, drivers_by_ext.get(user_ext), user_ext, status.get("dutyStatus"),
                 status.get("break"), status.get("drive"), status.get("shift"), status.get("cycle"),
                 str(position.get("vehicleId") or "") or None, position.get("lat"), position.get("lon"),
-                _to_int(position.get("odometer")),
+                _to_int(position.get("odometer")), position.get("time"),
                 json.dumps({"driver": status, "vehicle": position}),
             ),
         )

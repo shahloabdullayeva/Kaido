@@ -57,6 +57,27 @@ def spent_total():
     return (float(row["spent"]), row["calls"]) if row else (0.0, 0)
 
 
+def credit_problem():
+    from datetime import datetime
+    from .logs import ERROR_LOG
+    try:
+        with open(ERROR_LOG, "rb") as handle:
+            handle.seek(0, 2)
+            handle.seek(max(handle.tell() - 400_000, 0))
+            tail = handle.read().decode("utf-8", "replace")
+    except OSError:
+        return None
+    lines = [line for line in tail.splitlines() if "credit balance is too low" in line]
+    if not lines:
+        return None
+    try:
+        when = datetime.strptime(lines[-1][:24], "%Y-%m-%d %H:%M:%S%z")
+    except ValueError:
+        return None
+    last_ok = one("select max(created_at) as at from ai_usage")["at"]
+    return when if not last_ok or last_ok < when else None
+
+
 def over_budget():
     return spent_today() >= config.AI_DAILY_USD
 

@@ -116,7 +116,7 @@ def claim_unit(chat_id, user, typed):
                values (%s, %s, %s, %s, 'active') returning id""",
             (truck["company_id"], name, user.get("username"), user["id"]),
         )
-        execute("update trucks set driver_id = %s, driver_from_name = false, updated_at = now() where id = %s",
+        execute("update trucks set driver_id = %s, driver_from_name = false, driver_source = 'telegram', updated_at = now() where id = %s",
                 (driver["id"], truck["id"]))
     return truck, f"Got it — {escape(name)} drives Unit {escape(truck['unit_number'])}. PTI reminders here will tag you."
 

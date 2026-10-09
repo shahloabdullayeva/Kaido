@@ -1,5 +1,6 @@
 from flask import Blueprint, g, render_template
 
+from .. import hos
 from ..auth import login_required
 from ..db import rows
 from ..filters import ago
@@ -9,7 +10,9 @@ from ..tenancy import company_required
 bp = Blueprint("dashboard", __name__)
 
 
-def fleet_pins(fleet):
+def fleet_pins(fleet, hours=None):
+    from ..hos import SOURCES
+    hours = hours or {}
     pins = []
     for truck in fleet:
         if truck.get("latitude") is None or truck.get("longitude") is None:
@@ -22,6 +25,9 @@ def fleet_pins(fleet):
             "truck": " ".join(str(part) for part in [truck.get("year"), truck.get("make"), truck.get("model")] if part),
             "where": truck.get("location"),
             "when": ago(truck.get("located_at")),
+            "source": SOURCES.get(truck.get("location_source") or "", None),
+            "duty": hours[truck["driver_id"]]["duty_label"] if truck.get("driver_id") in hours else None,
+            "drive_left": hours[truck["driver_id"]]["drive"] if truck.get("driver_id") in hours else None,
             "odometer": f"{truck['odometer']:,} mi" if truck.get("odometer") else None,
             "status": (truck.get("status") or "").replace("_", " "),
             "faults": truck.get("active_faults") or 0,
@@ -43,7 +49,7 @@ def index():
     for truck in fleet:
         truck["statuses"] = service_status(truck)
         truck["score"] = attention_score(truck)
-    pins = fleet_pins(fleet)
+    pins = fleet_pins(fleet, hos.for_drivers(company_id))
     attention = sorted([t for t in fleet if t["score"] > 0], key=lambda t: (-t["score"], t["unit_number"]))[:8]
     breakdowns = rows(
         """select b.*, t.unit_number, d.name as driver_name

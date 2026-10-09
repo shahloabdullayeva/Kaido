@@ -1,0 +1,20 @@
+{% macro source_tag(value) %}<span class="source-tag source-{{ value or 'manual' }}">{{ value|source }}</span>{% endmacro %}
+
+{% macro hos_panel(h, title='Hours of service') %}
+<section class="panel hos-panel">
+  <div class="panel-head"><h2>{{ title }}</h2>
+    <span class="subtle">{{ source_tag('horizon') }}{% if h %} updated {{ h.updated_at|ago }}{% endif %}</span></div>
+  {% if h %}
+  <div class="hos-grid">
+    <div class="hos-cell"><span class="hos-label">Duty status</span><span class="badge {{ h.duty_tone }}">{{ h.duty_label }}</span></div>
+    <div class="hos-cell"><span class="hos-label">Drive left</span><strong class="hos-clock {{ h.drive_tone }}">{{ h.drive or '—' }}</strong><em>of 11:00</em></div>
+    <div class="hos-cell"><span class="hos-label">Shift left</span><strong class="hos-clock {{ h.shift_tone }}">{{ h.shift or '—' }}</strong><em>of 14:00</em></div>
+    <div class="hos-cell"><span class="hos-label">Until break</span><strong class="hos-clock {{ h.brk_tone }}">{{ h.brk or '—' }}</strong><em>of 8:00</em></div>
+    <div class="hos-cell"><span class="hos-label">Cycle left</span><strong class="hos-clock {{ h.cycle_tone }}">{{ h.cycle or '—' }}</strong><em>of 70:00</em></div>
+  </div>
+  {% if h.located_at %}<p class="subtle pad">Last ELD position {{ h.located_at|ago }}.</p>{% endif %}
+  {% else %}
+  <p class="empty">Horizon ELD has no hours for this driver. Only drivers logged into Horizon show here.</p>
+  {% endif %}
+</section>
+{% endmacro %}

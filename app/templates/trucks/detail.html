@@ -1,5 +1,6 @@
 {% extends "layout.html" %}
 {% from "_macros.html" import field %}
+{% from "_hos.html" import hos_panel, source_tag %}
 {% block scripts %}<script src="/static/assistant.js"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -9,7 +10,8 @@
       {% if truck.vin %}· <span class="mono">{{ truck.vin }}</span>{% endif %}
       {% if truck.engine %}· {{ truck.engine }}{% endif %}
       {% if truck.is_outside %}· <span class="badge info">outside</span> {{ truck.outside_carrier or '' }}{% endif %}
-      {% if link %}· Samsara: {{ link.external_name or link.external_id }}{% endif %}</p>
+      {% for item in links %}· {{ source_tag(item.provider) }} {{ item.external_name or item.external_id }} {% endfor %}</p>
+    {% if truck.latitude is not none %}<p class="subtle">Position {{ truck.located_at|ago }}{% if truck.location %} · {{ truck.location }}{% endif %} · from {{ source_tag(truck.location_source) }}</p>{% endif %}
   </div>
   <div class="actions-row">
     {% if at_least(role, 'admin') %}
@@ -25,7 +27,7 @@
 <div class="stats">
   <div class="stat"><div class="stat-label">Status</div><div class="stat-value" style="font-size:20px">
     <span class="badge {{ truck.status|tone }}">{{ truck.status|label }}</span></div>
-    <div class="stat-hint">{{ truck.driver_name or 'No driver assigned' }}</div></div>
+    <div class="stat-hint">{% if truck.driver_id %}<a href="/drivers/{{ truck.driver_id }}">{{ truck.driver_name }}</a> · {{ source_tag(truck.driver_source) }}{% else %}No driver assigned{% endif %}</div></div>
   <div class="stat"><div class="stat-label">Odometer</div><div class="stat-value">{{ truck.odometer|number }}</div>
     <div class="stat-hint">{{ truck.odometer_at|ago if truck.odometer_at else 'never updated' }}</div></div>
   {% for item in statuses if item.core %}
@@ -40,6 +42,8 @@
     <div class="stat-hint">recent MPG · {{ economy.average|number(1) }} average</div></div>
   {% endif %}
 </div>
+
+{% if hours %}{{ hos_panel(hours, 'Driver hours · ' ~ truck.driver_name) }}{% endif %}
 
 <section class="panel">
   <div class="panel-head"><h2>Service schedule</h2>

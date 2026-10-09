@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms
+from .. import forms, hos
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -33,11 +33,14 @@ def form_values(source):
 def index():
     drivers = rows(
         """select d.*, (select count(*) from trucks t where t.driver_id = d.id) as truck_count,
-             (select string_agg(t.unit_number, ', ' order by t.unit_number) from trucks t where t.driver_id = d.id) as units
+             (select string_agg(t.unit_number, ', ' order by t.unit_number) from trucks t where t.driver_id = d.id) as units,
+             exists (select 1 from driver_links l where l.driver_id = d.id and l.provider = 'horizoneld') as in_horizon,
+             exists (select 1 from trucks t where t.driver_id = d.id and t.driver_source = 'samsara') as from_samsara
            from drivers d where d.company_id = %s order by d.status, lower(d.name)""",
         (g.company["id"],),
     )
-    return render_template("drivers/list.html", title="Drivers", active="/drivers", drivers=drivers)
+    return render_template("drivers/list.html", title="Drivers", active="/drivers", drivers=drivers,
+                           hours=hos.for_drivers(g.company["id"]))
 
 
 @bp.get("/drivers/new")
@@ -76,8 +79,11 @@ def detail(driver_id):
     driver = one("select * from drivers where id = %s and company_id = %s", (driver_id, g.company["id"]))
     if not driver:
         return render_template("errors/404.html"), 404
+    trucks = rows("select id, unit_number, driver_source from trucks where driver_id = %s order by unit_number", (driver_id,))
+    in_horizon = one("select 1 as yes from driver_links where driver_id = %s and provider = 'horizoneld'", (driver_id,))
     return render_template("drivers/form.html", title=driver["name"], active="/drivers",
-                           driver=driver, statuses=STATUSES, mode="edit")
+                           driver=driver, statuses=STATUSES, mode="edit", trucks=trucks, in_horizon=bool(in_horizon),
+                           hours=hos.for_drivers(g.company["id"], [driver_id]).get(driver_id))
 
 
 @bp.post("/drivers/<int:driver_id>")

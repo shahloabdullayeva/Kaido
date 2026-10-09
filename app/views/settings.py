@@ -50,6 +50,7 @@ def website():
         "ai_on": advisor.available(),
         "ai_cap": config.AI_DAILY_USD,
         "ai_today": advisor.spent_today(),
+        "ai_out_of_credit": advisor.credit_problem(),
         "ai_total": total,
         "ai_calls": calls,
         "ai_model": config.AI_MODEL,

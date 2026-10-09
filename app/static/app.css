@@ -492,3 +492,16 @@ input[readonly] { background: var(--shade); }
 .notif-more { display: block; padding: 6px 12px 8px; }
 .notif-history li[hidden] { display: none; }
 .access-chip { display: inline-block; margin: 2px 6px 2px 0; padding: 1px 6px; border: 1px solid var(--face-dark); font-size: 12px; white-space: nowrap; }
+.source-tag { display: inline-block; padding: 0 5px; border: 1px solid var(--face-dark); font-size: 11px; white-space: nowrap; color: var(--muted); }
+.source-tag.source-samsara { color: #1d5fbf; border-color: #1d5fbf; }
+.source-tag.source-horizon, .source-tag.source-horizoneld { color: #8a4b00; border-color: #8a4b00; }
+.hos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; padding: 12px; }
+.hos-cell { display: flex; flex-direction: column; gap: 4px; }
+.hos-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.hos-clock { font-size: 22px; font-variant-numeric: tabular-nums; }
+.hos-clock.warn { color: var(--warn); }
+.hos-clock.bad { color: var(--bad); }
+.hos-cell em { font-size: 11px; color: var(--muted); font-style: normal; }
+.hos-mini { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hos-clock-mini.warn { color: var(--warn); font-weight: bold; }
+.hos-clock-mini.bad { color: var(--bad); font-weight: bold; }

@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms, pti, pti_driver, sheets
+from .. import forms, hos, pti, pti_driver, sheets
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -257,6 +257,9 @@ def detail(truck_id):
     if not truck:
         return render_template("errors/404.html"), 404
     truck["driver_name"] = None
+    hours = hos.for_drivers(g.company["id"], [truck["driver_id"]]).get(truck["driver_id"]) if truck["driver_id"] else None
+    links = rows("select provider, external_name, external_id, last_seen_at from vehicle_links where truck_id = %s order by provider",
+                 (truck_id,))
     if truck["driver_id"]:
         driver = one("select name from drivers where id = %s", (truck["driver_id"],))
         truck["driver_name"] = driver["name"] if driver else None
@@ -285,6 +288,7 @@ def detail(truck_id):
         faults=faults, breakdowns=breakdowns, economy=fuel_economy(truck_id), link=link,
         last_oil=last_oil, inspections=inspections, pti_link=pti_link, pti_kinds=pti.KINDS,
         group_code=group_code, group_truck=pti_driver.one_truck(g.company["id"], truck_id),
+        hours=hours, links=links,
     )
 
 
@@ -319,6 +323,8 @@ def update(truck_id):
              year = %(year)s, plate = %(plate)s, plate_state = %(plate_state)s, status = %(status)s,
              duty_cycle = %(duty_cycle)s,
              driver_from_name = (driver_from_name and driver_id is not distinct from %(driver_id)s),
+             driver_source = case when driver_id is not distinct from %(driver_id)s then driver_source
+                                  when %(driver_id)s is null then null else 'manual' end,
              driver_id = %(driver_id)s, fuel_card_last4 = %(fuel_card_last4)s,
              oil_interval_miles = %(oil_interval_miles)s, registration_expires = %(registration_expires)s,
              annual_inspection_on = %(annual_inspection_on)s, insurance_expires = %(insurance_expires)s,

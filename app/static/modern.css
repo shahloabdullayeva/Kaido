@@ -298,3 +298,12 @@
 }
 [data-style="modern"] .access-chip { border: 1px solid var(--line); border-radius: 4px; background: var(--face); padding: 2px 8px; font-weight: 600; }
 [data-style="modern"] .access-chip .subtle { font-weight: 400; font-size: 11px; }
+[data-style="modern"] .source-tag { border-radius: 999px; padding: 1px 8px; font-size: 10.5px; font-weight: 600; letter-spacing: .02em; background: var(--face); border-color: var(--line); }
+[data-style="modern"] .source-tag.source-samsara { color: #2f6fd6; background: color-mix(in srgb, #2f6fd6 10%, var(--paper)); border-color: color-mix(in srgb, #2f6fd6 35%, transparent); }
+[data-style="modern"] .source-tag.source-horizon, [data-style="modern"] .source-tag.source-horizoneld { color: #b0620a; background: color-mix(in srgb, #b0620a 10%, var(--paper)); border-color: color-mix(in srgb, #b0620a 35%, transparent); }
+[data-style="modern"][data-theme="dark"] .source-tag.source-samsara { color: #8fb4ff; }
+[data-style="modern"][data-theme="dark"] .source-tag.source-horizon { color: #f0b45a; }
+[data-style="modern"] .hos-grid { padding: 16px 18px; gap: 14px; }
+[data-style="modern"] .hos-cell { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; background: var(--paper); }
+[data-style="modern"] .hos-label { font-size: 10.5px; font-weight: 600; letter-spacing: .12em; }
+[data-style="modern"] .hos-clock { font-family: var(--serif); font-size: 26px; font-weight: 600; line-height: 1.1; }

@@ -821,3 +821,13 @@ begin
       'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
   end loop;
 end $$;
+
+alter table trucks add column if not exists location_source text;
+alter table trucks add column if not exists driver_source text;
+update trucks set driver_source = 'samsara' where driver_source is null and driver_id is not null and driver_from_name;
+update trucks t set driver_source = 'horizon' where driver_source is null and driver_id is not null
+  and exists (select 1 from driver_links l where l.driver_id = t.driver_id and l.provider = 'horizoneld');
+update trucks t set location_source = 'samsara' where location_source is null and latitude is not null
+  and exists (select 1 from vehicle_links v where v.truck_id = t.id and v.provider = 'samsara');
+update trucks t set location_source = 'horizon' where location_source is null and latitude is not null
+  and exists (select 1 from vehicle_links v where v.truck_id = t.id and v.provider = 'horizoneld');

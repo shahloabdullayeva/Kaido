@@ -100,7 +100,7 @@ def import_drivers(company_id):
                 primary = driver_id
         named_now = link["driver_from_name"] and (link["driver_name"] or "").lower() not in {n.lower() for n in names}
         if primary and (not link["driver_id"] or named_now):
-            execute("update trucks set driver_id = %s, driver_from_name = true, updated_at = now() where id = %s",
+            execute("update trucks set driver_id = %s, driver_from_name = true, driver_source = 'samsara', updated_at = now() where id = %s",
                     (primary, link["truck_id"]))
             assigned += 1
     return {"created": created, "assigned": assigned}
@@ -271,7 +271,7 @@ def record_position(truck, gps):
     reverse = gps.get("reverseGeo") or {}
     execute(
         """update trucks set latitude = %s, longitude = %s, location = %s,
-             located_at = coalesce(%s, now()), updated_at = now() where id = %s""",
+             located_at = coalesce(%s, now()), location_source = 'samsara', updated_at = now() where id = %s""",
         (latitude, longitude, reverse.get("formattedLocation"), gps.get("time"), truck["id"]),
     )
     return 1

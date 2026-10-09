@@ -24,7 +24,8 @@ const popupFor = (truck) => {
   line(box, truck.driver || 'No driver assigned', 'map-popup-driver');
   line(box, truck.truck);
   line(box, truck.where);
-  line(box, truck.when ? 'Reported ' + truck.when : null, 'subtle');
+  line(box, truck.when ? 'Reported ' + truck.when + (truck.source ? ' by ' + truck.source : '') : null, 'subtle');
+  line(box, truck.duty ? truck.duty + (truck.drive_left ? ' · ' + truck.drive_left + ' drive left' : '') + ' (Horizon ELD)' : null, 'subtle');
   line(box, truck.odometer, 'subtle');
   const flags = [];
   if (truck.breakdowns) flags.push(truck.breakdowns + ' open breakdown' + (truck.breakdowns > 1 ? 's' : ''));

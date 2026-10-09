@@ -1,10 +1,13 @@
 {% extends "layout.html" %}
 {% from "_macros.html" import field %}
+{% from "_hos.html" import hos_panel, source_tag %}
 {% block body %}
 <div class="page-head">
-  <div><h1>{{ 'Add driver' if mode == 'new' else driver.name }}</h1></div>
+  <div><h1>{{ 'Add driver' if mode == 'new' else driver.name }}</h1>
+    {% if mode == 'edit' %}<p>{% if in_horizon %}{{ source_tag('horizon') }} {% endif %}{% for truck in trucks %}<a href="/trucks/{{ truck.id }}">Unit {{ truck.unit_number }}</a> <span class="subtle">assigned by</span> {{ source_tag(truck.driver_source) }}{% if not loop.last %} · {% endif %}{% endfor %}{% if not trucks %}<span class="subtle">No truck assigned.</span>{% endif %}</p>{% endif %}</div>
   <a class="btn ghost" href="/drivers">Back to drivers</a>
 </div>
+{% if mode == 'edit' and (hours or in_horizon) %}{{ hos_panel(hours) }}{% endif %}
 <section class="panel">
   <form method="post" action="{{ '/drivers' if mode == 'new' else '/drivers/' ~ driver.id }}">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
