@@ -66,6 +66,25 @@ def driver_names(vehicle_name):
     return found
 
 
+def name_words(name):
+    return set(re.findall(r"[a-z]+", (name or "").lower()))
+
+
+def fuller_driver(company_id, name):
+    wanted = name_words(name)
+    if not wanted:
+        return None
+    found = [driver for driver in rows(
+        """select d.id, d.name, exists (select 1 from driver_links l where l.driver_id = d.id) as linked
+           from drivers d where d.company_id = %s""",
+        (company_id,),
+    ) if wanted <= name_words(driver["name"])]
+    linked = [driver for driver in found if driver["linked"]]
+    if len(linked) == 1:
+        return linked[0]
+    return found[0] if len(found) == 1 else None
+
+
 def import_drivers(company_id):
     links = rows(
         """select v.external_name, v.truck_id, t.driver_id, t.driver_from_name, d.name as driver_name
@@ -85,7 +104,7 @@ def import_drivers(company_id):
             existing = one(
                 "select id from drivers where company_id = %s and lower(name) = lower(%s)",
                 (company_id, name),
-            )
+            ) or fuller_driver(company_id, name)
             if existing:
                 driver_id = existing["id"]
             else:

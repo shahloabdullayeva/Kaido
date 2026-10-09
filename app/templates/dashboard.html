@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
-{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">{% endblock %}
-{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script>
-<script src="/static/fleet.js"></script>{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/fleet.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>

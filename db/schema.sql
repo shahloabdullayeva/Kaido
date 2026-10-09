@@ -831,3 +831,7 @@ update trucks t set location_source = 'samsara' where location_source is null an
   and exists (select 1 from vehicle_links v where v.truck_id = t.id and v.provider = 'samsara');
 update trucks t set location_source = 'horizon' where location_source is null and latitude is not null
   and exists (select 1 from vehicle_links v where v.truck_id = t.id and v.provider = 'horizoneld');
+
+alter table odometer_readings drop constraint if exists odometer_readings_source_check;
+alter table odometer_readings add constraint odometer_readings_source_check
+  check (source in ('manual','fuel','service','telematics','correction'));

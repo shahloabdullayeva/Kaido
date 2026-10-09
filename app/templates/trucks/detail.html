@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% from "_macros.html" import field %}
 {% from "_hos.html" import hos_panel, source_tag %}
-{% block scripts %}<script src="/static/assistant.js"></script>{% endblock %}
+{% block scripts %}<script src="/static/assistant.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
   <div>
@@ -65,19 +65,32 @@
   </table></div>
 </section>
 
-{% if at_least(role, 'admin') %}
-<section class="panel">
-  <div class="panel-head"><h2>Record odometer</h2></div>
+<section class="panel" id="odometer">
+  <div class="panel-head"><h2>Mileage</h2><span class="subtle">{{ truck.odometer|number }} mi now · {{ truck.odometer_at|ago if truck.odometer_at else 'never updated' }}</span></div>
+  {% if at_least(role, 'admin') %}
   <form method="post" action="/trucks/{{ truck.id }}/odometer">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <div class="form-grid">
-      {{ field('Current miles', 'miles', '', type='number', required=True, attrs='min="0" placeholder="' ~ truck.odometer ~ '"') }}
+      {{ field('Odometer (miles)', 'miles', '', type='number', required=True, attrs='min="0" placeholder="' ~ (truck.odometer or 0) ~ '"') }}
+      <label class="field checkbox"><span>&nbsp;</span><span><input type="checkbox" name="correction" value="1"> This is a correction</span>
+        <em>Tick it to replace a wrong number, even with a lower one.</em></label>
     </div>
-    <div class="form-actions"><button class="btn" type="submit">Save reading</button>
-      <span class="muted">Samsara updates this automatically once the truck is linked.</span></div>
+    <div class="form-actions"><button class="btn" type="submit">Save mileage</button>
+      {% if links %}<span class="muted">Samsara and Horizon raise this on every sync, but never lower it.</span>{% endif %}</div>
   </form>
+  {% endif %}
+  {% if readings %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th class="right">Miles</th><th>From</th><th>By</th>{% if at_least(role, 'admin') %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for reading in readings %}
+      <tr><td>{{ reading.read_at|stamp }}</td><td class="right">{{ reading.miles|number }}</td>
+        <td>{% if reading.source == 'telematics' %}{{ source_tag(truck.location_source or 'samsara') }}{% else %}{{ reading.source|label }}{% endif %}</td>
+        <td>{{ reading.by_name or '—' }}</td>
+        {% if at_least(role, 'admin') %}<td><form method="post" action="/trucks/{{ truck.id }}/odometer/{{ reading.id }}/delete" data-confirm="Delete the {{ reading.miles|number }} mi reading?"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost small danger" type="submit">Delete</button></form></td>{% endif %}</tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% endif %}
 </section>
-{% endif %}
 
 <div class="grid-2">
   <section class="panel">

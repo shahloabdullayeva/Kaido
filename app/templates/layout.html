@@ -19,8 +19,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }} · Kaido</title>
-<link rel="stylesheet" href="/static/app.css">
-<link rel="stylesheet" href="/static/modern.css">
+<link rel="stylesheet" href="/static/app.css?v={{ cat_version }}">
+<link rel="stylesheet" href="/static/modern.css?v={{ cat_version }}">
+<script src="/static/boot.js?v={{ cat_version }}"></script>
 <link rel="icon" href="/static/favicon.svg">
 {% block head %}{% endblock %}
 </head>
@@ -62,8 +63,8 @@
 {% endwith %}
 {% block body %}{% endblock %}
 </main>
-<script src="/static/app.js"></script>
-<script src="/static/cat.js"></script>
+<script src="/static/app.js?v={{ cat_version }}"></script>
+<script src="/static/cat.js?v={{ cat_version }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

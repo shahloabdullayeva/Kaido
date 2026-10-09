@@ -18,6 +18,7 @@ def anon_csrf():
 def create_app():
     logs.setup("web")
     app = Flask(__name__, static_folder="static", static_url_path="/static")
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 31536000
     app.secret_key = config.SECRET_KEY
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,

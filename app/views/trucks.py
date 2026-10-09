@@ -289,6 +289,11 @@ def detail(truck_id):
         last_oil=last_oil, inspections=inspections, pti_link=pti_link, pti_kinds=pti.KINDS,
         group_code=group_code, group_truck=pti_driver.one_truck(g.company["id"], truck_id),
         hours=hours, links=links,
+        readings=rows(
+            """select r.*, u.name as by_name from odometer_readings r left join users u on u.id = r.created_by
+               where r.truck_id = %s order by r.read_at desc, r.id desc limit 8""",
+            (truck_id,),
+        ),
     )
 
 
@@ -345,15 +350,37 @@ def odometer(truck_id):
     if not truck:
         return render_template("errors/404.html"), 404
     miles = forms.integer(request.form.get("miles"))
-    if not miles or miles < 0:
+    correction = forms.checkbox(request.form.get("correction"))
+    if miles is None or miles < 0:
         flash("Enter a valid odometer reading.", "bad")
-        return redirect(f"/trucks/{truck_id}")
+        return redirect(f"/trucks/{truck_id}#odometer")
+    if miles < (truck["odometer"] or 0) and not correction:
+        flash(f"{miles:,} is lower than the current {truck['odometer']:,} mi. Tick “This is a correction” to replace it.", "bad")
+        return redirect(f"/trucks/{truck_id}#odometer")
     execute(
-        "insert into odometer_readings (company_id, truck_id, miles, source, created_by) values (%s, %s, %s, 'manual', %s)",
-        (g.company["id"], truck_id, miles, g.session["user_id"]),
+        "insert into odometer_readings (company_id, truck_id, miles, source, created_by) values (%s, %s, %s, %s, %s)",
+        (g.company["id"], truck_id, miles, "correction" if correction else "manual", g.session["user_id"]),
     )
-    if miles >= (truck["odometer"] or 0):
-        execute("update trucks set odometer = %s, odometer_at = now(), updated_at = now() where id = %s", (miles, truck_id))
-    audit("truck.odometer", "truck", truck_id, {"miles": miles})
-    flash("Odometer recorded.", "ok")
-    return redirect(f"/trucks/{truck_id}")
+    execute("update trucks set odometer = %s, odometer_at = now(), updated_at = now() where id = %s", (miles, truck_id))
+    audit("truck.odometer", "truck", truck_id, {"miles": miles, "was": truck["odometer"], "correction": correction})
+    flash("Odometer corrected." if correction else "Odometer recorded.", "ok")
+    return redirect(f"/trucks/{truck_id}#odometer")
+
+
+@bp.post("/trucks/<int:truck_id>/odometer/<int:reading_id>/delete")
+@login_required
+@role_required("admin")
+def delete_reading(truck_id, reading_id):
+    truck = scoped_truck(truck_id)
+    reading = one("select * from odometer_readings where id = %s and truck_id = %s", (reading_id, truck_id)) if truck else None
+    if not reading:
+        return render_template("errors/404.html"), 404
+    execute("delete from odometer_readings where id = %s", (reading_id,))
+    latest = one("select miles, read_at from odometer_readings where truck_id = %s order by read_at desc, id desc limit 1",
+                 (truck_id,))
+    if latest:
+        execute("update trucks set odometer = %s, odometer_at = %s, updated_at = now() where id = %s",
+                (latest["miles"], latest["read_at"], truck_id))
+    audit("truck.odometer_deleted", "truck", truck_id, {"miles": reading["miles"], "source": reading["source"]})
+    flash(f"Removed the {reading['miles']:,} mi reading.", "ok")
+    return redirect(f"/trucks/{truck_id}#odometer")

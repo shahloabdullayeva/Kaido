@@ -505,3 +505,23 @@ input[readonly] { background: var(--shade); }
 .hos-mini { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .hos-clock-mini.warn { color: var(--warn); font-weight: bold; }
 .hos-clock-mini.bad { color: var(--bad); font-weight: bold; }
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: .18s; }
+html.splash body::before {
+  content: "KAIDO"; position: fixed; inset: 0; z-index: 6000; display: flex; align-items: center; justify-content: center;
+  background: var(--bg, var(--paper)); color: var(--ink); font-family: var(--serif, Georgia, serif); font-size: 30px; font-weight: 700;
+  letter-spacing: .5em; text-indent: .5em; animation: kaido-word 1.1s ease both;
+}
+html.splash body::after {
+  content: ""; position: fixed; z-index: 6001; left: 50%; top: calc(50% + 32px); width: 140px; height: 2px; margin-left: -70px;
+  background: linear-gradient(90deg, transparent, var(--accent, var(--link)), transparent); background-size: 50% 100%; background-repeat: no-repeat;
+  animation: kaido-sweep .9s ease-in-out infinite;
+}
+html.splash-out body::before, html.splash-out body::after { animation: kaido-fade .35s ease forwards; }
+@keyframes kaido-word { from { color: transparent; letter-spacing: .9em; } to { letter-spacing: .5em; } }
+@keyframes kaido-sweep { from { background-position: -100% 0; } to { background-position: 200% 0; } }
+@keyframes kaido-fade { to { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  html.splash body::before, html.splash body::after { animation: none; }
+}
