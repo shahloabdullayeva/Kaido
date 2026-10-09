@@ -31,7 +31,14 @@ def _index():
            from companies c order by c.is_house desc, lower(c.name)"""
     )
     staff = rows(
-        "select id, name, email, platform_role, status, last_login_at from users where platform_role is not null order by lower(name)"
+        """select u.id, u.name, u.email, u.platform_role, u.status, u.last_login_at,
+             coalesce(json_agg(json_build_object('company', c.name, 'role', m.role) order by lower(c.name))
+                      filter (where c.id is not null), '[]') as access
+           from users u
+           left join memberships m on m.user_id = u.id
+           left join companies c on c.id = m.company_id
+           group by u.id
+           order by u.platform_role is null, lower(u.name)"""
     )
     totals = one(
         """select (select count(*) from companies where status = 'active') as companies,

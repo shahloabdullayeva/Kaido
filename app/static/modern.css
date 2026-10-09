@@ -296,3 +296,5 @@
 @media (max-width: 640px) {
   [data-style="modern"] .notif-panel { left: 12px; right: 12px; width: auto; }
 }
+[data-style="modern"] .access-chip { border: 1px solid var(--line); border-radius: 4px; background: var(--face); padding: 2px 8px; font-weight: 600; }
+[data-style="modern"] .access-chip .subtle { font-weight: 400; font-size: 11px; }

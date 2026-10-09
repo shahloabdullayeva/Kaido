@@ -60,13 +60,16 @@
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Platform staff</h2><span class="muted">See and manage every company</span></div>
+  <div class="panel-head"><h2>Users</h2><span class="muted">Everyone who can sign in, and the companies they can open</span></div>
   <div class="table-wrap"><table>
-    <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last sign-in</th></tr></thead>
+    <thead><tr><th>Name</th><th>Email</th><th>Platform role</th><th>Company access</th><th>Status</th><th>Last sign-in</th></tr></thead>
     <tbody>
       {% for person in staff %}
       <tr><td>{{ person.name }}</td><td class="mono">{{ person.email }}</td>
-        <td><span class="badge info">{{ person.platform_role }}</span></td>
+        <td>{% if person.platform_role %}<span class="badge info">{{ person.platform_role }}</span>{% else %}<span class="subtle">—</span>{% endif %}</td>
+        <td>{% if person.platform_role %}<span class="subtle">every company</span>{% if person.access %}<br>{% endif %}{% endif %}
+          {% for item in person.access %}<span class="access-chip">{{ item.company }} <span class="subtle">{{ item.role }}</span></span>{% endfor %}
+          {% if not person.platform_role and not person.access %}<span class="badge warn">no company</span>{% endif %}</td>
         <td><span class="badge {{ person.status|tone }}">{{ person.status }}</span></td>
         <td>{{ person.last_login_at|ago }}</td></tr>
       {% endfor %}
