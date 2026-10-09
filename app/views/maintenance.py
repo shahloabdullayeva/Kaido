@@ -1,9 +1,9 @@
 import re
 from datetime import datetime
 
-from flask import Blueprint, flash, g, jsonify, redirect, render_template, request
+from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, send_file
 
-from .. import advisor, forms, google_places, shops as shop_search, vehicles
+from .. import advisor, forms, google_places, shops as shop_search, vehicles, work_orders
 from ..work_types import GROUP_LABELS, GROUPS, KIND_LABELS, KINDS, kinds_in
 from ..audit import audit
 from ..auth import login_required
@@ -90,7 +90,30 @@ def chosen_driver(form, truck):
 
 
 def form_choices():
-    return {"trucks": active_trucks(), "drivers": active_drivers()}
+    return {"trucks": active_trucks(), "drivers": active_drivers(), "payment_methods": work_orders.PAYMENT_METHODS}
+
+
+def driver_contact_for(form, driver_id):
+    contact = forms.text(form.get("driver_contact"), 60)
+    if driver_id and contact:
+        execute(
+            "update drivers set phone = %s where id = %s and company_id = %s and coalesce(phone, '') = ''",
+            (contact, driver_id, g.company["id"]),
+        )
+    if not contact and driver_id:
+        driver = one("select phone from drivers where id = %s", (driver_id,))
+        contact = driver and driver["phone"]
+    return contact
+
+
+def store_extras(order_id, parts, form):
+    work_orders.save_parts(g.company["id"], order_id, parts)
+    saved, problems = work_orders.save_files(g.company["id"], order_id, request.files.getlist("invoice_files"),
+                                             g.session["user_id"])
+    for problem in problems:
+        flash(problem, "bad")
+    if saved:
+        audit("maintenance.files_added", "maintenance_order", order_id, {"files": [row["name"] for row in saved]})
 
 
 @bp.get("/maintenance")
@@ -110,7 +133,9 @@ def index():
         clause += " and m.kind = any(%s)"
         params.append(kinds_in(group))
     orders = rows(
-        f"""select m.*, t.unit_number, d.name as driver_name from maintenance_orders m
+        f"""select m.*, t.unit_number, d.name as driver_name, coalesce(m.driver_contact, d.phone) as contact,
+                   (select count(*) from maintenance_files f where f.order_id = m.id) as files
+            from maintenance_orders m
             join trucks t on t.id = m.truck_id
             left join drivers d on d.id = m.driver_id
             where m.company_id = %s{clause}
@@ -169,20 +194,26 @@ def create():
     kind = forms.pick(request.form.get("kind"), KINDS, "repair")
     performed_on = forms.day(request.form.get("performed_on"))
     odometer = forms.integer(request.form.get("odometer"))
+    parts, labor, tax, total = work_orders.money_from(request.form)
     order = insert(
         """insert into maintenance_orders (company_id, truck_id, driver_id, kind, status, scheduled_for, performed_on,
              odometer, vendor, invoice_no, cost, description, next_due_on, next_due_odometer, created_by,
-             shop_where, shop_lat, shop_lon)
-           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
+             shop_where, shop_lat, shop_lon, shop_phone, shop_address, driver_contact, labor_cost, tax, paid_with)
+           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+           returning *""",
         (
             g.company["id"], truck_id, driver_id, kind, status,
             forms.day(request.form.get("scheduled_for")), performed_on, odometer,
             forms.text(request.form.get("vendor"), 160), forms.text(request.form.get("invoice_no"), 40),
-            forms.decimal(request.form.get("cost")), description,
+            total, description,
             forms.day(request.form.get("next_due_on")), forms.integer(request.form.get("next_due_odometer")),
             g.session["user_id"], *shop_origin_fields(request.form),
+            forms.text(request.form.get("shop_phone"), 40), forms.text(request.form.get("shop_address"), 300),
+            driver_contact_for(request.form, driver_id), labor, tax,
+            forms.pick(request.form.get("paid_with"), list(work_orders.PAYMENT_LABELS), None),
         ),
     )
+    store_extras(order["id"], parts, request.form)
     apply_completion(order, truck)
     audit("maintenance.created", "maintenance_order", order["id"], {"unit": truck["unit_number"], "kind": kind, "status": status})
     flash("Work order saved.", "ok")
@@ -197,7 +228,6 @@ def create():
 
 
 def shop_origin_fields(form):
-    """Where the shop search last looked, when someone typed or picked a place instead of Samsara's."""
     latitude, longitude = forms.decimal(form.get("shop_lat")), forms.decimal(form.get("shop_lon"))
     if latitude is None or longitude is None or not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
         return None, None, None
@@ -446,7 +476,7 @@ def oil(truck_id):
 @company_required
 def detail(order_id):
     order = one(
-        """select m.*, t.unit_number, d.name as driver_name from maintenance_orders m
+        """select m.*, t.unit_number, d.name as driver_name, d.phone as driver_phone from maintenance_orders m
            join trucks t on t.id = m.truck_id
            left join drivers d on d.id = m.driver_id
            where m.id = %s and m.company_id = %s""",
@@ -457,7 +487,8 @@ def detail(order_id):
     g.google_map = google_places.available()
     return render_template("maintenance/form.html", title=f"Work order #{order['id']}", active="/maintenance",
                            groups=GROUPS, statuses=STATUSES,
-                           order=order, truck_id=order["truck_id"], **form_choices())
+                           order=order, truck_id=order["truck_id"], parts=work_orders.parts_of(order_id),
+                           files=work_orders.files_of(order_id), **form_choices())
 
 
 @bp.post("/maintenance/<int:order_id>")
@@ -474,10 +505,12 @@ def update(order_id):
     if problem:
         flash(problem, "bad")
         return redirect(f"/maintenance/{order_id}")
+    parts, labor, tax, total = work_orders.money_from(request.form)
     updated = insert(
         """update maintenance_orders set driver_id = %s, kind = %s, status = %s, scheduled_for = %s, performed_on = %s,
              odometer = %s, vendor = %s, invoice_no = %s, cost = %s, description = %s,
              next_due_on = %s, next_due_odometer = %s, shop_where = %s, shop_lat = %s, shop_lon = %s,
+             shop_phone = %s, shop_address = %s, driver_contact = %s, labor_cost = %s, tax = %s, paid_with = %s,
              updated_at = now()
            where id = %s and company_id = %s returning *""",
         (
@@ -485,16 +518,51 @@ def update(order_id):
             forms.pick(request.form.get("kind"), KINDS, order["kind"]), status,
             forms.day(request.form.get("scheduled_for")), performed_on,
             forms.integer(request.form.get("odometer")), forms.text(request.form.get("vendor"), 160),
-            forms.text(request.form.get("invoice_no"), 40), forms.decimal(request.form.get("cost")),
-            forms.required(request.form.get("description"), 2000),
+            forms.text(request.form.get("invoice_no"), 40), total,
+            forms.required(request.form.get("description"), 2000) or order["description"],
             forms.day(request.form.get("next_due_on")), forms.integer(request.form.get("next_due_odometer")),
-            *shop_origin_fields(request.form), order_id, g.company["id"],
+            *shop_origin_fields(request.form),
+            forms.text(request.form.get("shop_phone"), 40), forms.text(request.form.get("shop_address"), 300),
+            driver_contact_for(request.form, driver_id), labor, tax,
+            forms.pick(request.form.get("paid_with"), list(work_orders.PAYMENT_LABELS), None),
+            order_id, g.company["id"],
         ),
     )
+    store_extras(order_id, parts, request.form)
     apply_completion(updated, truck)
     audit("maintenance.updated", "maintenance_order", order_id, {"status": status})
     flash("Work order updated.", "ok")
     return redirect(f"/maintenance/{order_id}")
+
+
+@bp.get("/maintenance/<int:order_id>/files/<int:file_id>")
+@login_required
+@company_required
+def order_file(order_id, file_id):
+    item = one("select * from maintenance_files where id = %s and order_id = %s and company_id = %s",
+               (file_id, order_id, g.company["id"]))
+    path = work_orders.file_path(item) if item else None
+    if not path:
+        return render_template("errors/404.html"), 404
+    inline = item["content_type"] in ("application/pdf", "image/jpeg", "image/png", "image/webp")
+    response = send_file(path, mimetype=item["content_type"], as_attachment=not inline, download_name=item["name"],
+                         max_age=0)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
+@bp.post("/maintenance/<int:order_id>/files/<int:file_id>/delete")
+@login_required
+@role_required("admin")
+def delete_order_file(order_id, file_id):
+    item = one("select * from maintenance_files where id = %s and order_id = %s and company_id = %s",
+               (file_id, order_id, g.company["id"]))
+    if not item:
+        return render_template("errors/404.html"), 404
+    work_orders.delete_file(item)
+    audit("maintenance.file_deleted", "maintenance_order", order_id, {"file": item["name"]})
+    flash(f"Removed {item['name']}.", "ok")
+    return redirect(f"/maintenance/{order_id}#invoice")
 
 
 @bp.get("/maintenance/saved-shops")
@@ -521,7 +589,6 @@ def saved_shops():
 
 
 def credit_earlier(place):
-    """A shop already saved from another list goes to whoever saved it first; notes are combined."""
     row = one(
         """select id, saved_by_name, saved_on, note from saved_shops
            where company_id = %s and lower(name) = lower(%s)
@@ -542,7 +609,6 @@ def credit_earlier(place):
 
 
 def save_list(link, note=None):
-    """Store every place in a shared Google Maps list. Returns (added, skipped, problem)."""
     try:
         full = google_places.expand_link(link)
         listing = google_places.read_list(full)
@@ -578,7 +644,6 @@ def save_list(link, note=None):
 
 
 def save_shop(link=None, name=None, address=None, phone=None, note=None):
-    """Store one shop from a Google Maps link or a name and address. Returns (row, problem)."""
     found = {"name": name, "latitude": None, "longitude": None, "place_id": None, "url": None}
     if link:
         try:

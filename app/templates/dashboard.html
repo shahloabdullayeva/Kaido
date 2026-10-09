@@ -14,16 +14,7 @@
   </div>
 </div>
 
-<div class="stats">
-  <div class="stat"><div class="stat-label">Active</div><div class="stat-value">{{ summary.trucks_active }}</div><div class="stat-hint">running today</div></div>
-  <div class="stat {{ 'warn' if summary.trucks_shop else '' }}"><div class="stat-label">In shop</div><div class="stat-value">{{ summary.trucks_shop }}</div><div class="stat-hint">being worked on</div></div>
-  <div class="stat {{ 'bad' if summary.trucks_down else '' }}"><div class="stat-label">Out of service</div><div class="stat-value">{{ summary.trucks_down }}</div><div class="stat-hint">not earning</div></div>
-  <div class="stat {{ 'bad' if summary.breakdowns_open else '' }}"><div class="stat-label">Open breakdowns</div><div class="stat-value">{{ summary.breakdowns_open }}</div><div class="stat-hint">unresolved</div></div>
-  <div class="stat {{ 'warn' if summary.faults_active else '' }}"><div class="stat-label">Active faults</div><div class="stat-value">{{ summary.faults_active }}</div><div class="stat-hint">from telematics</div></div>
-  <div class="stat"><div class="stat-label">Fuel this month</div><div class="stat-value">{{ summary.fuel_month|money }}</div><div class="stat-hint">{{ summary.maintenance_month|money }} maintenance</div></div>
-</div>
-
-<section class="panel">
+<section class="panel map-first">
   <div class="panel-head"><h2>Where the trucks are</h2>
     <span class="subtle">{{ pins|length }} of {{ fleet_size }} reporting a position</span></div>
   {% if pins %}
@@ -39,6 +30,15 @@
     connect it on the Integrations page and this map fills itself in.</p>
   {% endif %}
 </section>
+
+<div class="stats">
+  <div class="stat"><div class="stat-label">Active</div><div class="stat-value">{{ summary.trucks_active }}</div><div class="stat-hint">running today</div></div>
+  <div class="stat {{ 'warn' if summary.trucks_shop else '' }}"><div class="stat-label">In shop</div><div class="stat-value">{{ summary.trucks_shop }}</div><div class="stat-hint">being worked on</div></div>
+  <div class="stat {{ 'bad' if summary.trucks_down else '' }}"><div class="stat-label">Out of service</div><div class="stat-value">{{ summary.trucks_down }}</div><div class="stat-hint">not earning</div></div>
+  <div class="stat {{ 'bad' if summary.breakdowns_open else '' }}"><div class="stat-label">Open breakdowns</div><div class="stat-value">{{ summary.breakdowns_open }}</div><div class="stat-hint">unresolved</div></div>
+  <div class="stat {{ 'warn' if summary.faults_active else '' }}"><div class="stat-label">Active faults</div><div class="stat-value">{{ summary.faults_active }}</div><div class="stat-hint">from telematics</div></div>
+  <div class="stat"><div class="stat-label">Fuel this month</div><div class="stat-value">{{ summary.fuel_month|money }}</div><div class="stat-hint">{{ summary.maintenance_month|money }} maintenance</div></div>
+</div>
 
 <div class="grid-2">
   <section class="panel">

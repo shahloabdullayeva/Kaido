@@ -14,12 +14,13 @@
   ('/settings', 'Settings', none)
 ] %}
 <!doctype html>
-<html lang="en"{% if session and session.theme in ('light', 'dark') %} data-theme="{{ session.theme }}"{% endif %}>
+<html lang="en" data-style="modern"{% if session and session.theme in ('light', 'dark') %} data-theme="{{ session.theme }}"{% endif %}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ title }} · Kaido</title>
 <link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="/static/modern.css">
 <link rel="icon" href="/static/favicon.svg">
 {% block head %}{% endblock %}
 </head>

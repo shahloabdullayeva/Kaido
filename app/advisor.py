@@ -357,7 +357,7 @@ def chat_reply(context, history, question):
         extra = {} if CHAT_MODEL.startswith("claude-haiku") else {"output_config": {"effort": "low"}}
         response = _client().messages.create(
             model=CHAT_MODEL,
-            max_tokens=4000,
+            max_tokens=2000,
             system=CHAT_SYSTEM + "\n\n" + context,
             messages=messages,
             **extra,

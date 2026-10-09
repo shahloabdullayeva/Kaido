@@ -477,3 +477,12 @@ tr.clickrow:hover td { background: var(--info-bg); }
   border-bottom: 2px solid var(--warn);
   font-weight: bold;
 }
+.form-section { margin: 18px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--face-dark); font-size: 13px; text-transform: uppercase; letter-spacing: .08em; }
+.form-section:first-of-type { margin-top: 0; }
+.parts-table input { width: 100%; min-width: 70px; }
+.parts-table td { vertical-align: middle; }
+.parts-add { margin: 8px 0 14px; }
+.file-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.file-list li { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.wo-summary .stat-value.small { font-size: 16px; word-break: break-word; }
+input[readonly] { background: var(--shade); }

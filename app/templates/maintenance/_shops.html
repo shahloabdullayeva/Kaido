@@ -63,7 +63,7 @@
       {% if shop.dial %}<a class="btn small" href="tel:{{ shop.dial }}">Call</a>{% endif %}
       <a class="btn ghost small" href="{{ shop.maps }}" target="_blank" rel="noopener noreferrer" data-maps>Google Maps</a>
       <button type="button" class="btn ghost small" data-show-shop="{{ loop.index }}">Show on map</button>
-      <button type="button" class="btn ghost small" data-pick-vendor="{{ shop.name }}">Use as vendor</button>
+      <button type="button" class="btn ghost small" data-pick-vendor="{{ shop.name }}" data-pick-phone="{{ shop.phone or '' }}" data-pick-address="{{ shop.address or '' }}">Use this shop</button>
     </div>
   </li>
   {% endfor %}

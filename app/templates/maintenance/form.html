@@ -3,7 +3,8 @@
 {% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">{% endblock %}
 {% block scripts %}<script src="/static/vendor/leaflet/leaflet.js"></script>
 <script src="/static/shops.js"></script>
-<script src="/static/assistant.js"></script>{% endblock %}
+<script src="/static/assistant.js"></script>
+<script src="/static/work_order.js"></script>{% endblock %}
 {% block body %}
 {% set editing = order is not none %}
 <div class="page-head">
@@ -12,15 +13,25 @@
   <div class="actions-row">{% if editing %}<a class="btn ghost" href="/maintenance/{{ order.id }}/pdf">Download PDF</a>{% endif %}
   <a class="btn ghost" href="/maintenance">Back</a></div>
 </div>
+{% if editing %}
+<div class="stats wo-summary">
+  <div class="stat"><div class="stat-label">Unit</div><div class="stat-value">{{ order.unit_number }}</div><div class="stat-hint">{{ order.driver_name or 'No driver' }}</div></div>
+  <div class="stat"><div class="stat-label">Shop</div><div class="stat-value small">{{ order.vendor or '—' }}</div><div class="stat-hint">{{ order.shop_phone or '' }}</div></div>
+  <div class="stat"><div class="stat-label">Status</div><div class="stat-value"><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></div><div class="stat-hint">{{ (order.performed_on or order.scheduled_for)|day }}</div></div>
+  <div class="stat"><div class="stat-label">Total</div><div class="stat-value">{{ order.cost|money }}</div><div class="stat-hint">{{ parts|length }} part{{ 's' if parts|length != 1 }}{% if order.paid_with %} · {{ payment_methods|selectattr(0, 'equalto', order.paid_with)|map(attribute=1)|first }}{% endif %}</div></div>
+  <div class="stat {{ '' if files else 'warn' }}"><div class="stat-label">Invoice</div><div class="stat-value">{{ files|length }}</div><div class="stat-hint">{{ 'file' if files|length == 1 else 'files' }} attached</div></div>
+</div>
+{% endif %}
 <section class="panel">
-  <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}" data-truck-fill>
+  <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}" data-truck-fill enctype="multipart/form-data" class="work-order">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <input type="hidden" name="shop_where" value="{{ order.shop_where or '' if editing else '' }}">
     {% if pti_id and not editing %}<input type="hidden" name="pti_id" value="{{ pti_id }}">{% endif %}
     <input type="hidden" name="shop_lat" value="{{ order.shop_lat if editing and order.shop_lat is not none else '' }}">
     <input type="hidden" name="shop_lon" value="{{ order.shop_lon if editing and order.shop_lon is not none else '' }}">
+    <h3 class="form-section">Vehicle and driver</h3>
     <div class="form-grid">
-      <label class="field"><span>Truck</span>
+      <label class="field"><span>Unit number</span>
         <select name="truck_id" required {% if editing %}disabled{% endif %}>
           <option value="">Select a truck</option>
           {% set own = trucks|rejectattr('is_outside')|list %}
@@ -43,15 +54,15 @@
         </select>
         <em id="truck-summary" class="subtle">Any truck, yours or not.</em>
       </label>
-      <label class="field"><span>Driver</span>
+      <label class="field"><span>Driver name</span>
         <select name="driver_id">
           <option value="">No driver</option>
           <optgroup label="Your drivers">
-          {% for driver in drivers|rejectattr('is_outside') %}<option value="{{ driver.id }}" {% if editing and order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
+          {% for driver in drivers|rejectattr('is_outside') %}<option value="{{ driver.id }}" data-phone="{{ driver.phone or '' }}" {% if editing and order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
           </optgroup>
           {% set outside_drivers = drivers|selectattr('is_outside')|list %}
           {% if outside_drivers %}<optgroup label="Outside drivers">
-          {% for driver in outside_drivers %}<option value="{{ driver.id }}" {% if editing and order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}{% if driver.outside_carrier %} · {{ driver.outside_carrier }}{% endif %}</option>{% endfor %}
+          {% for driver in outside_drivers %}<option value="{{ driver.id }}" data-phone="{{ driver.phone or '' }}" {% if editing and order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}{% if driver.outside_carrier %} · {{ driver.outside_carrier }}{% endif %}</option>{% endfor %}
           </optgroup>{% endif %}
           <option value="outside">+ Outside driver, not in the list</option>
         </select>
@@ -75,6 +86,19 @@
           {{ field('Carrier', 'outside_driver_carrier', '', attrs='maxlength="160"', hint="Leave empty to use the truck's carrier.") }}
         </div>
       </fieldset>
+      {{ field('Driver contact', 'driver_contact', (order.driver_contact or order.driver_phone) if editing else '', type='tel', attrs='maxlength="60" placeholder="+1 555 123 4567"', hint='Filled in from the driver. Saved to the driver too if they had no number.') }}
+      {{ field('Odometer', 'odometer', order.odometer if editing else '', type='number', attrs='min="0"', hint='Last reading from the truck, edit if the shop wrote a different one.') }}
+    </div>
+
+    <h3 class="form-section">Shop</h3>
+    <div class="form-grid">
+      {{ field('Shop name', 'vendor', order.vendor if editing else '', attrs='maxlength="160"', hint='Or pick one from “Where to send it” below.') }}
+      {{ field('Shop phone', 'shop_phone', order.shop_phone if editing else '', type='tel', attrs='maxlength="40"') }}
+      {{ field('Shop address', 'shop_address', order.shop_address if editing else '', attrs='maxlength="300"', full=True) }}
+    </div>
+
+    <h3 class="form-section">Work</h3>
+    <div class="form-grid">
       <label class="field"><span>Work type</span>
         <select name="kind">
           {% for key, heading, items in groups %}<optgroup label="{{ heading }}">
@@ -89,17 +113,72 @@
       </label>
       {{ field('Scheduled for', 'scheduled_for', (order.scheduled_for|date_input) if editing else '', type='date') }}
       {{ field('Performed on', 'performed_on', (order.performed_on|date_input) if editing else '', type='date') }}
-      {{ field('Odometer', 'odometer', order.odometer if editing else '', type='number', attrs='min="0"', hint='Last reading from the truck, edit if the shop wrote a different one.') }}
-      {{ field('Vendor / shop', 'vendor', order.vendor if editing else '', attrs='maxlength="160"') }}
+      {{ field('What was done', 'description', order.description if editing else (prefill_description or ''), type='textarea', required=True, full=True) }}
+    </div>
+
+    <h3 class="form-section">Parts and cost</h3>
+    {% set part_rows = parts if editing and parts else [] %}
+    <div class="table-wrap"><table class="parts-table" id="parts-table">
+      <thead><tr><th>Part</th><th>Part number</th><th class="right">Qty</th><th class="right">Unit price</th><th class="right">Amount</th><th></th></tr></thead>
+      <tbody>
+        {% for part in part_rows %}
+        <tr data-part>
+          <td><input name="part_name" value="{{ part.name }}" maxlength="200" aria-label="Part"></td>
+          <td><input name="part_number" value="{{ part.part_number or '' }}" maxlength="60" aria-label="Part number"></td>
+          <td class="right"><input name="part_qty" type="number" step="0.01" min="0" value="{{ part.quantity|float }}" aria-label="Quantity"></td>
+          <td class="right"><input name="part_price" type="number" step="0.01" min="0" value="{{ part.unit_price if part.unit_price is not none else '' }}" aria-label="Unit price"></td>
+          <td class="right" data-amount></td>
+          <td><button type="button" class="btn ghost small" data-remove-part aria-label="Remove part">Remove</button></td>
+        </tr>
+        {% endfor %}
+        <tr data-part data-template{% if part_rows %} hidden{% endif %}>
+          <td><input name="part_name" maxlength="200" placeholder="Oil filter" aria-label="Part"{% if part_rows %} disabled{% endif %}></td>
+          <td><input name="part_number" maxlength="60" placeholder="LF14000NN" aria-label="Part number"{% if part_rows %} disabled{% endif %}></td>
+          <td class="right"><input name="part_qty" type="number" step="0.01" min="0" value="1" aria-label="Quantity"{% if part_rows %} disabled{% endif %}></td>
+          <td class="right"><input name="part_price" type="number" step="0.01" min="0" aria-label="Unit price"{% if part_rows %} disabled{% endif %}></td>
+          <td class="right" data-amount></td>
+          <td><button type="button" class="btn ghost small" data-remove-part aria-label="Remove part">Remove</button></td>
+        </tr>
+      </tbody>
+    </table></div>
+    <p class="parts-add"><button type="button" class="btn ghost small" id="add-part">+ Add part</button></p>
+    <div class="form-grid">
+      {{ field('Labor', 'labor_cost', order.labor_cost if editing else '', type='number', attrs='step="0.01" min="0"') }}
+      {{ field('Tax and fees', 'tax', order.tax if editing else '', type='number', attrs='step="0.01" min="0"') }}
+      {{ field('Total amount', 'cost', order.cost if editing else '', type='number', attrs='step="0.01" min="0"', hint='Adds itself up from parts, labor and tax. Type it yourself when the invoice is not itemized.') }}
+      <label class="field"><span>Paid with</span>
+        <select name="paid_with">
+          <option value="">Not recorded</option>
+          {% for value, text in payment_methods %}<option value="{{ value }}" {% if editing and order.paid_with == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
+        </select>
+      </label>
       {{ field('Invoice number', 'invoice_no', order.invoice_no if editing else '', attrs='maxlength="40"') }}
-      {{ field('Cost', 'cost', order.cost if editing else '', type='number', attrs='step="0.01" min="0"') }}
+    </div>
+
+    <h3 class="form-section" id="invoice">Invoice</h3>
+    {% if editing and files %}
+    <ul class="file-list">
+      {% for item in files %}
+      <li><a href="/maintenance/{{ order.id }}/files/{{ item.id }}" target="_blank" rel="noopener">{{ item.name }}</a>
+        <span class="subtle">{{ item.content_type.split('/')[-1]|upper }} · {{ ((item.bytes or 0) / 1024)|round|int }} KB · {{ item.created_at|day }}{% if item.uploaded_by_name %} · {{ item.uploaded_by_name }}{% endif %}</span>
+        {% if at_least(role, 'admin') %}<button type="submit" class="btn ghost small danger" form="delete-file-{{ item.id }}">Remove</button>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <label class="field full file-drop"><span>{{ 'Attach more' if editing and files else 'Attach the invoice' }}</span>
+      <input type="file" name="invoice_files" multiple accept="application/pdf,image/*">
+      <em>PDF or photos of the invoice and receipts, up to 25 MB each. You can pick several.</em>
+    </label>
+
+    <h3 class="form-section">Next service</h3>
+    <div class="form-grid">
       {{ field('Next due date', 'next_due_on', (order.next_due_on|date_input) if editing else '', type='date') }}
       {{ field('Next due odometer', 'next_due_odometer', order.next_due_odometer if editing else '', type='number', attrs='min="0"') }}
-      {{ field('What was done', 'description', order.description if editing else (prefill_description or ''), type='textarea', required=True, full=True) }}
     </div>
     <div class="form-actions"><button class="btn" type="submit">{{ 'Save changes' if editing else 'Save work order' }}</button>
       <a class="btn ghost" href="/maintenance">Cancel</a></div>
   </form>
+  {% if editing %}{% for item in files %}<form method="post" action="/maintenance/{{ order.id }}/files/{{ item.id }}/delete" id="delete-file-{{ item.id }}" data-confirm="Remove {{ item.name }}?" hidden><input type="hidden" name="csrf" value="{{ session.csrf }}"></form>{% endfor %}{% endif %}
 </section>
 <section class="panel" id="oil-panel" hidden>
   <div class="panel-head"><h2>Which oil</h2><span class="subtle">suggested by Claude from the make, model and engine</span></div>

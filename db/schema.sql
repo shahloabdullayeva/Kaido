@@ -773,3 +773,51 @@ create table if not exists cat_notes (
   done_at timestamptz
 );
 create index if not exists cat_notes_pending_idx on cat_notes (user_id, created_at) where done_at is null;
+
+alter table maintenance_orders add column if not exists shop_phone text;
+alter table maintenance_orders add column if not exists shop_address text;
+alter table maintenance_orders add column if not exists driver_contact text;
+alter table maintenance_orders add column if not exists labor_cost numeric(12,2);
+alter table maintenance_orders add column if not exists tax numeric(12,2);
+alter table maintenance_orders add column if not exists paid_with text;
+
+create table if not exists maintenance_parts (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  order_id bigint not null references maintenance_orders(id) on delete cascade,
+  position int not null default 0,
+  name text not null,
+  part_number text,
+  quantity numeric(10,2) not null default 1,
+  unit_price numeric(12,2),
+  created_at timestamptz not null default now()
+);
+create index if not exists maintenance_parts_idx on maintenance_parts (order_id, position);
+
+create table if not exists maintenance_files (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  order_id bigint not null references maintenance_orders(id) on delete cascade,
+  name text not null,
+  path text not null,
+  content_type text not null,
+  bytes int,
+  uploaded_by int references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists maintenance_files_idx on maintenance_files (order_id, created_at);
+
+do $$
+declare tenant text;
+begin
+  foreach tenant in array array['maintenance_parts', 'maintenance_files'] loop
+    execute format('alter table %I enable row level security', tenant);
+    execute format('alter table %I force row level security', tenant);
+    execute format('drop policy if exists company_lock on %I', tenant);
+    execute format(
+      'create policy company_lock on %I using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+      'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
+  end loop;
+end $$;

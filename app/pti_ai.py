@@ -125,7 +125,7 @@ def review(inspection_id):
         import anthropic
         response = anthropic.Anthropic(api_key=config.ANTHROPIC_API_KEY).messages.parse(
             model=MODEL,
-            max_tokens=4000,
+            max_tokens=2000,
             system=SYSTEM,
             output_config={"effort": "low"},
             messages=[{"role": "user", "content": content}],

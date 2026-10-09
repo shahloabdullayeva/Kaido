@@ -318,7 +318,7 @@ def to_pdf(title, subtitle, columns, data, totals):
     return bytes(pdf.output())
 
 
-def record_pdf(title, subtitle, fields, sections):
+def record_pdf(title, subtitle, fields, sections, tables=()):
     pdf = _pdf()
     pdf.set_title(title)
     pdf.add_page(orientation="P")
@@ -337,6 +337,21 @@ def record_pdf(title, subtitle, fields, sections):
             line = table.row()
             line.cell(label, style=bold)
             line.cell(value or "—")
+    for heading, widths, header, body in tables:
+        if not body:
+            continue
+        pdf.ln(4)
+        pdf.set_font("dejavu", "B", 11)
+        pdf.cell(0, 7, heading, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("dejavu", "", 9)
+        with pdf.table(col_widths=widths, line_height=5.5, text_align=("LEFT", "LEFT", "RIGHT", "RIGHT", "RIGHT")) as grid:
+            top = grid.row()
+            for text in header:
+                top.cell(text, style=bold)
+            for values in body:
+                line = grid.row()
+                for value in values:
+                    line.cell(value or "")
     for heading, body in sections:
         if not body:
             continue

@@ -405,9 +405,18 @@ const wireVendorPicks = () => {
     button.addEventListener('click', () => {
       if (!vendorInput) return;
       vendorInput.value = button.dataset.pickVendor;
+      const phoneInput = document.querySelector('input[name=shop_phone]');
+      const addressInput = document.querySelector('input[name=shop_address]');
+      const row = button.closest('li');
+      const shownAddress = row && row.querySelector('[data-address]');
+      if (phoneInput && button.dataset.pickPhone) phoneInput.value = button.dataset.pickPhone;
+      if (addressInput) {
+        const address = button.dataset.pickAddress || (shownAddress && shownAddress.textContent.trim());
+        if (address && !/^Address not listed/.test(address)) addressInput.value = address;
+      }
       vendorInput.scrollIntoView({ block: 'center' });
       vendorInput.focus();
-      setStatus('Vendor set to ' + button.dataset.pickVendor);
+      setStatus('Shop set to ' + button.dataset.pickVendor);
     });
   }
   for (const button of body.querySelectorAll('[data-show-shop]')) {

@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from flask import Blueprint, Response, g, render_template, request
 
-from .. import forms, reports
+from .. import forms, reports, work_orders
 from ..audit import audit
 from ..auth import login_required
 from ..db import one, rows
@@ -117,18 +117,27 @@ def order_pdf(order_id):
         ("Truck", f"Unit {order['unit_number']}" + (f" ({order['outside_carrier'] or 'outside truck'})" if order["is_outside"] else "")),
         ("Vehicle", " ".join(str(p) for p in [order["year"], order["make"], order["model"]] if p)),
         ("Engine", order["engine"]), ("VIN", order["vin"]),
-        ("Driver", " · ".join(p for p in [order["driver_name"], order["driver_phone"]] if p)),
+        ("Driver", " · ".join(p for p in [order["driver_name"], order["driver_contact"] or order["driver_phone"]] if p)),
         ("Work", reports.KIND_LABELS.get(order["kind"], order["kind"])),
         ("Status", order["status"].replace("_", " ")),
         ("Scheduled", cell(order["scheduled_for"], "date")), ("Done on", cell(order["performed_on"], "date")),
-        ("Odometer", cell(order["odometer"], "int")), ("Shop", order["vendor"]), ("Invoice", order["invoice_no"]),
-        ("Cost", cell(order["cost"], "money")),
+        ("Odometer", cell(order["odometer"], "int")),
+        ("Shop", " · ".join(p for p in [order["vendor"], order["shop_phone"]] if p)), ("Shop address", order["shop_address"]),
+        ("Invoice", order["invoice_no"]),
+        ("Labor", cell(order["labor_cost"], "money")), ("Tax and fees", cell(order["tax"], "money")),
+        ("Total amount", cell(order["cost"], "money")),
+        ("Paid with", work_orders.PAYMENT_LABELS.get(order["paid_with"] or "", "")),
+        ("Attached", ", ".join(item["name"] for item in work_orders.files_of(order_id))),
         ("Next due", " · ".join(p for p in [cell(order["next_due_on"], "date"),
                                              (cell(order["next_due_odometer"], "int") + " mi") if order["next_due_odometer"] else ""] if p)),
         ("Opened by", order["author"]),
     ]
+    parts = [(part["name"], part["part_number"], f"{float(part['quantity']):g}", cell(part["unit_price"], "money"),
+              cell(float(part["quantity"]) * float(part["unit_price"]), "money") if part["unit_price"] is not None else "")
+             for part in work_orders.parts_of(order_id)]
     body = reports.record_pdf(f"Work order #{order_id}", g.company["name"], fields,
-                              [("What was done", order["description"])])
+                              [("What was done", order["description"])],
+                              tables=[("Parts", (70, 40, 20, 30, 30), ("Part", "Part number", "Qty", "Unit price", "Amount"), parts)])
     audit("report.downloaded", "maintenance_order", order_id, {"format": "pdf"})
     return Response(body, mimetype="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="work-order-{order_id}.pdf"'})

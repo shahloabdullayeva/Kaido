@@ -25,19 +25,20 @@
   </div>
   {% if orders %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Unit</th><th>Driver</th><th>Work</th><th>Status</th><th>Date</th><th>Vendor</th><th class="right">Odometer</th><th class="right">Cost</th></tr></thead>
+    <thead><tr><th>Unit</th><th>Driver</th><th>Shop</th><th>Work</th><th>Status</th><th>Date</th><th class="right">Odometer</th><th class="right">Total</th><th>Invoice</th></tr></thead>
     <tbody>
       {% for order in orders %}
       <tr class="clickrow" data-href="/maintenance/{{ order.id }}" title="Open work order #{{ order.id }}">
         <td><a class="rowlink" href="/trucks/{{ order.truck_id }}">{{ order.unit_number }}</a></td>
-        <td>{{ order.driver_name or '—' }}</td>
+        <td>{{ order.driver_name or '—' }}{% if order.contact %}<div class="subtle">{{ order.contact }}</div>{% endif %}</td>
+        <td>{{ order.vendor or '—' }}{% if order.shop_phone %}<div class="subtle">{{ order.shop_phone }}</div>{% endif %}</td>
         <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ kind_labels.get(order.kind, order.kind) }}</a>
           <div class="subtle">{{ (order.description or '')[:70] }}</div></td>
         <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
         <td>{{ (order.performed_on or order.scheduled_for)|day }}</td>
-        <td>{{ order.vendor or '—' }}</td>
         <td class="right">{{ order.odometer|number }}</td>
         <td class="right">{{ order.cost|money }}</td>
+        <td>{% if order.files %}<span class="badge ok">{{ order.files }} file{{ 's' if order.files != 1 }}</span>{% elif order.status == 'done' %}<span class="badge warn">missing</span>{% else %}<span class="subtle">—</span>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>
