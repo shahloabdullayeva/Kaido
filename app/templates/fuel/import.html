@@ -1,13 +1,13 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Import fuel from EFS</h1><p>Upload the Transaction Report from eManager. Each purchase is matched to a truck by unit number, then by the last 4 digits of the fuel card.</p></div>
+  <div><h1>Import fuel from EFS</h1><p>Upload the Transaction Report from eManager. Each purchase is matched to a truck by unit number, then by the last 4 digits of the fuel card.</p><p>This file will go into <b>{{ g.company.name }}</b>. Switch company first if it belongs to another carrier.</p></div>
   <a class="btn ghost" href="/fuel">Back to fuel</a>
 </div>
 
 {% if report %}
 <section class="panel">
-  <div class="panel-head"><h2>{{ filename }}</h2></div>
+  <div class="panel-head"><h2>{{ filename }} → {{ g.company.name }}</h2></div>
   <div class="stats">
     <div class="stat"><div class="stat-label">Rows read</div><div class="stat-value">{{ report.total }}</div></div>
     <div class="stat"><div class="stat-label">Added</div><div class="stat-value">{{ report.added }}</div></div>

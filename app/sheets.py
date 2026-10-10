@@ -152,3 +152,12 @@ def unit_key(raw):
     text = re.sub(r"\s+", "", text)
     stripped = text.lstrip("0")
     return stripped or text
+
+
+def unit_lead(raw):
+    if raw is None:
+        return ""
+    if isinstance(raw, float) and raw.is_integer():
+        raw = int(raw)
+    found = re.match(r"\s*(?:unit)?\s*#?\s*(\d+[a-z]?)(?![a-z0-9])", str(raw), re.I)
+    return unit_key(found.group(1)) if found else ""

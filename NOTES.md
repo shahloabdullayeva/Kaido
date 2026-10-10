@@ -103,7 +103,10 @@ rather than an empty map.
 - **Service baselines.** Trucks → Service baselines: pick a service (oil, PM-A/B/C, air dryer,
   transmission, differential, coolant, DPF), type the last miles or date, or upload a sheet.
 - **EFS import.** Fuel → Import from EFS takes the eManager Transaction Report (CSV or Excel).
-  Matches by unit, then card last 4; re-importing the same file is safe.
+  Matches by unit, then by the number a unit starts with (a truck saved as "0638 Name (Carrier)"
+  matches a file row for unit 638, when only one truck starts with that number), then card last 4;
+  re-importing the same file is safe. The page names the company the file will go into: a file
+  uploaded under the wrong company adds nothing and reports every row as "No truck found".
 - **Claude.** Plain-English explanation on every fault page, stored per code so it is paid for
   once. An oil suggestion on oil work orders from the engine read off the VIN (NHTSA decoder,
   42 trucks decoded). A chat box on every truck and work order that sees the truck's record.

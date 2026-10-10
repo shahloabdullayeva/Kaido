@@ -86,6 +86,11 @@ def run(company_id, user_id, filename, data):
         (company_id,),
     )
     by_unit = {sheets.unit_key(t["unit_number"]): t for t in trucks}
+    by_lead = {}
+    for truck in trucks:
+        lead = sheets.unit_lead(truck["unit_number"])
+        if lead:
+            by_lead.setdefault(lead, []).append(truck)
     by_card = {}
     for truck in trucks:
         if truck["fuel_card_last4"]:
@@ -114,6 +119,12 @@ def run(company_id, user_id, filename, data):
             report["skipped"].append({**values, "why": "missing date, gallons or amount"})
             continue
         truck = by_unit.get(sheets.unit_key(values["unit"])) if values["unit"] else None
+        if not truck and values["unit"]:
+            lead = sheets.unit_lead(values["unit"])
+            candidates = by_lead.get(lead, []) if lead else []
+            truck = by_unit.get(lead) if lead else None
+            if not truck and len(candidates) == 1:
+                truck = candidates[0]
         if not truck:
             candidates = by_card.get(last4(values["card"]) or "", [])
             truck = candidates[0] if len(candidates) == 1 else None

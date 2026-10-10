@@ -32,7 +32,8 @@ for any truck and any driver, including ones from outside the company.
   read off the VIN, and answers questions about any truck — under a hard daily cap.
 - **Daily follow-up** on Telegram: open breakdowns, overdue service, work that was
   due, reminders, new faults, papers expiring. Reminders can be set on any record.
-- **Fuel**: manual entry and EFS Transaction Report import.
+- **Fuel**: manual entry and EFS Transaction Report import, matched to trucks by unit number
+  (or the number the unit starts with) and then by fuel card.
 - **Reports** for maintenance, fuel, breakdowns, faults and fleet status as PDF,
   Excel or CSV.
 - **Company lock**: Postgres row-level security on every company table, so a
