@@ -41,6 +41,14 @@ def day(value):
     return value.strftime("%d %b %Y")
 
 
+def month(value):
+    return value.strftime("%B %Y") if value else "—"
+
+
+def bill_tone(value):
+    return {"paid": "ok", "due": "warn", "overdue": "bad"}.get(value, "muted")
+
+
 def stamp(value):
     if not value:
         return "—"
@@ -121,6 +129,8 @@ def register(app):
         "number": number,
         "day": day,
         "stamp": stamp,
+        "month": month,
+        "bill_tone": bill_tone,
         "date_input": date_input,
         "ago": ago,
         "tone": tone,

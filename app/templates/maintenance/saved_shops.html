@@ -20,7 +20,7 @@
       {{ field('Or a name', 'name', '', attrs='maxlength="160"', hint='For a shop without a link.') }}
       {{ field('and its address', 'address', '', attrs='maxlength="300"') }}
       {{ field('Phone', 'phone', '', type='tel', attrs='maxlength="40"', hint='Only for the name and address entry.') }}
-      {{ field('Note', 'note', '', attrs='maxlength="300"', hint='Applied to everything in this batch, e.g. "John: good with Cascadias".') }}
+      {{ field('Note', 'note', '', type='textarea', attrs='maxlength="600" rows="2"', hint='Applied to everything in this batch, e.g. "John: good with Cascadias".') }}
     </div>
     <div class="form-actions"><button class="btn" type="submit">Save</button>
       <span class="muted">{% if google_on %}Reading a link is free — only the place id is asked of Google.{% else %}Links are read without Google; the address comes from OpenStreetMap.{% endif %}</span></div>
@@ -49,7 +49,7 @@
         <td><input form="saved-{{ shop.id }}" name="name" value="{{ shop.name }}" maxlength="160" aria-label="Name"></td>
         <td>{{ shop.address or '—' }}<br><a class="subtle" href="{{ shop.maps_url or ('https://www.google.com/maps/search/?api=1&query=' ~ shop.latitude ~ ',' ~ shop.longitude) }}" target="_blank" rel="noopener noreferrer">Google Maps</a></td>
         <td><input form="saved-{{ shop.id }}" name="phone" value="{{ shop.phone or '' }}" maxlength="40" type="tel" aria-label="Phone"></td>
-        <td><input form="saved-{{ shop.id }}" name="note" value="{{ shop.note or '' }}" maxlength="300" aria-label="Note"></td>
+        <td class="note-cell"><textarea form="saved-{{ shop.id }}" name="note" maxlength="600" aria-label="Note" rows="{{ shop.note_rows }}">{{ shop.note or '' }}</textarea></td>
         <td class="subtle">{{ shop.saved_by_name or '—' }}{% if shop.saved_on %}<br>{{ shop.saved_on|day }}{% endif %}</td>
         <td><form method="post" action="/maintenance/saved-shops/{{ shop.id }}" id="saved-{{ shop.id }}" class="actions-row">
           <input type="hidden" name="csrf" value="{{ session.csrf }}">
@@ -60,7 +60,7 @@
         <td>{{ shop.name }}</td>
         <td>{{ shop.address or '—' }}</td>
         <td>{{ shop.phone or '—' }}</td>
-        <td>{{ shop.note or '' }}</td>
+        <td class="note-cell note-text">{{ shop.note or '' }}</td>
         <td class="subtle">{{ shop.saved_by_name or '—' }}{% if shop.saved_on %}<br>{{ shop.saved_on|day }}{% endif %}</td>
         <td></td>
         {% endif %}

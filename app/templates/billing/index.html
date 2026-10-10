@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Billing</h1>
+    <p>{{ company.name }} · {{ rate|money }} per truck each month{% if minimum %}, {{ minimum|money }} minimum{% endif %}</p></div>
+  {% if is_platform %}<a class="btn ghost" href="/platform/billing">All companies</a>{% endif %}
+</div>
+
+{% if current %}
+<section class="panel bill-now">
+  <div class="bill-now-main">
+    <div class="bill-label">{{ current.period|month }}</div>
+    <div class="bill-amount">{{ current.amount|money }}</div>
+    <div class="bill-meta">
+      <span class="badge {{ state(current)|bill_tone }}">{{ state(current) }}</span>
+      {% if current.status == 'paid' %}paid {{ current.paid_at|day }}{% else %}due by {{ current.due_on|day }}{% endif %}
+      · {{ current.truck_count }} truck{{ '' if current.truck_count == 1 else 's' }} × {{ current.unit_price|money }}
+    </div>
+  </div>
+  <div class="bill-now-actions">
+    <a class="btn" href="/billing/{{ current.id }}/invoice.pdf">Download invoice</a>
+    <a class="btn ghost" href="/billing/{{ current.id }}">View</a>
+  </div>
+</section>
+{% else %}
+<section class="panel"><p class="empty">Nothing is due this month.{% if not trucks %} There are no trucks to bill yet.{% endif %}</p></section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head"><h2>Invoices</h2><span class="subtle">one a month, counted on the day it is issued</span></div>
+  {% if invoices %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Invoice</th><th>Month</th><th class="right">Trucks</th><th class="right">Amount</th><th>Status</th><th>Due</th><th class="right"></th></tr></thead>
+    <tbody>
+      {% for item in invoices %}
+      <tr>
+        <td><a href="/billing/{{ item.id }}">{{ item.number }}</a></td>
+        <td>{{ item.period|month }}</td>
+        <td class="right">{{ item.truck_count }}</td>
+        <td class="right">{{ item.amount|money }}</td>
+        <td><span class="badge {{ state(item)|bill_tone }}">{{ state(item) }}</span>{% if item.status == 'paid' %} <span class="subtle">{{ item.paid_at|day }}</span>{% endif %}</td>
+        <td>{{ item.due_on|day }}</td>
+        <td class="right"><a class="btn ghost small" href="/billing/{{ item.id }}/invoice.pdf">PDF</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No invoices yet.</p>
+  {% endif %}
+</section>
+<p class="subtle">Paying online is not available yet. Your invoice is marked paid here once the payment is received.</p>
+{% endblock %}

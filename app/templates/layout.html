@@ -10,8 +10,7 @@
   ('/reminders', 'Reminders', none),
   ('/reports', 'Reports', none),
   ('/integrations', 'Integrations', 'admin'),
-  ('/company', 'Company', 'admin'),
-  ('/settings', 'Settings', none)
+  ('/company', 'Company', 'admin')
 ] %}
 <!doctype html>
 <html lang="en" data-style="modern"{% if session and session.theme in ('light', 'dark') %} data-theme="{{ session.theme }}"{% endif %}>
@@ -51,8 +50,16 @@
   </nav>
   <div class="who">
     {% include "_cat.html" %}
-    <a href="/account">{{ session.name }}<span class="role">{{ 'platform ' + session.platform_role if session.platform_role else (role or '') }}</span></a>
-    <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="link">Sign out</button></form>
+    <details class="who-menu">
+      <summary>{{ session.name }}<span class="role">{{ 'platform ' + session.platform_role if session.platform_role else (role or '') }}</span></summary>
+      <div class="who-panel">
+        <a href="/account" {% if active == '/account' %}class="on"{% endif %}>Account</a>
+        <a href="/settings" {% if active == '/settings' %}class="on"{% endif %}>Settings</a>
+        {% if is_platform %}<a href="/platform/billing" {% if active == '/billing' %}class="on"{% endif %}>Billing</a>
+        {% elif at_least(role, 'admin') %}<a href="/billing" {% if active == '/billing' %}class="on"{% endif %}>Billing</a>{% endif %}
+        <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="link">Sign out</button></form>
+      </div>
+    </details>
   </div>
 </header>
 <main class="{{ 'wide' if wide else '' }}">

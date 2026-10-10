@@ -57,6 +57,8 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       security.py     scrypt passwords, AES-GCM credential encryption, CSRF tokens
       auth.py         sessions, one-time codes, throttling
       tenancy.py      companies, memberships, role checks
+      captcha.py      login captcha: built-in picture, or hCaptcha when keys are set
+      billing.py      monthly invoices per company and their PDF
       queries.py      service status, due dates for every tracked service, dashboard aggregates
       work_types.py   the 81 work types, their systems, and the service schedule defaults
       samsara.py      Samsara REST client and fault-code parser
@@ -192,6 +194,7 @@ off the fleet map and the totals.
     manage.py bootstrap --email --name    create the first platform owner
     manage.py add-company --name          add a carrier
     manage.py add-user --email --name --company --role
+    manage.py reset-password EMAIL        temporary password to the user's Telegram
     manage.py sync --all                  pull from Samsara for every connected company
     manage.py horizon-connect --company --user --password
                                           store Horizon ELD credentials for a company
@@ -353,6 +356,21 @@ Each user picks auto, light or dark on the Settings page. Dark mode is the same
 old-school look (Verdana, Georgia, bordered tables, beveled buttons) on a dark
 palette. Adding companies and the Website section are separate permissions
 (`users.can_add_companies`, `users.can_see_site`) and new users never get them.
+
+## Billing
+
+Each company gets one invoice a month: trucks × `BILLING_RATE` (default $4), never
+less than `BILLING_MINIMUM` (default $40). Trucks are counted on the day the invoice
+is issued; sold and outside trucks are left out. The follow-up job issues the
+month's invoices by itself, due 14 days later.
+
+- **Billing** (account menu, company admins): this month's amount, every invoice,
+  and a PDF of each. There is no way to pay online.
+- **Platform → Billing** (platform staff): every company's invoices. Only the
+  platform owner can mark one paid or not paid, recount a due invoice, or set a
+  company's own price per truck (empty = default, 0 = not billed).
+
+Settings, Billing, Account and Sign out sit in the menu under the user's name.
 
 ## Error log
 

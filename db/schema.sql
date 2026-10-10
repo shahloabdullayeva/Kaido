@@ -842,3 +842,35 @@ update trucks t set location_source = 'horizon' where location_source is null an
 alter table odometer_readings drop constraint if exists odometer_readings_source_check;
 alter table odometer_readings add constraint odometer_readings_source_check
   check (source in ('manual','fuel','service','telematics','correction'));
+
+alter table companies add column if not exists billing_rate numeric(8,2);
+
+create table if not exists invoices (
+  id serial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  number text not null unique,
+  period date not null,
+  truck_count int not null,
+  unit_price numeric(8,2) not null,
+  minimum numeric(8,2) not null default 0,
+  amount numeric(10,2) not null,
+  status text not null default 'due' check (status in ('due','paid')),
+  issued_on date not null default current_date,
+  due_on date not null,
+  paid_at timestamptz,
+  paid_by int references users(id) on delete set null,
+  paid_note text,
+  created_at timestamptz not null default now(),
+  unique (company_id, period)
+);
+
+do $$
+begin
+  execute 'alter table invoices enable row level security';
+  execute 'alter table invoices force row level security';
+  execute 'drop policy if exists company_lock on invoices';
+  execute 'create policy company_lock on invoices using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+          'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+          'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+          'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)';
+end $$;

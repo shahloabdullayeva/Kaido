@@ -48,6 +48,8 @@ class Config:
     LOCKOUT_MINUTES = _int("LOCKOUT_MINUTES", 15)
     HCAPTCHA_SITE_KEY = os.environ.get("HCAPTCHA_SITE_KEY", "")
     HCAPTCHA_SECRET = os.environ.get("HCAPTCHA_SECRET", "")
+    BILLING_RATE = float(os.environ.get("BILLING_RATE", "4"))
+    BILLING_MINIMUM = float(os.environ.get("BILLING_MINIMUM", "40"))
     TIMEZONE = os.environ.get("TIMEZONE", "America/Chicago")
     BEHIND_PROXY = os.environ.get("BEHIND_PROXY", "false").lower() == "true"
     SAMSARA_BASE_URL = os.environ.get("SAMSARA_BASE_URL", "https://api.samsara.com")

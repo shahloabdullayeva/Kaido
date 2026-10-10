@@ -307,3 +307,12 @@
 [data-style="modern"] .hos-cell { border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px; background: var(--paper); }
 [data-style="modern"] .hos-label { font-size: 10.5px; font-weight: 600; letter-spacing: .12em; }
 [data-style="modern"] .hos-clock { font-family: var(--serif); font-size: 26px; font-weight: 600; line-height: 1.1; }
+[data-style="modern"] .invoice-sheet { border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 36px; }
+[data-style="modern"] .invoice-lines th, [data-style="modern"] .invoice-lines td { border-bottom-color: var(--line); }
+[data-style="modern"] .bill-now { padding: 22px 24px; }
+[data-style="modern"] .who-menu summary { color: var(--ink); font-weight: 600; padding: 4px 8px; border-radius: 6px; }
+[data-style="modern"] .who-menu summary:hover, [data-style="modern"] .who-menu[open] summary { background: var(--hover); }
+[data-style="modern"] .who-panel { border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow-lg); padding: 6px; }
+[data-style="modern"] .who-panel a, [data-style="modern"] .who-panel button.link { font-size: 13.5px; padding: 8px 10px; border-radius: 6px; color: var(--ink); text-decoration: none; }
+[data-style="modern"] .who-panel a:hover, [data-style="modern"] .who-panel button.link:hover { background: var(--hover); }
+[data-style="modern"] .who-panel form { border-top-color: var(--line); }

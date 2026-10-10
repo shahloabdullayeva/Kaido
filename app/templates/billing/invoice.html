@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Invoice {{ invoice.number }}</h1><p>{{ invoice.company_name }} · {{ invoice.period|month }}</p></div>
+  <div class="actions-row">
+    <a class="btn" href="/billing/{{ invoice.id }}/invoice.pdf">Download PDF</a>
+    <a class="btn ghost" href="{{ '/platform/billing' if is_platform else '/billing' }}">Back</a>
+  </div>
+</div>
+
+<section class="invoice-sheet">
+  <div class="invoice-top">
+    <div><div class="invoice-brand">KAIDO</div><div class="subtle">Fleet maintenance platform · {{ seller }}</div></div>
+    <div class="invoice-title"><div>INVOICE</div><div class="subtle">{{ invoice.number }}</div></div>
+  </div>
+  <div class="invoice-parties">
+    <div>
+      <div class="invoice-label">Bill to</div>
+      <strong>{{ invoice.legal_name or invoice.company_name }}</strong>
+      {% if invoice.dot_number %}<div>DOT {{ invoice.dot_number }}</div>{% endif %}
+      {% if invoice.mc_number %}<div>MC {{ invoice.mc_number }}</div>{% endif %}
+      {% if invoice.contact_name %}<div>{{ invoice.contact_name }}</div>{% endif %}
+      {% if invoice.contact_email %}<div>{{ invoice.contact_email }}</div>{% endif %}
+    </div>
+    <dl class="invoice-facts">
+      <dt>Billing period</dt><dd>{{ invoice.period|month }}</dd>
+      <dt>Issued</dt><dd>{{ invoice.issued_on|day }}</dd>
+      <dt>Due</dt><dd>{{ invoice.due_on|day }}</dd>
+      <dt>Status</dt><dd><span class="badge {{ state|bill_tone }}">{{ state }}</span></dd>
+    </dl>
+  </div>
+  <table class="invoice-lines">
+    <thead><tr><th>Description</th><th class="right">Trucks</th><th class="right">Per truck</th><th class="right">Amount</th></tr></thead>
+    <tbody>
+      <tr><td>Kaido fleet platform, {{ invoice.period|month }}</td><td class="right">{{ invoice.truck_count }}</td>
+        <td class="right">{{ invoice.unit_price|money }}</td><td class="right">{{ (invoice.truck_count * invoice.unit_price)|money }}</td></tr>
+      {% if minimum_applies %}
+      <tr><td>Monthly minimum of {{ invoice.minimum|money }}</td><td></td><td></td>
+        <td class="right">{{ (invoice.amount - invoice.truck_count * invoice.unit_price)|money }}</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+  <div class="invoice-total"><span>{{ 'Total paid' if invoice.status == 'paid' else 'Total due' }}</span><strong>{{ invoice.amount|money }} USD</strong></div>
+  {% if invoice.status == 'paid' %}
+  <p class="invoice-paid">Paid on {{ invoice.paid_at|day }}{% if owner and invoice.paid_note %} · {{ invoice.paid_note }}{% endif %}</p>
+  {% endif %}
+  <p class="subtle">Trucks are counted on the day the invoice is issued. Sold trucks and trucks from outside the fleet are not counted.</p>
+</section>
+
+{% if owner %}
+<section class="panel">
+  <div class="panel-head"><h2>Owner only</h2><span class="subtle">the company does not see this part</span></div>
+  <div class="pad actions-row">
+    {% if invoice.status == 'due' %}
+    <form method="post" action="/platform/billing/{{ invoice.id }}/status" class="actions-row">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <input type="hidden" name="status" value="paid">
+      <input type="hidden" name="back" value="/billing/{{ invoice.id }}">
+      <input name="note" maxlength="200" placeholder="How it was paid (optional)" aria-label="How it was paid">
+      <button class="btn" type="submit">Mark as paid</button>
+    </form>
+    <form method="post" action="/platform/billing/{{ invoice.id }}/recalculate" data-confirm="Recount this invoice with today's trucks and price?">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <input type="hidden" name="back" value="/billing/{{ invoice.id }}">
+      <button class="btn ghost" type="submit">Recount trucks</button>
+    </form>
+    {% else %}
+    <form method="post" action="/platform/billing/{{ invoice.id }}/status" data-confirm="Mark this invoice as not paid?">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <input type="hidden" name="status" value="due">
+      <input type="hidden" name="back" value="/billing/{{ invoice.id }}">
+      <button class="btn ghost" type="submit">Mark as not paid</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

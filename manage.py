@@ -212,6 +212,8 @@ def cmd_followup(args):
             return 1
         print(followup.run(force_company=company["id"]))
         return 0
+    from app import billing
+    billing.issue_missing()
     reminded = reminders.send_due()
     alerted = followup.send_fault_alerts()
     sent = followup.run()

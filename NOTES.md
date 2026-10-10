@@ -194,3 +194,12 @@ rather than an empty map.
 - Importing trucks from Samsara now runs a sync right away (BOOKIT showed 0 miles until the next cron).
 - Backups: Mon+Thu 03:30 server time (database + uploads/ photos), 4 weeks kept in /root/backups/fleet on the same server, then a Telegram summary to each company's admins (PTIs, AI checks, review, AI spend). AI cap stays $0.20/day (her decision, 1 Oct).
 - Truck Telegram groups: one group per truck (driver + office). Add @kaidofleet_bot and send `/truck <code>` (code on the truck page); the driver sends `/unit` once to be tagged. A group only ever gets its own truck's reminders. Pre-trip/post-trip on the company's picked days (default Mon+Thu, 06:00/20:00, US company timezone), plus a one-off nudge any day the truck drives 10+ mi with no pre-trip. Never post a fleet-wide list to a group: that went to Unit 003's group once on 1 Oct.
+
+## Billing, account menu, saved-shop notes (10 Oct 2026)
+- Price is $4 per truck per month with a $40 monthly minimum (Charlotte's decision; customers are Uzbek-run carriers). Both in `.env`-overridable config: `BILLING_RATE`, `BILLING_MINIMUM`.
+- Billing page per company: this month's amount, invoice list, downloadable PDF. No payment page on purpose: no US entity yet, so no wire or ACH. Charlotte marks invoices paid from Platform → Billing or from the invoice itself.
+- First invoices issued 10 Oct: KD-202610-003 (LLAP, 35 trucks, $140) and KD-202610-004 (BOOKIT, 36 trucks, $144), both due 24 Oct.
+- BOOKIT's 36 includes the three trucks that exist twice (107, 5831, 777). Use Recount after cleaning them up, or set a price for the company.
+- The invoice has no seller details beyond "Kaido" and the site address, and "Bill to" is only the company name: neither company has DOT, MC or a contact filled in on the Company page.
+- Settings and Billing left the top bar; they are in the menu under the user's name with Account and Sign out.
+- Saved shops: notes were in a one-line box that hid everything past a few words, dropped line breaks, and cut a note to 300 characters when the row was saved. Notes are now a full multi-line box up to 600 characters, and the name and phone columns are wide enough to read.

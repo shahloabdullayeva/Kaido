@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Billing</h1><p>Every company's invoices · {{ default_rate|money }} per truck each month unless a company has its own price</p></div>
+  <a class="btn ghost" href="/platform">Back</a>
+</div>
+
+<div class="stats">
+  <div class="stat {{ 'warn' if due else '' }}"><div class="stat-label">Waiting to be paid</div><div class="stat-value">{{ due|money }}</div><div class="stat-hint">all months</div></div>
+  <div class="stat"><div class="stat-label">Paid for {{ month|month }}</div><div class="stat-value">{{ paid|money }}</div><div class="stat-hint">this month's invoices</div></div>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Invoices</h2></div>
+  {% if invoices %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Invoice</th><th>Company</th><th>Month</th><th class="right">Trucks</th><th class="right">Amount</th><th>Status</th><th>Due</th><th class="right"></th></tr></thead>
+    <tbody>
+      {% for item in invoices %}
+      <tr>
+        <td><a href="/billing/{{ item.id }}">{{ item.number }}</a></td>
+        <td>{{ item.company_name }}</td>
+        <td>{{ item.period|month }}</td>
+        <td class="right">{{ item.truck_count }} × {{ item.unit_price|money }}</td>
+        <td class="right">{{ item.amount|money }}</td>
+        <td><span class="badge {{ state(item)|bill_tone }}">{{ state(item) }}</span>
+          {% if item.status == 'paid' %}<div class="subtle">{{ item.paid_at|day }}{% if item.paid_note %} · {{ item.paid_note }}{% endif %}</div>{% endif %}</td>
+        <td>{{ item.due_on|day }}</td>
+        <td class="right">
+          <div class="actions-row end">
+          <a class="btn ghost small" href="/billing/{{ item.id }}/invoice.pdf">PDF</a>
+          {% if owner %}
+          <form method="post" action="/platform/billing/{{ item.id }}/status" class="inline"{% if item.status == 'paid' %} data-confirm="Mark {{ item.number }} as not paid?"{% endif %}>
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <input type="hidden" name="status" value="{{ 'due' if item.status == 'paid' else 'paid' }}">
+            <button class="btn {{ 'ghost' if item.status == 'paid' else '' }} small" type="submit">{{ 'Mark not paid' if item.status == 'paid' else 'Mark paid' }}</button>
+          </form>
+          {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No invoices yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Price per company</h2><span class="subtle">leave empty for {{ default_rate|money }} · 0 means this company is not billed{% if minimum %} · {{ minimum|money }} monthly minimum{% endif %}</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Company</th><th class="right">Trucks billed</th><th class="right">Next invoice</th><th>Per truck</th></tr></thead>
+    <tbody>
+      {% for item in companies %}
+      <tr>
+        <td>{{ item.name }}{% if item.is_house %} <span class="badge info">own fleet</span>{% endif %}</td>
+        <td class="right">{{ item.truck_count }}</td>
+        <td class="right">{% if item.rate > 0 and item.truck_count %}{{ [item.truck_count * item.rate, minimum]|max|money }}{% else %}<span class="subtle">not billed</span>{% endif %}</td>
+        <td>
+          {% if owner %}
+          <form method="post" action="/platform/billing/companies/{{ item.id }}/rate" class="actions-row">
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <input name="rate" class="rate-input" inputmode="decimal" maxlength="8" value="{{ '' if item.billing_rate is none else '%.2f'|format(item.billing_rate) }}" placeholder="{{ '%.2f'|format(default_rate) }}" aria-label="Price per truck for {{ item.name }}">
+            <button class="btn ghost small" type="submit">Save</button>
+          </form>
+          {% else %}{{ item.rate|money }}{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

@@ -575,6 +575,9 @@ def saved_shops():
            where s.company_id = %s order by s.name""",
         (g.company["id"],),
     )
+    for shop in shops:
+        note = shop["note"] or ""
+        shop["note_rows"] = min(12, max(1, sum(len(line) // 48 + 1 for line in note.split("\n"))))
     pins = [{"id": shop["id"], "name": shop["name"], "note": shop["note"], "by": shop["saved_by_name"],
              "address": shop["address"], "phone": shop["phone"],
              "lat": float(shop["latitude"]), "lon": float(shop["longitude"]),
@@ -584,7 +587,7 @@ def saved_shops():
               for truck in rows("""select id, unit_number, latitude, longitude from trucks
                                    where company_id = %s and latitude is not null and status <> 'sold' and not is_outside""",
                                 (g.company["id"],))]
-    return render_template("maintenance/saved_shops.html", title="Saved shops", active="/maintenance",
+    return render_template("maintenance/saved_shops.html", title="Saved shops", active="/maintenance", wide=True,
                            shops=shops, pins=pins, truck_pins=trucks, google_on=google_places.available())
 
 
@@ -634,7 +637,7 @@ def save_list(link, note=None):
                  saved_by_name, saved_on)
                values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id""",
             (g.company["id"], forms.text(place["name"], 160), place["latitude"], place["longitude"], place["url"],
-             forms.text(link, 1000), forms.text(place["note"] or note, 300), g.session["user_id"],
+             forms.text(link, 1000), forms.text(place["note"] or note, 600), g.session["user_id"],
              forms.text(place.get("by"), 120), place.get("saved_on")),
         )
         added += 1
@@ -683,7 +686,7 @@ def save_shop(link=None, name=None, address=None, phone=None, note=None):
            values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
         (g.company["id"], name, forms.text(address, 300), found["latitude"], found["longitude"],
          forms.text(phone, 40), found["url"], found["place_id"], forms.text(link, 1000),
-         forms.text(note, 300), g.session["user_id"]),
+         forms.text(note, 600), g.session["user_id"]),
     )
     audit("saved_shop.added", "saved_shop", row["id"], {"name": name})
     return row, None
@@ -733,7 +736,7 @@ def edit_saved_shop(shop_id):
     execute(
         "update saved_shops set name = %s, phone = %s, note = %s where id = %s and company_id = %s",
         (forms.text(request.form.get("name"), 160) or shop["name"], forms.text(request.form.get("phone"), 40),
-         forms.text(request.form.get("note"), 300), shop_id, g.company["id"]),
+         forms.text(request.form.get("note"), 600), shop_id, g.company["id"]),
     )
     flash("Saved.", "ok")
     return redirect("/maintenance/saved-shops")

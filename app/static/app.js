@@ -113,3 +113,13 @@ for (const row of document.querySelectorAll('tr[data-href]')) {
     else window.location.href = row.dataset.href;
   });
 }
+
+const whoMenu = document.querySelector('.who-menu');
+if (whoMenu) {
+  document.addEventListener('click', (event) => {
+    if (whoMenu.open && !whoMenu.contains(event.target)) whoMenu.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') whoMenu.open = false;
+  });
+}
