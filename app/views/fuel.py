@@ -17,6 +17,8 @@ FUEL_TYPES = ["diesel", "def", "reefer", "gas"]
 @company_required
 def index():
     truck_id = forms.integer(request.args.get("truck_id"))
+    oldest_first = request.args.get("dir") == "asc"
+    order = "asc" if oldest_first else "desc"
     params = [g.company["id"]]
     clause = ""
     if truck_id:
@@ -28,7 +30,7 @@ def index():
             join trucks t on t.id = f.truck_id
             left join drivers d on d.id = f.driver_id
             where f.company_id = %s{clause}
-            order by f.purchased_at desc limit 200""",
+            order by f.purchased_at {order}, f.id {order} limit 200""",
         tuple(params),
     )
     totals = one(
@@ -39,7 +41,7 @@ def index():
         tuple(params),
     )
     return render_template("fuel/list.html", title="Fuel", active="/fuel", entries=entries,
-                           totals=totals, trucks=active_trucks(), truck_id=truck_id)
+                           totals=totals, trucks=active_trucks(), truck_id=truck_id, oldest_first=oldest_first)
 
 
 @bp.get("/fuel/new")

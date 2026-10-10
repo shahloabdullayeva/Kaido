@@ -14,12 +14,13 @@
           {% for truck in trucks %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
         </select>
       </label>
+      {% if oldest_first %}<input type="hidden" name="dir" value="asc">{% endif %}
     </form>
     <span class="muted">Card feeds land here automatically once EFS data sharing is switched on.</span>
   </div>
   {% if entries %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Date</th><th>Unit</th><th>Driver</th><th>Where</th><th>Type</th><th class="right">Gallons</th><th class="right">$/gal</th><th class="right">Total</th><th class="right">Odometer</th></tr></thead>
+    <thead><tr><th><a href="/fuel?{% if truck_id %}truck_id={{ truck_id }}&amp;{% endif %}dir={{ 'desc' if oldest_first else 'asc' }}" title="{{ 'Oldest first. Click for newest first.' if oldest_first else 'Newest first. Click for oldest first.' }}">Date {{ '↑' if oldest_first else '↓' }}</a></th><th>Unit</th><th>Driver</th><th>Where</th><th>Type</th><th class="right">Gallons</th><th class="right">$/gal</th><th class="right">Total</th><th class="right">Odometer</th></tr></thead>
     <tbody>
       {% for entry in entries %}
       <tr class="clickrow" data-href="/trucks/{{ entry.truck_id }}">

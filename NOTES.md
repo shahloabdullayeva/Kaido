@@ -102,6 +102,8 @@ rather than an empty map.
   its own PDF.
 - **Service baselines.** Trucks → Service baselines: pick a service (oil, PM-A/B/C, air dryer,
   transmission, differential, coolant, DPF), type the last miles or date, or upload a sheet.
+- **Fuel list order.** Click the Date column on Fuel to switch between newest first (the default)
+  and oldest first (`?dir=asc`); the truck filter keeps the order.
 - **EFS import.** Fuel → Import from EFS takes the eManager Transaction Report (CSV or Excel).
   Matches by unit, then by the number a unit starts with (a truck saved as "0638 Name (Carrier)"
   matches a file row for unit 638, when only one truck starts with that number), then card last 4;
