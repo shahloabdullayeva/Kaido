@@ -46,6 +46,8 @@ class Config:
     MAX_PASSWORD_ATTEMPTS = _int("MAX_PASSWORD_ATTEMPTS", 5)
     MAX_CODE_ATTEMPTS = _int("MAX_CODE_ATTEMPTS", 5)
     LOCKOUT_MINUTES = _int("LOCKOUT_MINUTES", 15)
+    HCAPTCHA_SITE_KEY = os.environ.get("HCAPTCHA_SITE_KEY", "")
+    HCAPTCHA_SECRET = os.environ.get("HCAPTCHA_SECRET", "")
     TIMEZONE = os.environ.get("TIMEZONE", "America/Chicago")
     BEHIND_PROXY = os.environ.get("BEHIND_PROXY", "false").lower() == "true"
     SAMSARA_BASE_URL = os.environ.get("SAMSARA_BASE_URL", "https://api.samsara.com")

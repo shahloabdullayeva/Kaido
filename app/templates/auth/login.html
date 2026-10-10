@@ -7,12 +7,17 @@
   <input type="hidden" name="next" value="{{ next }}">
   {{ field('Work email', 'email', email, type='email', required=True, attrs='autocomplete="username" maxlength="200" autofocus') }}
   {{ field('Password', 'password', '', type='password', required=True, attrs='autocomplete="current-password" maxlength="200"') }}
+  {% if app_config.HCAPTCHA_SITE_KEY and app_config.HCAPTCHA_SECRET %}
+  <div class="h-captcha" data-sitekey="{{ app_config.HCAPTCHA_SITE_KEY }}"></div>
+  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+  {% else %}
   <input type="hidden" name="captcha" value="{{ captcha }}">
   <div class="captcha">
     <img src="/login/captcha/{{ captcha }}.png" width="220" height="70" alt="Picture with five characters">
     <a href="/login{% if next and next != '/' %}?next={{ next|urlencode }}{% endif %}">New picture</a>
   </div>
   {{ field('Characters in the picture', 'captcha_answer', '', required=True, attrs='autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12"') }}
+  {% endif %}
   <button class="btn" type="submit" data-busy="Checking…">Continue</button>
 </form>
 <p class="auth-note">Every sign-in needs a one-time code sent to your Telegram.</p>

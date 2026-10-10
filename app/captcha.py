@@ -2,10 +2,16 @@ import io
 import secrets
 from pathlib import Path
 
+import requests
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from .config import config
 from .db import execute, insert, one
+from .logs import get
 from .security import random_token
+
+log = get("captcha")
+HCAPTCHA_VERIFY = "https://api.hcaptcha.com/siteverify"
 
 ALPHABET = "ACDEFHJKMNPRTUVWXY34679"
 LENGTH = 5
@@ -14,6 +20,39 @@ WIDTH = 220
 HEIGHT = 70
 FONT = Path(__file__).resolve().parent / "fonts" / "DejaVuSansCondensed-Bold.ttf"
 INKS = [(24, 24, 27), (30, 58, 95), (88, 28, 60), (20, 83, 45)]
+
+
+def hosted():
+    return bool(config.HCAPTCHA_SITE_KEY and config.HCAPTCHA_SECRET)
+
+
+def issue():
+    return None if hosted() else create()
+
+
+def passed(form, ip):
+    if hosted():
+        return verify_hosted(form.get("h-captcha-response"), ip)
+    return solve(form.get("captcha"), form.get("captcha_answer"))
+
+
+def verify_hosted(token, ip):
+    if not token:
+        return False
+    try:
+        response = requests.post(
+            HCAPTCHA_VERIFY,
+            data={"secret": config.HCAPTCHA_SECRET, "response": token, "remoteip": ip,
+                  "sitekey": config.HCAPTCHA_SITE_KEY},
+            timeout=8,
+        )
+        data = response.json()
+    except (requests.RequestException, ValueError) as err:
+        log.warning("hcaptcha verify failed: %s", err)
+        return False
+    if not data.get("success"):
+        log.info("hcaptcha rejected: %s", data.get("error-codes"))
+    return bool(data.get("success"))
 
 
 def create():

@@ -100,8 +100,12 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
 
 ## Signing in
 
-Password and a picture captcha, then a six-digit code sent to Telegram on every
-sign-in. No browser is remembered.
+Password and a captcha, then a six-digit code sent to Telegram on every sign-in.
+No browser is remembered.
+
+The captcha is a built-in picture of five characters. Set `HCAPTCHA_SITE_KEY` and
+`HCAPTCHA_SECRET` (free at hcaptcha.com) and the login page switches to hCaptcha's
+click-the-pictures check instead; if hCaptcha cannot be reached, sign-in is refused.
 
 Without `TELEGRAM_BOT_TOKEN` set, codes print to the server log — development only.
 In production a user with no linked Telegram cannot sign in.

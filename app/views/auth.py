@@ -58,6 +58,7 @@ def login():
         "attempts": "Too many wrong codes. Start again.",
         "denied": "That sign-in was blocked from Telegram.",
     }
+    g.hcaptcha = captcha.hosted()
     return render_template(
         "auth/login.html",
         title="Sign in",
@@ -65,7 +66,7 @@ def login():
         notice="You are signed out." if request.args.get("notice") == "signedout" else None,
         next=safe_next(request.args.get("next")),
         email="",
-        captcha=captcha.create(),
+        captcha=captcha.issue(),
     )
 
 
@@ -97,16 +98,20 @@ def login_submit():
         return render_template(
             "auth/login.html", title="Slow down",
             error=f"Too many attempts from this network. Try again in {minutes_until(until)} minutes.",
-            next=next_url, email=email, captcha=captcha.create(),
+            next=next_url, email=email, captcha=captcha.issue(),
         ), 429
+
+    g.hcaptcha = captcha.hosted()
 
     def fail(message, status=401):
         return render_template("auth/login.html", title="Sign in", error=message, next=next_url, email=email,
-                               captcha=captcha.create()), status
+                               captcha=captcha.issue()), status
 
     throttle(ip_key, 20, 15, config.LOCKOUT_MINUTES)
-    if not captcha.solve(request.form.get("captcha"), request.form.get("captcha_answer")):
+    if not captcha.passed(request.form, ip):
         audit("login.bad_captcha", "user", None, {"email": email})
+        if captcha.hosted():
+            return fail("Finish the picture check before continuing.", 400)
         return fail("The characters did not match the picture. Try this new one.", 400)
 
     user = find_user_by_email(email)

@@ -32,6 +32,8 @@ All enabled at boot. `systemctl status kaido` / `journalctl -u kaido -f` to look
 
 Sign-in: password and a picture captcha, then a 6-digit Telegram code every time.
 Trusted devices were removed on 10 Oct 2026.
+The captcha is the built-in picture until `HCAPTCHA_SITE_KEY` and `HCAPTCHA_SECRET`
+are in `.env`; then it is hCaptcha (click the pictures). Keys not added yet.
 Both temporary passwords have travelled through chat — change them.
 
 ## Data in there now

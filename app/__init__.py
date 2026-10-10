@@ -62,6 +62,16 @@ def create_app():
                 "frame-src https://*.google.com; worker-src blob:; "
                 "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
             )
+        elif getattr(g, "hcaptcha", False):
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' https://hcaptcha.com https://*.hcaptcha.com; "
+                "style-src 'self' https://hcaptcha.com https://*.hcaptcha.com; "
+                "frame-src https://hcaptcha.com https://*.hcaptcha.com; "
+                "connect-src 'self' https://hcaptcha.com https://*.hcaptcha.com; "
+                "img-src 'self' data:; "
+                "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
+            )
         else:
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; script-src 'self'; style-src 'self'; "
