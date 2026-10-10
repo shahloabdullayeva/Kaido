@@ -229,6 +229,9 @@ body.auth {
 .auth-card h1 { font-size: 16px; margin-bottom: 10px; }
 .auth-card .field { margin-bottom: 10px; }
 .auth-card .btn { width: 100%; text-align: center; padding: 5px 12px; }
+.captcha { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.captcha img { border: 1px solid var(--face-dark); max-width: 100%; height: auto; }
+.captcha a { font-size: 11px; white-space: nowrap; }
 .auth-note { color: var(--muted); font-size: 11px; margin-top: 12px; }
 .code-input { letter-spacing: 8px; font-size: 20px; text-align: center; font-weight: bold; font-family: var(--mono); }
 .checkbox { display: flex; flex-direction: row; align-items: center; gap: 6px; font-size: 12px; }

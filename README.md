@@ -55,7 +55,7 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       config.py       .env loader
       db.py           psycopg connection pool and query helpers
       security.py     scrypt passwords, AES-GCM credential encryption, CSRF tokens
-      auth.py         sessions, trusted devices, one-time codes, throttling
+      auth.py         sessions, one-time codes, throttling
       tenancy.py      companies, memberships, role checks
       queries.py      service status, due dates for every tracked service, dashboard aggregates
       work_types.py   the 81 work types, their systems, and the service schedule defaults
@@ -100,18 +100,20 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
 
 ## Signing in
 
-Password, then a six-digit code sent to Telegram the first time a browser is used.
-That browser is then trusted for `TRUST_DAYS` (30 by default), so day to day it is
-password only. Set `TRUST_DAYS=1` for a code every day.
+Password and a picture captcha, then a six-digit code sent to Telegram on every
+sign-in. No browser is remembered.
 
 Without `TELEGRAM_BOT_TOKEN` set, codes print to the server log — development only.
-In production a user with no linked Telegram cannot sign in from a new device.
+In production a user with no linked Telegram cannot sign in.
 
 To link Telegram: Account → Get link code, then send `/link <code>` to the bot with
 `./venv/bin/python manage.py telegram-bot` running.
 
 Every sign-in message carries a block link. Following it cancels the attempt, locks
-the account, and signs out every session and trusted device.
+the account, and signs out every session.
+
+Forgotten password: `./venv/bin/python manage.py reset-password <email>` sends a
+temporary one to that user's Telegram and signs out their sessions.
 
 ## Roles
 

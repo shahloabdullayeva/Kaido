@@ -1,16 +1,17 @@
 import hmac
 from datetime import datetime, timezone
 
-from flask import Blueprint, flash, g, redirect, render_template, request, url_for
+from flask import Blueprint, Response, abort, flash, g, redirect, render_template, request, url_for
 
+from .. import captcha
 from ..audit import audit, client_ip
 from ..auth import (
-    ANON_CSRF_COOKIE, DEVICE_COOKIE, NEXT_COOKIE, PENDING_COOKIE, SESSION_COOKIE,
+    ANON_CSRF_COOKIE, NEXT_COOKIE, PENDING_COOKIE, SESSION_COOKIE,
     bump_challenge_attempts, clear_failed_logins, consume_challenge, create_challenge,
-    create_device, create_session, device_label, find_user_by_email, load_challenge,
+    create_session, device_label, find_user_by_email, load_challenge,
     login_required, notify_login, password_problem, register_failed_login,
-    revoke_all_devices, revoke_all_sessions, revoke_session_token, throttle,
-    throttle_clear, throttle_status, touch_device, trusted_device, user_locked,
+    revoke_all_sessions, revoke_session_token, throttle,
+    throttle_clear, throttle_status, user_locked,
 )
 from ..config import IS_PROD, config
 from ..db import execute, insert, one, rows
@@ -64,7 +65,18 @@ def login():
         notice="You are signed out." if request.args.get("notice") == "signedout" else None,
         next=safe_next(request.args.get("next")),
         email="",
+        captcha=captcha.create(),
     )
+
+
+@bp.get("/login/captcha/<handle>.png")
+def captcha_image(handle):
+    data = captcha.image(handle)
+    if not data:
+        abort(404)
+    response = Response(data, mimetype="image/png")
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @bp.post("/login")
@@ -85,13 +97,18 @@ def login_submit():
         return render_template(
             "auth/login.html", title="Slow down",
             error=f"Too many attempts from this network. Try again in {minutes_until(until)} minutes.",
-            next=next_url, email=email,
+            next=next_url, email=email, captcha=captcha.create(),
         ), 429
 
     def fail(message, status=401):
-        return render_template("auth/login.html", title="Sign in", error=message, next=next_url, email=email), status
+        return render_template("auth/login.html", title="Sign in", error=message, next=next_url, email=email,
+                               captcha=captcha.create()), status
 
     throttle(ip_key, 20, 15, config.LOCKOUT_MINUTES)
+    if not captcha.solve(request.form.get("captcha"), request.form.get("captcha_answer")):
+        audit("login.bad_captcha", "user", None, {"email": email})
+        return fail("The characters did not match the picture. Try this new one.", 400)
+
     user = find_user_by_email(email)
     if not user:
         burn_password_time()
@@ -124,20 +141,6 @@ def login_submit():
 
     clear_failed_logins(user["id"])
     throttle_clear(user_key)
-
-    device = trusted_device(user["id"], request.cookies.get(DEVICE_COOKIE))
-    if device:
-        touch_device(device["id"])
-        session, token = create_session(user, device["id"], default_company_id(user["id"]))
-        audit("login.success", "session", session["id"], {"method": "trusted_device", "device": device["label"]},
-              company_id=session["company_id"], user_id=user["id"], actor=user["email"])
-        send_telegram(user["telegram_chat_id"], "\n".join([
-            "<b>Kaido sign-in</b>",
-            f"{user['email']} on a trusted device ({device_label()}) from {ip}.",
-            "Not you? Change your password now.",
-        ]))
-        response = redirect(next_url)
-        return set_cookie(response, SESSION_COOKIE, token, config.SESSION_MAX_HOURS * 3600)
 
     if not user["telegram_chat_id"] and config.ENV == "production":
         audit("login.no_telegram", "user", user["id"], None, company_id=default_company_id(user["id"]),
@@ -201,25 +204,17 @@ def verify_submit():
     if not user or user["status"] != "active":
         return redirect("/login?error=expired")
 
-    device_token = None
-    device_id = None
-    if request.form.get("remember") == "1":
-        device, device_token = create_device(user)
-        device_id = device["id"]
-
-    session, token = create_session(user, device_id, default_company_id(user["id"]))
-    audit("login.success", "session", session["id"], {"method": "telegram_code", "trusted": bool(device_id)},
+    session, token = create_session(user, None, default_company_id(user["id"]))
+    audit("login.success", "session", session["id"], {"method": "telegram_code"},
           company_id=session["company_id"], user_id=user["id"], actor=user["email"])
     send_telegram(user["telegram_chat_id"], "\n".join([
         "<b>Kaido sign-in confirmed</b>",
         f"{device_label()} from {client_ip()}",
-        f"This device is trusted for {config.TRUST_DAYS} day" + ("" if config.TRUST_DAYS == 1 else "s") + "." if device_id else "This device was not trusted.",
+        "Not you? Change your password now.",
     ]))
 
     response = redirect(safe_next(request.cookies.get(NEXT_COOKIE)))
     set_cookie(response, SESSION_COOKIE, token, config.SESSION_MAX_HOURS * 3600)
-    if device_token:
-        set_cookie(response, DEVICE_COOKIE, device_token, config.TRUST_DAYS * 86400)
     response.delete_cookie(PENDING_COOKIE, path="/")
     response.delete_cookie(NEXT_COOKIE, path="/")
     return response
@@ -260,16 +255,15 @@ def deny_submit(handle):
         (config.LOCKOUT_MINUTES, challenge["user_id"]),
     )
     revoke_all_sessions(challenge["user_id"])
-    revoke_all_devices(challenge["user_id"])
     audit("login.denied", "challenge", challenge["id"], {"by": "telegram_link"},
           company_id=default_company_id(challenge["user_id"]), user_id=challenge["user_id"], actor=challenge["email"])
     send_telegram(challenge["telegram_chat_id"], "\n".join([
         "<b>Sign-in blocked</b>",
-        "Every session and trusted device for your account was signed out.",
+        "Every session for your account was signed out.",
         "Change your password as soon as you can.",
     ]))
     return render_template("auth/blocked.html", title="Blocked",
-                           notice="Blocked. All sessions and trusted devices were signed out. Change your password next.")
+                           notice="Blocked. Every session was signed out. Change your password next.")
 
 
 @bp.post("/logout")
@@ -290,20 +284,13 @@ def account():
         "select * from sessions where user_id = %s and revoked_at is null and expires_at > now() order by last_seen_at desc",
         (user["id"],),
     )
-    devices = rows(
-        "select * from devices where user_id = %s and revoked_at is null and trusted_until > now() order by last_seen_at desc",
-        (user["id"],),
-    )
     pending_link = one(
         "select * from telegram_links where user_id = %s and used_at is null and expires_at > now() order by id desc limit 1",
         (user["id"],),
     )
-    device_token = request.cookies.get(DEVICE_COOKIE)
-    current_device_hash = sha256(device_token) if device_token else None
     return render_template(
         "auth/account.html", title="Account", active="/account", user=user,
-        sessions=sessions, devices=devices, pending_link=pending_link,
-        current_device_hash=current_device_hash, masked=masked_telegram(user),
+        sessions=sessions, pending_link=pending_link, masked=masked_telegram(user),
     )
 
 
@@ -361,28 +348,8 @@ def telegram_unlink():
         (g.session["user_id"],),
     )
     audit("telegram.unlinked", "user", g.session["user_id"])
-    flash("Telegram unlinked. Link it again before signing in from a new device.", "warn")
+    flash("Telegram unlinked. Link it again before you sign out, or you cannot sign back in.", "warn")
     return redirect("/account")
-
-
-@bp.post("/account/devices/<int:device_id>/revoke")
-@login_required
-def revoke_device(device_id):
-    execute("update devices set revoked_at = now() where id = %s and user_id = %s", (device_id, g.session["user_id"]))
-    audit("device.revoked", "device", device_id)
-    flash("Device revoked.", "ok")
-    return redirect("/account")
-
-
-@bp.post("/account/devices/revoke-all")
-@login_required
-def revoke_devices():
-    revoke_all_devices(g.session["user_id"])
-    audit("device.revoked_all", "user", g.session["user_id"])
-    flash("All trusted devices revoked.", "ok")
-    response = redirect("/account")
-    response.delete_cookie(DEVICE_COOKIE, path="/")
-    return response
 
 
 @bp.post("/account/sessions/<int:session_id>/revoke")

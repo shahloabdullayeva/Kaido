@@ -12,7 +12,6 @@ from .security import (
 from .telegram import send as send_telegram
 
 SESSION_COOKIE = "fleet_sid"
-DEVICE_COOKIE = "fleet_did"
 PENDING_COOKIE = "fleet_pending"
 NEXT_COOKIE = "fleet_next"
 ANON_CSRF_COOKIE = "fleet_csrf"
@@ -127,30 +126,6 @@ def clear_failed_logins(user_id):
     execute("update users set failed_logins = 0, locked_until = null, updated_at = now() where id = %s", (user_id,))
 
 
-def trusted_device(user_id, token):
-    if not token:
-        return None
-    return one(
-        """select * from devices
-           where token_hash = %s and user_id = %s and revoked_at is null and trusted_until > now()""",
-        (sha256(token), user_id),
-    )
-
-
-def create_device(user):
-    token = random_token(32)
-    device = insert(
-        """insert into devices (user_id, token_hash, label, user_agent, first_ip, last_ip, trusted_until)
-           values (%s, %s, %s, %s, %s, %s, now() + make_interval(days => %s)) returning *""",
-        (user["id"], sha256(token), device_label(), user_agent(), client_ip(), client_ip(), config.TRUST_DAYS),
-    )
-    return device, token
-
-
-def touch_device(device_id):
-    execute("update devices set last_seen_at = now(), last_ip = %s where id = %s", (client_ip(), device_id))
-
-
 def create_session(user, device_id=None, company_id=None):
     token = random_token(32)
     session = insert(
@@ -196,10 +171,6 @@ def revoke_session_token(token):
 
 def revoke_all_sessions(user_id):
     execute("update sessions set revoked_at = now() where user_id = %s and revoked_at is null", (user_id,))
-
-
-def revoke_all_devices(user_id):
-    execute("update devices set revoked_at = now() where user_id = %s and revoked_at is null", (user_id,))
 
 
 def create_challenge(user):

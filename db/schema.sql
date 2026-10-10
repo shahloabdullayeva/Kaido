@@ -115,6 +115,13 @@ create table if not exists throttle (
   blocked_until timestamptz
 );
 
+create table if not exists captchas (
+  handle text primary key,
+  answer text not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists audit_log (
   id bigserial primary key,
   company_id int references companies(id) on delete set null,

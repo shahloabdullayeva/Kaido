@@ -1,7 +1,7 @@
 {% extends "auth_layout.html" %}
 {% block body %}
 <h1>Block this sign-in?</h1>
-<p class="auth-note" style="margin-top:0">This cancels the pending code, locks the account for {{ lockout }} minutes and signs out every device. Do this if you did not request the code.</p>
+<p class="auth-note" style="margin-top:0">This cancels the pending code, locks the account for {{ lockout }} minutes and signs out every session. Do this if you did not request the code.</p>
 <form method="post" action="/login/deny/{{ handle }}">
   <input type="hidden" name="csrf" value="{{ anon_csrf() }}">
   <button class="btn danger" type="submit" data-busy="Blocking…">Block it and sign out everywhere</button>

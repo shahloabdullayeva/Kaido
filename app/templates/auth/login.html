@@ -7,7 +7,13 @@
   <input type="hidden" name="next" value="{{ next }}">
   {{ field('Work email', 'email', email, type='email', required=True, attrs='autocomplete="username" maxlength="200" autofocus') }}
   {{ field('Password', 'password', '', type='password', required=True, attrs='autocomplete="current-password" maxlength="200"') }}
+  <input type="hidden" name="captcha" value="{{ captcha }}">
+  <div class="captcha">
+    <img src="/login/captcha/{{ captcha }}.png" width="220" height="70" alt="Picture with five characters">
+    <a href="/login{% if next and next != '/' %}?next={{ next|urlencode }}{% endif %}">New picture</a>
+  </div>
+  {{ field('Characters in the picture', 'captcha_answer', '', required=True, attrs='autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12"') }}
   <button class="btn" type="submit" data-busy="Checking…">Continue</button>
 </form>
-<p class="auth-note">New devices need a one-time code sent to your Telegram. Trusted devices stay signed in for {{ app_config.TRUST_DAYS }} day{{ '' if app_config.TRUST_DAYS == 1 else 's' }}.</p>
+<p class="auth-note">Every sign-in needs a one-time code sent to your Telegram.</p>
 {% endblock %}

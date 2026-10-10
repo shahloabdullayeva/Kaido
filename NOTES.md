@@ -30,8 +30,8 @@ All enabled at boot. `systemctl status kaido` / `journalctl -u kaido -f` to look
 - **John** — admin at LLAP Logistics. Telegram linked, so he gets the follow-up,
   reminders sent to admins, and stop-lamp alerts.
 
-Sign-in: password, then a 6-digit Telegram code on any browser we have not seen.
-`TRUST_DAYS=1`, so a browser is trusted for one day and then asks again.
+Sign-in: password and a picture captcha, then a 6-digit Telegram code every time.
+Trusted devices were removed on 10 Oct 2026.
 Both temporary passwords have travelled through chat — change them.
 
 ## Data in there now

@@ -86,6 +86,32 @@ def cmd_user(args):
     return 0
 
 
+def cmd_reset_password(args):
+    from app.telegram import send
+
+    user = one("select * from users where lower(email) = lower(%s)", (args.email,))
+    if not user:
+        print(f"No user {args.email}")
+        return 1
+    password = "K" + random_token(12) + "7a"
+    execute(
+        "update users set password_hash = %s, failed_logins = 0, locked_until = null, updated_at = now() where id = %s",
+        (hash_password(password), user["id"]),
+    )
+    execute("update sessions set revoked_at = now() where user_id = %s and revoked_at is null", (user["id"],))
+    execute("delete from throttle where key = %s", (f"login:email:{user['email'].lower()}",))
+    sent = send(user["telegram_chat_id"], "\n".join([
+        "<b>Kaido password reset</b>",
+        f"Temporary password: <code>{password}</code>",
+        "Sign in, change it on the Account page, then delete this message.",
+    ]))
+    if sent["ok"]:
+        print(f"New password for {user['email']} sent to their Telegram. Every session was signed out.")
+    else:
+        print(f"Telegram did not deliver ({sent.get('reason')}). Temporary password: {password}")
+    return 0
+
+
 def cmd_sync(args):
     from app.sync import sync_all, sync_company
     if args.all:
@@ -454,6 +480,10 @@ def main():
     user.add_argument("--telegram", type=int)
     user.add_argument("--password")
     user.set_defaults(func=cmd_user)
+
+    reset = sub.add_parser("reset-password", help="set a new temporary password and send it to the user's Telegram")
+    reset.add_argument("email")
+    reset.set_defaults(func=cmd_reset_password)
 
     sync = sub.add_parser("sync", help="pull from Samsara")
     sync.add_argument("--company")

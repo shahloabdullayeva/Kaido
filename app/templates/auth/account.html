@@ -13,12 +13,12 @@
   <div class="pad">
     {% if user.telegram_chat_id %}
     <p style="margin:0 0 12px">Linked to <strong>{{ masked }}</strong>. Sign-in codes and alerts go there.</p>
-    <form method="post" action="/account/telegram/unlink" data-confirm="Unlink Telegram? You will not be able to sign in from a new device until it is linked again.">
+    <form method="post" action="/account/telegram/unlink" data-confirm="Unlink Telegram? You will not be able to sign in again until it is linked.">
       <input type="hidden" name="csrf" value="{{ session.csrf }}">
       <button class="btn danger small" type="submit">Unlink Telegram</button>
     </form>
     {% else %}
-    <p style="margin:0 0 12px">Telegram is not linked. Without it you cannot sign in from a new device.</p>
+    <p style="margin:0 0 12px">Telegram is not linked. Without it you cannot sign in.</p>
     {% if pending_link %}
     <p style="margin:0 0 12px">Send this to the bot: <span class="mono"><strong>/link {{ pending_link.code }}</strong></span><br>
       <span class="muted">Expires {{ pending_link.expires_at|stamp }}.</span></p>
@@ -42,39 +42,6 @@
     </div>
     <div class="form-actions"><button class="btn" type="submit">Change password</button><span class="muted">Other sessions are signed out.</span></div>
   </form>
-</section>
-
-<section class="panel">
-  <div class="panel-head">
-    <h2>Trusted devices</h2>
-    <form method="post" action="/account/devices/revoke-all" class="inline" data-confirm="Revoke every trusted device?">
-      <input type="hidden" name="csrf" value="{{ session.csrf }}">
-      <button class="btn danger small" type="submit">Revoke all</button>
-    </form>
-  </div>
-  {% if devices %}
-  <div class="table-wrap"><table>
-    <thead><tr><th>Device</th><th>Last seen</th><th>Last IP</th><th>Trusted until</th><th class="right"></th></tr></thead>
-    <tbody>
-      {% for device in devices %}
-      <tr>
-        <td>{{ device.label or 'Device' }}{% if current_device_hash and device.token_hash|string == current_device_hash|string %} <span class="badge info">this one</span>{% endif %}</td>
-        <td>{{ device.last_seen_at|ago }}</td>
-        <td class="mono">{{ device.last_ip or '—' }}</td>
-        <td>{{ device.trusted_until|stamp }}</td>
-        <td class="right">
-          <form method="post" action="/account/devices/{{ device.id }}/revoke" class="inline">
-            <input type="hidden" name="csrf" value="{{ session.csrf }}">
-            <button class="btn danger small" type="submit">Revoke</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table></div>
-  {% else %}
-  <p class="empty">No trusted devices. Every sign-in asks for a Telegram code.</p>
-  {% endif %}
 </section>
 
 <section class="panel">
