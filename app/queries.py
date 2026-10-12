@@ -1,7 +1,8 @@
 from datetime import date, datetime, timezone
 
+from . import pm_list
 from .db import one, rows
-from .work_types import SCHEDULE_KINDS, SCHEDULES, SEVERE_FACTOR
+from .work_types import SCHEDULES, SEVERE_FACTOR
 
 
 def trucks_with_service(company_id):
@@ -26,34 +27,25 @@ def trucks_with_service(company_id):
 
 def attach_last_services(trucks, company_id):
     ids = [truck["id"] for truck in trucks]
+    company_items = pm_list.company_schedules(company_id)
+    edits = pm_list.truck_edits(ids)
+    for truck in trucks:
+        truck["schedules"] = pm_list.for_truck(company_items, edits.get(truck["id"], []))
+    kinds = sorted({kind for truck in trucks for item in truck["schedules"] for kind in item["covered_by"]})
     latest = {}
-    if ids:
+    if ids and kinds:
         for row in rows(
             """select distinct on (truck_id, kind) truck_id, kind, odometer, performed_on, next_due_odometer, next_due_on
                from maintenance_orders
                where truck_id = any(%s) and status = 'done' and kind = any(%s)
                  and (odometer is not null or performed_on is not null)
                order by truck_id, kind, odometer desc nulls last, performed_on desc nulls last, id desc""",
-            (ids, SCHEDULE_KINDS),
+            (ids, kinds),
         ):
             latest.setdefault(row["truck_id"], {})[row["kind"]] = row
-    intervals = company_intervals(company_id)
     for truck in trucks:
         truck["last_service"] = latest.get(truck["id"], {})
-        truck["intervals"] = intervals
     return trucks
-
-
-def company_intervals(company_id):
-    saved = {row["kind"]: row for row in rows("select kind, miles, months from service_intervals where company_id = %s", (company_id,))}
-    out = {}
-    for item in SCHEDULES:
-        row = saved.get(item["kind"])
-        out[item["kind"]] = {
-            "miles": row["miles"] if row else item["miles"],
-            "months": row["months"] if row else item["months"],
-        }
-    return out
 
 
 def add_months(day, months):
@@ -67,7 +59,7 @@ def add_months(day, months):
 
 
 def schedule_status(truck, item):
-    interval = (truck.get("intervals") or {}).get(item["kind"]) or {"miles": item["miles"], "months": item["months"]}
+    interval = item if item.get("own") else ((truck.get("intervals") or {}).get(item["kind"]) or item)
     miles = interval["miles"]
     if miles and truck.get("duty_cycle") == "severe":
         miles = int(miles * SEVERE_FACTOR)
@@ -136,7 +128,7 @@ def service_status(truck):
     else:
         items.append({"label": "DOT annual", "core": True, "due": None, "remaining": None, "tone": "muted", "detail": "Not recorded"})
     if "last_service" in truck:
-        items.extend(schedule_status(truck, item) for item in SCHEDULES)
+        items.extend(schedule_status(truck, item) for item in truck.get("schedules", SCHEDULES))
     return items
 
 

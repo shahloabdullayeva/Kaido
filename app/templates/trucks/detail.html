@@ -47,7 +47,7 @@
 
 <section class="panel">
   <div class="panel-head"><h2>Service schedule</h2>
-    {% if at_least(role, 'admin') %}<a class="btn ghost small" href="/trucks/intervals">Intervals</a>{% endif %}</div>
+    {% if at_least(role, 'admin') %}<a class="btn ghost small" href="/trucks/{{ truck.id }}/services">Edit list</a>{% endif %}</div>
   <div class="table-wrap"><table>
     <thead><tr><th>Service</th><th>Every</th><th>Last done</th><th>Next due</th><th>Status</th></tr></thead>
     <tbody>
@@ -58,7 +58,7 @@
         <td>{% if item.last_odometer %}{{ item.last_odometer|number }} mi{% endif %}{% if item.last_on %}<div class="subtle">{{ item.last_on|day }}</div>{% endif %}{% if not item.last_odometer and not item.last_on %}—{% endif %}</td>
         <td>{% if item.due %}{{ item.due|number }} mi{% endif %}{% if item.due_on %}<div class="subtle">{{ item.due_on|day }}</div>{% endif %}{% if not item.due and not item.due_on %}—{% endif %}</td>
         <td><span class="badge {{ item.tone }}">{{ item.detail }}</span>
-          {% if item.tone == 'muted' and at_least(role, 'admin') %}<a class="subtle" href="/trucks/baselines?kind={{ item.kind }}">add last one</a>{% endif %}</td>
+          {% if item.tone == 'muted' and at_least(role, 'admin') %}<a class="subtle" href="/trucks/baselines?kind={{ item.kind|urlencode }}">add last one</a>{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>

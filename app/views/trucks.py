@@ -1,11 +1,11 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms, hos, pti, pti_driver, sheets
+from .. import forms, hos, pm_list, pti, pti_driver, sheets
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
-from ..queries import attach_last_services, company_intervals, fuel_economy, service_status
-from ..work_types import BASELINE_KINDS, SCHEDULES, SEVERE_FACTOR, label as work_label
+from ..queries import attach_last_services, fuel_economy, service_status
+from ..work_types import SEVERE_FACTOR, label as work_label
 from ..tenancy import active_drivers, at_least, company_required, role_required, scoped_truck
 
 bp = Blueprint("trucks", __name__)
@@ -100,10 +100,21 @@ def save_baseline(truck, kind, miles, performed_on, vendor):
     return None
 
 
+def baseline_kinds():
+    return ["oil"] + [kind for kind, _ in pm_list.candidates(g.company["id"])]
+
+
+def interval_from(form, suffix):
+    miles = forms.integer(form.get(f"miles_{suffix}"))
+    months = forms.integer(form.get(f"months_{suffix}"))
+    return (miles if miles and miles >= 500 else None), (months if months and 0 < months <= 240 else None)
+
+
 def render_baselines(kind, problems):
     fleet = baseline_trucks(kind)
     return render_template("trucks/baselines.html", title="Service baselines", active="/trucks",
-                           fleet=fleet, kind=kind, kinds=BASELINE_KINDS, work_label=work_label,
+                           fleet=fleet, kind=kind, work_label=work_label,
+                           kinds=baseline_kinds(),
                            missing=sum(1 for truck in fleet if truck["last_odometer"] is None and truck["last_on"] is None),
                            problems=problems)
 
@@ -112,14 +123,14 @@ def render_baselines(kind, problems):
 @login_required
 @role_required("admin")
 def baselines():
-    return render_baselines(forms.pick(request.args.get("kind"), BASELINE_KINDS, "oil"), [])
+    return render_baselines(forms.pick(request.args.get("kind"), baseline_kinds(), "oil"), [])
 
 
 @bp.post("/trucks/baselines")
 @login_required
 @role_required("admin")
 def save_baselines():
-    kind = forms.pick(request.form.get("kind"), BASELINE_KINDS, "oil")
+    kind = forms.pick(request.form.get("kind"), baseline_kinds(), "oil")
     fleet = {truck["id"]: truck for truck in baseline_trucks(kind)}
     saved, problems = 0, []
     upload = request.files.get("sheet")
@@ -179,7 +190,7 @@ def save_baselines():
 @role_required("admin")
 def intervals():
     return render_template("trucks/intervals.html", title="Service intervals", active="/trucks",
-                           schedules=SCHEDULES, current=company_intervals(g.company["id"]),
+                           schedules=pm_list.company_schedules(g.company["id"]), defaults=pm_list.DEFAULTS,
                            severe=int((1 - SEVERE_FACTOR) * 100))
 
 
@@ -187,19 +198,103 @@ def intervals():
 @login_required
 @role_required("admin")
 def save_intervals():
-    for item in SCHEDULES:
-        miles = forms.integer(request.form.get(f"miles_{item['kind']}"))
-        months = forms.integer(request.form.get(f"months_{item['kind']}"))
-        miles = miles if miles and miles >= 1000 else None
-        months = months if months and months > 0 else None
-        execute(
-            """insert into service_intervals (company_id, kind, miles, months) values (%s, %s, %s, %s)
-               on conflict (company_id, kind) do update set miles = excluded.miles, months = excluded.months, updated_at = now()""",
-            (g.company["id"], item["kind"], miles, months),
-        )
+    for index, (kind, _) in enumerate(pm_list.candidates(g.company["id"])):
+        if request.form.get(f"kind_{index}") != kind:
+            continue
+        miles, months = interval_from(request.form, index)
+        pm_list.set_interval(g.company["id"], kind, miles, months)
     audit("company.service_intervals", "company", g.company["id"], {})
     flash("Service intervals saved.", "ok")
     return redirect("/trucks/intervals")
+
+
+def truck_services_state(truck):
+    company_items = pm_list.company_schedules(g.company["id"])
+    edits = pm_list.truck_edits([truck["id"]]).get(truck["id"], [])
+    current = pm_list.for_truck(company_items, edits)
+    company = {item["kind"]: item for item in company_items}
+    on_truck = {item["kind"] for item in current}
+    gone = [(row["kind"], company[row["kind"]]["label"] if row["kind"] in company else work_label(row["kind"]))
+            for row in edits if row["removed"]]
+    return current, company, gone, [item["label"] for item in company_items if item["kind"] not in on_truck]
+
+
+@bp.get("/trucks/<int:truck_id>/services")
+@login_required
+@role_required("admin")
+def services(truck_id):
+    truck = scoped_truck(truck_id)
+    if not truck:
+        return render_template("errors/404.html"), 404
+    current, company, gone, suggestions = truck_services_state(truck)
+    return render_template("trucks/services.html", title=f"Unit {truck['unit_number']} service list", active="/trucks",
+                           truck=truck, current=current, company=company, gone=gone, suggestions=suggestions,
+                           limit=pm_list.LABEL_LIMIT)
+
+
+@bp.post("/trucks/<int:truck_id>/services")
+@login_required
+@role_required("admin")
+def save_services(truck_id):
+    truck = scoped_truck(truck_id)
+    if not truck:
+        return render_template("errors/404.html"), 404
+    company_id = g.company["id"]
+    current, company, gone, _ = truck_services_state(truck)
+    back = redirect(f"/trucks/{truck_id}/services")
+    if request.form.get("remove"):
+        kind = forms.text(request.form.get("remove"), 40)
+        item = next((entry for entry in current if entry["kind"] == kind), None)
+        if item and item["kind"] in company and (item["kind"] in pm_list.DEFAULTS or company[kind]["miles"] or company[kind]["months"]):
+            pm_list.set_for_truck(company_id, truck_id, kind, removed=True)
+        elif item:
+            pm_list.clear_for_truck(truck_id, kind)
+        if item:
+            audit("truck.services", "truck", truck_id, {"removed": item["label"]})
+            flash(f"{item['label']} removed from unit {truck['unit_number']}.", "ok")
+        return back
+    if request.form.get("restore"):
+        kind = forms.text(request.form.get("restore"), 40)
+        if kind in dict(gone):
+            pm_list.clear_for_truck(truck_id, kind)
+            audit("truck.services", "truck", truck_id, {"restored": kind})
+            flash("Back on this truck's list.", "ok")
+        return back
+    if request.form.get("add"):
+        miles, months = interval_from(request.form, "new")
+        if not miles and not months and not pm_list.find(company_id, request.form.get("label")):
+            flash("Say how often it is due: miles, months, or both.", "bad")
+            return back
+        kind, problem = pm_list.ensure(company_id, request.form.get("label"))
+        if problem:
+            flash(problem, "bad")
+            return back
+        if kind in {entry["kind"] for entry in current}:
+            flash("That one is already on this truck's list. Change its interval in the table.", "bad")
+            return back
+        follows = company.get(kind)
+        if not miles and not months and not (follows and (kind in pm_list.DEFAULTS or follows["miles"] or follows["months"])):
+            flash("Say how often it is due: miles, months, or both.", "bad")
+            return back
+        if miles or months:
+            pm_list.set_for_truck(company_id, truck_id, kind, miles, months)
+        else:
+            pm_list.clear_for_truck(truck_id, kind)
+        audit("truck.services", "truck", truck_id, {"added": kind})
+        flash(f"Added to unit {truck['unit_number']}.", "ok")
+        return back
+    for index, item in enumerate(current):
+        if request.form.get(f"kind_{index}") != item["kind"]:
+            continue
+        miles, months = interval_from(request.form, index)
+        base = company.get(item["kind"])
+        if base and (miles, months) == (base["miles"], base["months"]):
+            pm_list.clear_for_truck(truck_id, item["kind"])
+        elif miles or months:
+            pm_list.set_for_truck(company_id, truck_id, item["kind"], miles, months)
+    audit("truck.services", "truck", truck_id, {"intervals": True})
+    flash("Saved for this truck.", "ok")
+    return back
 
 
 @bp.get("/trucks/new")

@@ -3,8 +3,8 @@ from datetime import datetime
 
 from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, send_file
 
-from .. import advisor, forms, google_places, shops as shop_search, vehicles, work_orders
-from ..work_types import GROUP_LABELS, GROUPS, KIND_LABELS, KINDS, kinds_in
+from .. import advisor, forms, google_places, pm_list, shops as shop_search, vehicles, work_orders
+from ..work_types import CUSTOM_PREFIX, GROUP_LABELS, kinds_in
 from ..audit import audit
 from ..auth import login_required
 from ..config import config
@@ -130,8 +130,10 @@ def index():
         clause = " and m.status = %s"
         params.append(status)
     if group:
-        clause += " and m.kind = any(%s)"
+        clause += " and (m.kind = any(%s) or m.kind like %s)" if group == "pm" else " and m.kind = any(%s)"
         params.append(kinds_in(group))
+        if group == "pm":
+            params.append(CUSTOM_PREFIX + "%")
     orders = rows(
         f"""select m.*, t.unit_number, d.name as driver_name, coalesce(m.driver_contact, d.phone) as contact,
                    (select count(*) from maintenance_files f where f.order_id = m.id) as files
@@ -149,7 +151,7 @@ def index():
         (g.company["id"],),
     )
     return render_template("maintenance/list.html", title="Maintenance", active="/maintenance",
-                           orders=orders, status=status, statuses=STATUSES, spend=spend, kind_labels=KIND_LABELS,
+                           orders=orders, status=status, statuses=STATUSES, spend=spend,
                            group=group, group_labels=GROUP_LABELS)
 
 
@@ -159,7 +161,7 @@ def index():
 def new():
     g.google_map = google_places.available()
     return render_template("maintenance/form.html", title="New work order", active="/maintenance",
-                           groups=GROUPS, statuses=STATUSES,
+                           groups=pm_list.groups(g.company["id"]), statuses=STATUSES,
                            truck_id=forms.integer(request.args.get("truck_id")), order=None,
                            prefill_description=forms.text(request.args.get("description"), 2000),
                            pti_id=forms.integer(request.args.get("pti")),
@@ -191,7 +193,7 @@ def create():
         flash(problem, "bad")
         return redirect(f"/maintenance/new?truck_id={truck_id}")
     status = forms.pick(request.form.get("status"), STATUSES, "scheduled")
-    kind = forms.pick(request.form.get("kind"), KINDS, "repair")
+    kind = forms.pick(request.form.get("kind"), pm_list.kinds(g.company["id"]), "repair")
     performed_on = forms.day(request.form.get("performed_on"))
     odometer = forms.integer(request.form.get("odometer"))
     parts, labor, tax, total = work_orders.money_from(request.form)
@@ -486,7 +488,7 @@ def detail(order_id):
         return render_template("errors/404.html"), 404
     g.google_map = google_places.available()
     return render_template("maintenance/form.html", title=f"Work order #{order['id']}", active="/maintenance",
-                           groups=GROUPS, statuses=STATUSES,
+                           groups=pm_list.groups(g.company["id"], order["kind"]), statuses=STATUSES,
                            order=order, truck_id=order["truck_id"], parts=work_orders.parts_of(order_id),
                            files=work_orders.files_of(order_id), **form_choices())
 
@@ -515,7 +517,7 @@ def update(order_id):
            where id = %s and company_id = %s returning *""",
         (
             driver_id,
-            forms.pick(request.form.get("kind"), KINDS, order["kind"]), status,
+            forms.pick(request.form.get("kind"), pm_list.kinds(g.company["id"], order["kind"]), order["kind"]), status,
             forms.day(request.form.get("scheduled_for")), performed_on,
             forms.integer(request.form.get("odometer")), forms.text(request.form.get("vendor"), 160),
             forms.text(request.form.get("invoice_no"), 40), total,
@@ -563,6 +565,47 @@ def delete_order_file(order_id, file_id):
     audit("maintenance.file_deleted", "maintenance_order", order_id, {"file": item["name"]})
     flash(f"Removed {item['name']}.", "ok")
     return redirect(f"/maintenance/{order_id}#invoice")
+
+
+@bp.get("/maintenance/pm-list")
+@login_required
+@role_required("admin")
+def pm_list_page():
+    company_id = g.company["id"]
+    return render_template("maintenance/pm_list.html", title="Preventive maintenance list", active="/maintenance",
+                           entries=pm_list.company_schedules(company_id), gone=pm_list.removed_items(company_id),
+                           used=pm_list.used(company_id), limit=pm_list.LABEL_LIMIT)
+
+
+@bp.post("/maintenance/pm-list")
+@login_required
+@role_required("admin")
+def pm_list_save():
+    company_id = g.company["id"]
+    if request.form.get("remove"):
+        label = pm_list.remove(company_id, forms.text(request.form.get("remove"), 40))
+        if label:
+            audit("company.pm_list", "company", company_id, {"removed": label})
+            flash(f"{label} removed from the list. Work orders already logged as it keep the name.", "ok")
+        else:
+            flash("That one stays on the list.", "bad")
+    elif request.form.get("restore"):
+        if pm_list.restore(company_id, forms.text(request.form.get("restore"), 40)):
+            audit("company.pm_list", "company", company_id, {"restored": request.form.get("restore")})
+            flash("Back on the list.", "ok")
+    else:
+        label, problem = pm_list.add(company_id, request.form.get("label"))
+        if problem:
+            flash(problem, "bad")
+        else:
+            miles, months = forms.integer(request.form.get("miles")), forms.integer(request.form.get("months"))
+            miles, months = (miles if miles and miles >= 500 else None), (months if months and 0 < months <= 240 else None)
+            kind = pm_list.find(company_id, label)
+            if kind and (miles or months):
+                pm_list.set_interval(company_id, kind, miles, months)
+            audit("company.pm_list", "company", company_id, {"added": label})
+            flash(f"{label} added" + (" and now counted on every truck." if miles or months else ". Give it an interval to have it counted on trucks."), "ok")
+    return redirect("/maintenance/pm-list")
 
 
 @bp.get("/maintenance/saved-shops")

@@ -114,8 +114,17 @@ GROUP_OF = {key: group for group, _, items in GROUPS for key, _ in items}
 GROUP_LABELS = {group: label for group, label, _ in GROUPS}
 
 
+CUSTOM_PREFIX = "pm:"
+
+
 def label(kind):
+    if (kind or "").startswith(CUSTOM_PREFIX):
+        return kind[len(CUSTOM_PREFIX):]
     return KIND_LABELS.get(kind, (kind or "").replace("_", " "))
+
+
+def group_of(kind):
+    return "pm" if (kind or "").startswith(CUSTOM_PREFIX) else GROUP_OF.get(kind)
 
 
 def kinds_in(group):

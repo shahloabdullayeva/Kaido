@@ -105,6 +105,7 @@
             {% for value, text in items %}<option value="{{ value }}" {% if (editing and order.kind == value) or (not editing and value == 'repair') %}selected{% endif %}>{{ text }}</option>{% endfor %}
           </optgroup>{% endfor %}
         </select>
+        {% if at_least(role, 'admin') %}<em><a href="/maintenance/pm-list">Edit the preventive maintenance list</a></em>{% endif %}
       </label>
       <label class="field"><span>Status</span>
         <select name="status">

@@ -63,6 +63,7 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       billing.py      monthly invoices per company and their PDF
       queries.py      service status, due dates for every tracked service, dashboard aggregates
       work_types.py   the 81 work types, their systems, and the service schedule defaults
+      pm_list.py      the editable service list: company additions and removals, per-truck overrides
       samsara.py      Samsara REST client and fault-code parser
       horizon.py      Horizon ELD client and sync: drivers, vehicles, HOS clocks
       sync.py         the sync engine: vehicles, odometer, positions, faults, DVIR defects
@@ -389,7 +390,7 @@ severe duty. The DOT annual inspection is tracked from the last recorded
 inspection date and warns 30 days out; completing an `annual_inspection` work
 order resets it.
 
-The rest are company-wide, set on Trucks → Service intervals (`service_intervals`):
+The rest start company-wide, with intervals set on Trucks → Service intervals (`service_intervals`):
 
 | Service | Default |
 |---|---|
@@ -408,6 +409,21 @@ check them against the manuals. Severe-duty trucks are due 25% sooner on miles. 
 PM-B also counts as a PM-A and a PM-C as both. A "next due" typed on a work order
 wins over the interval. Nothing is counted for a service until one is on record —
 Trucks → Service baselines takes the last one per truck, typed or from a sheet.
+
+The list itself is editable by admins, at two levels:
+
+- **Company** — Maintenance → Preventive maintenance list (`/maintenance/pm-list`). Add a
+  service by name with "every … miles" and/or "… months", or remove one. Anything with an
+  interval is counted under every truck. Added names also appear under Preventive
+  maintenance in the work-order picker, so the work can be logged and counted from.
+  Removed ones can be put back; work orders already logged keep their name. Oil stays.
+- **One truck** — the truck's page → Service schedule → Edit list (`/trucks/<id>/services`).
+  Add a service to that truck only, remove one from that truck only, or give it its own
+  interval. Everything else keeps following the company list.
+
+Company edits live in `pm_list` and `service_intervals`, per-truck ones in
+`truck_services`; `app/pm_list.py` works out each truck's list. A service the company
+added is stored on work orders as `pm:<name>`.
 
 Overdue and due-soon items show on the dashboard, the truck list, the truck's own
 Service schedule, the daily follow-up and the fleet status report.

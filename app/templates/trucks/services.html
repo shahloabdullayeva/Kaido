@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Unit {{ truck.unit_number }} service list</h1>
+    <p>What is counted and reminded for this truck only. Oil and the DOT annual are set on the truck itself. To change the list for every truck in {{ company.name }}, use <a href="/maintenance/pm-list">the company list</a>.</p></div>
+  <a class="btn ghost" href="/trucks/{{ truck.id }}">Back to the truck</a>
+</div>
+<section class="panel">
+  <div class="panel-head"><h2>Add to this truck</h2></div>
+  <form method="post" action="/trucks/{{ truck.id }}/services" class="pad actions-row">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <input name="label" maxlength="{{ limit }}" required placeholder="Name, e.g. Kingpin grease" list="service-names" aria-label="Name">
+    <datalist id="service-names">{% for name in suggestions %}<option value="{{ name }}">{% endfor %}</datalist>
+    <input type="number" name="miles_new" min="500" step="500" placeholder="every … miles" aria-label="Miles">
+    <input type="number" name="months_new" min="1" max="240" placeholder="or … months" aria-label="Months">
+    <button class="btn" type="submit" name="add" value="1">Add</button>
+  </form>
+</section>
+<section class="panel">
+  <div class="panel-head"><h2>{{ current|length }} on this truck</h2></div>
+  {% if not current %}<p class="empty">Nothing is counted for this truck.</p>{% else %}
+  <form method="post" action="/trucks/{{ truck.id }}/services" id="truck-intervals"><input type="hidden" name="csrf" value="{{ session.csrf }}"></form>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Service</th><th>Every (miles)</th><th>Or every (months)</th><th></th><th></th></tr></thead>
+    <tbody>
+      {% for item in current %}
+      <tr>
+        <td>{{ item.label }}<input form="truck-intervals" type="hidden" name="kind_{{ loop.index0 }}" value="{{ item.kind }}"></td>
+        <td><input form="truck-intervals" type="number" name="miles_{{ loop.index0 }}" value="{{ item.miles or '' }}" min="500" step="500" aria-label="{{ item.label }} miles"></td>
+        <td><input form="truck-intervals" type="number" name="months_{{ loop.index0 }}" value="{{ item.months or '' }}" min="1" max="240" aria-label="{{ item.label }} months"></td>
+        <td class="subtle">{% if item.scope == 'truck only' %}only on this truck{% elif item.scope == 'truck interval' %}own interval · company: {% if company[item.kind].miles %}{{ company[item.kind].miles|number }} mi{% endif %}{% if company[item.kind].months %} {{ company[item.kind].months }} months{% endif %}{% if not company[item.kind].miles and not company[item.kind].months %}not counted{% endif %}{% else %}same as every truck{% endif %}</td>
+        <td><form method="post" action="/trucks/{{ truck.id }}/services" class="actions-row">
+          <input type="hidden" name="csrf" value="{{ session.csrf }}">
+          <button class="btn ghost small" type="submit" name="remove" value="{{ item.kind }}">Remove</button>
+        </form></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  <div class="form-actions"><button class="btn" type="submit" form="truck-intervals">Save intervals</button>
+    <span class="muted">Type the company's numbers back in to follow the company again.</span></div>
+  {% endif %}
+</section>
+{% if gone %}
+<section class="panel">
+  <div class="panel-head"><h2>Removed from this truck</h2></div>
+  <div class="table-wrap"><table><tbody>
+    {% for kind, text in gone %}
+    <tr><td>{{ text }}</td>
+      <td><form method="post" action="/trucks/{{ truck.id }}/services" class="actions-row">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}">
+        <button class="btn ghost small" type="submit" name="restore" value="{{ kind }}">Put back</button>
+      </form></td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+{% endblock %}

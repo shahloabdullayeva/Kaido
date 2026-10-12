@@ -5,7 +5,7 @@ from datetime import date, datetime, timedelta
 from .config import ROOT
 from .db import rows
 from .queries import service_status, trucks_with_service
-from .work_types import GROUP_LABELS, GROUP_OF, KIND_LABELS
+from .work_types import GROUP_LABELS, group_of, label as work_label
 
 FONTS = ROOT / "app" / "fonts"
 
@@ -59,8 +59,8 @@ def maintenance(filters):
         params,
     )
     for row in data:
-        row["system"] = GROUP_LABELS.get(GROUP_OF.get(row["kind"]), "")
-        row["kind"] = KIND_LABELS.get(row["kind"], row["kind"])
+        row["system"] = GROUP_LABELS.get(group_of(row["kind"]), "")
+        row["kind"] = work_label(row["kind"])
         row["status"] = row["status"].replace("_", " ")
     columns = [("id", "#", "int", 11), ("day", "Date", "date", 18), ("unit_number", "Unit", "text", 16),
                ("carrier", "Outside carrier", "text", 22), ("driver", "Driver", "text", 26),

@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Preventive maintenance list</h1>
+    <p>The services {{ company.name }} tracks. Anything with an interval is counted under every truck and can be picked on a work order. Add your own, remove what you never use. One truck can differ: open the truck and press "Edit list".</p></div>
+  <div class="actions-row"><a class="btn ghost" href="/trucks/intervals">Change intervals</a> <a class="btn ghost" href="/maintenance">Back</a></div>
+</div>
+<section class="panel">
+  <div class="panel-head"><h2>Add to the list</h2></div>
+  <form method="post" action="/maintenance/pm-list" class="pad actions-row">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <input name="label" maxlength="{{ limit }}" required placeholder="Name, e.g. Kingpin grease" aria-label="Name">
+    <input type="number" name="miles" min="500" step="500" placeholder="every … miles" aria-label="Miles">
+    <input type="number" name="months" min="1" max="240" placeholder="or … months" aria-label="Months">
+    <button class="btn" type="submit">Add</button>
+  </form>
+</section>
+<section class="panel">
+  <div class="panel-head"><h2>{{ entries|length + 1 }} on the list</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Service</th><th>Due every</th><th>Work orders</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Oil &amp; filter</td><td class="subtle">set on each truck</td><td class="subtle">{{ used.get('oil', 0) }}</td><td class="subtle">always on</td></tr>
+      {% for item in entries %}
+      <tr>
+        <td>{{ item.label }}</td>
+        <td>{% if item.miles %}{{ item.miles|number }} mi{% endif %}{% if item.miles and item.months %} or {% endif %}{% if item.months %}{{ item.months }} months{% endif %}{% if not item.miles and not item.months %}<span class="subtle">not counted</span>{% endif %}</td>
+        <td class="subtle">{{ used.get(item.kind, 0) }}</td>
+        <td><form method="post" action="/maintenance/pm-list" class="actions-row">
+          <input type="hidden" name="csrf" value="{{ session.csrf }}">
+          <button class="btn ghost small" type="submit" name="remove" value="{{ item.kind }}">Remove</button>
+        </form></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% if gone %}
+<section class="panel">
+  <div class="panel-head"><h2>Removed</h2><span class="subtle">Work orders already logged keep the name.</span></div>
+  <div class="table-wrap"><table><tbody>
+    {% for kind, text in gone %}
+    <tr><td>{{ text }}</td>
+      <td><form method="post" action="/maintenance/pm-list" class="actions-row">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}">
+        <button class="btn ghost small" type="submit" name="restore" value="{{ kind }}">Put back</button>
+      </form></td></tr>
+    {% endfor %}
+  </tbody></table></div>
+</section>
+{% endif %}
+{% endblock %}

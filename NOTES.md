@@ -201,3 +201,11 @@ rather than an empty map.
 - The invoice has no seller details beyond "Kaido" and the site address, and "Bill to" is only the company name: neither company has DOT, MC or a contact filled in on the Company page.
 - Settings and Billing left the top bar; they are in the menu under the user's name with Account and Sign out.
 - Saved shops: notes were in a one-line box that hid everything past a few words, dropped line breaks, and cut a note to 300 characters when the row was saved. Notes are now a full multi-line box up to 600 characters, and the name and phone columns are wide enough to read.
+
+## New domain and editable service list (13 Oct 2026)
+- Live on https://kaidofleet.com; www and kaido.shahlo.blog redirect to it (see "Live" at the top).
+- The service list under each truck is editable by admins. For the whole company: Maintenance → Preventive maintenance list (add a service with an interval, remove one, put one back). For one truck: the truck's page → Service schedule → Edit list (add, remove or give it its own interval on that truck only).
+- A service the company adds also shows in the work-order picker under Preventive maintenance. Built-in PM items that had no schedule before (grease, filters, fluids, valve adjustment, wash) can now be counted too: give them an interval on Trucks → Service intervals.
+- Oil and the DOT annual are not part of this list. Oil's interval is on each truck, and the DOT annual comes from the inspection date.
+- Nothing was changed in either company's list: both still show the same eight services as before.
+

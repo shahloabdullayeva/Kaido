@@ -874,3 +874,39 @@ begin
           'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
           'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)';
 end $$;
+
+create table if not exists pm_list (
+  company_id int not null references companies(id) on delete cascade,
+  kind text not null,
+  label text,
+  removed boolean not null default false,
+  created_at timestamptz not null default now(),
+  primary key (company_id, kind)
+);
+alter table pm_list enable row level security;
+alter table pm_list force row level security;
+drop policy if exists company_lock on pm_list;
+create policy company_lock on pm_list
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+create table if not exists truck_services (
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  kind text not null,
+  removed boolean not null default false,
+  miles int,
+  months int,
+  created_at timestamptz not null default now(),
+  primary key (truck_id, kind)
+);
+alter table truck_services enable row level security;
+alter table truck_services force row level security;
+drop policy if exists company_lock on truck_services;
+create policy company_lock on truck_services
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);

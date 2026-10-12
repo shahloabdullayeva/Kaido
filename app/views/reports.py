@@ -118,7 +118,7 @@ def order_pdf(order_id):
         ("Vehicle", " ".join(str(p) for p in [order["year"], order["make"], order["model"]] if p)),
         ("Engine", order["engine"]), ("VIN", order["vin"]),
         ("Driver", " · ".join(p for p in [order["driver_name"], order["driver_contact"] or order["driver_phone"]] if p)),
-        ("Work", reports.KIND_LABELS.get(order["kind"], order["kind"])),
+        ("Work", reports.work_label(order["kind"])),
         ("Status", order["status"].replace("_", " ")),
         ("Scheduled", cell(order["scheduled_for"], "date")), ("Done on", cell(order["performed_on"], "date")),
         ("Odometer", cell(order["odometer"], "int")),

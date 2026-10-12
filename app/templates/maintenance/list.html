@@ -3,6 +3,7 @@
 <div class="page-head">
   <div><h1>Maintenance</h1><p>{{ spend.month_orders }} completed this month · {{ spend.month_cost|money }}</p></div>
   <div class="actions-row"><a class="btn ghost" href="/maintenance/saved-shops">Saved shops</a>
+  {% if at_least(role, 'admin') %}<a class="btn ghost" href="/maintenance/pm-list">Preventive maintenance list</a>{% endif %}
   {% if at_least(role, 'admin') %}<a class="btn" href="/maintenance/new">New work order</a>{% endif %}</div>
 </div>
 <section class="panel">
@@ -32,7 +33,7 @@
         <td><a class="rowlink" href="/trucks/{{ order.truck_id }}">{{ order.unit_number }}</a></td>
         <td>{{ order.driver_name or '—' }}{% if order.contact %}<div class="subtle">{{ order.contact }}</div>{% endif %}</td>
         <td>{{ order.vendor or '—' }}{% if order.shop_phone %}<div class="subtle">{{ order.shop_phone }}</div>{% endif %}</td>
-        <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ kind_labels.get(order.kind, order.kind) }}</a>
+        <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.kind|work }}</a>
           <div class="subtle">{{ (order.description or '')[:70] }}</div></td>
         <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
         <td>{{ (order.performed_on or order.scheduled_for)|day }}</td>
