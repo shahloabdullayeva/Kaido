@@ -215,5 +215,5 @@ rather than an empty map.
 - The 8pm daily notes are gone: the cron line, `bin/encourage.sh` and `app/encourage.py` were removed. Old ones stay in each person's "Earlier" list.
 - Reminders set by hand now also show in the bell when they are due, with an Open button to the record. The reminder on BOOKIT unit 114's work order (#29, "upload invoice once Loves issues PO") was already due, so it was put in the bell for Charlotte and John.
 - The daily follow-up on Telegram was not touched.
-- Picture captcha: the login already switches to hCaptcha's click-the-pictures check once `HCAPTCHA_SITE_KEY` and `HCAPTCHA_SECRET` are in `.env`. Waiting on Charlotte to create the hCaptcha site for kaidofleet.com.
+- Picture captcha: sign-in uses hCaptcha's click-the-pictures check since 13 Oct (keys in `.env`). The hCaptcha account is on a 14-day Pro trial that drops to the free plan on 27 Oct; nothing to pay. If hCaptcha is unreachable, sign-in is refused: emptying `HCAPTCHA_SECRET` and restarting brings the built-in letters picture back.
 
