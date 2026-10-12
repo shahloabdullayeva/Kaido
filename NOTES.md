@@ -209,3 +209,11 @@ rather than an empty map.
 - Oil and the DOT annual are not part of this list. Oil's interval is on each truck, and the DOT annual comes from the inspection date.
 - Nothing was changed in either company's list: both still show the same eight services as before.
 
+## Front page, bell, no cat (13 Oct 2026, later)
+- kaidofleet.com now opens a public front page for anyone not signed in: what Kaido does, no price ("contact us"), and a contact form. A request lands in Charlotte's Telegram and in the `contact_requests` table.
+- The cat is gone from the notification center; it is a plain bell now.
+- The 8pm daily notes are gone: the cron line, `bin/encourage.sh` and `app/encourage.py` were removed. Old ones stay in each person's "Earlier" list.
+- Reminders set by hand now also show in the bell when they are due, with an Open button to the record. The reminder on BOOKIT unit 114's work order (#29, "upload invoice once Loves issues PO") was already due, so it was put in the bell for Charlotte and John.
+- The daily follow-up on Telegram was not touched.
+- Picture captcha: the login already switches to hCaptcha's click-the-pictures check once `HCAPTCHA_SITE_KEY` and `HCAPTCHA_SECRET` are in `.env`. Waiting on Charlotte to create the hCaptcha site for kaidofleet.com.
+

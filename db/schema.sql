@@ -910,3 +910,19 @@ create policy company_lock on truck_services
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
   with check (coalesce(current_setting('kaido.company_id', true), '') = ''
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+alter table cat_notes add column if not exists href text;
+alter table cat_notes add column if not exists company_id int references companies(id) on delete cascade;
+alter table reminders add column if not exists noted_at timestamptz;
+
+create table if not exists contact_requests (
+  id bigserial primary key,
+  name text not null,
+  company text,
+  trucks text,
+  reach text not null,
+  message text,
+  ip text,
+  created_at timestamptz not null default now()
+);
+

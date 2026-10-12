@@ -34,6 +34,12 @@
       const text = document.createElement('p');
       text.className = 'notif-old';
       text.textContent = note.message;
+      if (note.href) {
+        const open = document.createElement('a');
+        open.href = note.href;
+        open.textContent = 'Open';
+        text.append(' ', open);
+      }
       row.append(when, text);
       historyList.append(row);
     }
@@ -76,14 +82,24 @@
     box.dataset.id = note.id;
     const hi = document.createElement('p');
     hi.className = 'notif-hi';
-    hi.textContent = 'Hi ' + name + '!';
+    hi.textContent = note.kind === 'reminder' ? 'Reminder' : 'Note for ' + name;
     const text = document.createElement('p');
     text.className = 'notif-text';
     text.textContent = note.message;
+    const actions = document.createElement('div');
+    actions.className = 'notif-actions';
     const ok = document.createElement('button');
     ok.type = 'button';
     ok.className = 'btn';
-    ok.textContent = note.kind === 'reminder' ? 'Got it' : 'Okay ♥';
+    ok.textContent = 'Got it';
+    actions.append(ok);
+    if (note.href) {
+      const open = document.createElement('a');
+      open.className = 'btn ghost';
+      open.href = note.href;
+      open.textContent = 'Open';
+      actions.append(open);
+    }
     ok.addEventListener('click', function () {
       const payload = new FormData();
       payload.append('csrf', notif.dataset.csrf);
@@ -93,7 +109,7 @@
       setTimeout(check, 400);
       if (!list.children.length) setTimeout(function () { setOpen(false); }, 600);
     });
-    box.append(hi, text, ok);
+    box.append(hi, text, actions);
     return box;
   }
 

@@ -39,8 +39,10 @@ for any truck and any driver, including ones from outside the company.
   Excel or CSV.
 - **Company lock**: Postgres row-level security on every company table, so a
   carrier's users only ever see their own company.
-- **Notification center**: a pixel cat in the top bar brings notes and reminders,
+- **Notification center**: a bell in the top bar shows notes and due reminders,
   with a history of the last 20.
+- **Public front page** at `/` for signed-out visitors, with a contact form that
+  reaches the platform owner on Telegram.
 - **Dark mode**, chosen per user on the Settings page (auto, light or dark).
 - **Pages update themselves** after a deploy. No hard refresh is ever needed.
 - **Twice-weekly summary** to each company's admins, and nightly backups.
@@ -81,14 +83,13 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       telegram.py     the bot: sign-in codes, account and truck-group linking
       cat.py          the notification center and the page version check
       summary.py      the twice-weekly summary to admins
-      encourage.py    the 8pm note from the cat
       google_places.py  Google Places search, used when a key is set
       audit.py        the audit trail
       logs.py         error log with secrets stripped
       views/          one blueprint per section
       templates/      Jinja templates
-      static/         app.css, app.js, cat.js, fleet.js, shops.js, favicon, vendor/leaflet
-    bin/              run, serve, sync, followup, backup, encourage, golive
+      static/         app.css, modern.css, landing.css, app.js, cat.js, fleet.js, shops.js, favicon, og.png, vendor/leaflet
+    bin/              run, serve, sync, followup, backup, golive
     db/schema.sql     the whole schema
     manage.py         CLI
 
@@ -206,7 +207,6 @@ off the fleet map and the totals.
     manage.py telegram-bot                link Telegram accounts and truck groups
     manage.py cat --to WHO "text"         send a note through the notification center
     manage.py summary                     the twice-weekly summary to admins
-    manage.py encourage                   the 8pm note
     manage.py pti-cleanup                 delete PTI photos and videos past 92 days
     manage.py saved-shop-details          fill missing saved-shop addresses
     manage.py demo --company              sample trucks, fuel and a breakdown
@@ -339,11 +339,22 @@ and the driver sends `/unit` once. A group only ever hears about its own truck:
 pre-trip and post-trip reminders on the company's chosen days (Monday and Thursday
 by default), and a nudge any day the truck drives without one.
 
+## Front page
+
+Signed-out visitors to `/` get `templates/landing.html` (styled by `static/landing.css`,
+light and dark). No price is shown; the page says "contact us". The form posts to
+`/contact`: the request is saved in `contact_requests` and sent to every platform owner's
+Telegram. A hidden field catches bots and one address can send three an hour.
+`/robots.txt` lets search engines index the front page only. `static/og.png` is the
+picture shown when the link is pasted into Telegram.
+
 ## Notification center
 
-A black pixel cat waits behind the button left of your name in the top bar. When a
-note arrives it walks out, waves and opens the panel; the last 20 read notes stay
-under *Earlier*. Every page asks `/cat/pending` every 15 seconds.
+A bell sits left of your name in the top bar. When a note arrives the panel opens;
+the last 20 read notes stay under *Earlier*. Every page asks `/cat/pending` every 15
+seconds. A reminder set on any record shows up here when it is due, as well as on
+Telegram: for whoever set it, or for every admin of the company when it was set for
+admins. Its *Open* button switches to the reminder's company and opens the record.
 
     manage.py cat --to John --from Charlotte "text"
 

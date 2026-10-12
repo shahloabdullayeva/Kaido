@@ -3,7 +3,7 @@ from html import escape
 from zoneinfo import ZoneInfo
 
 from .config import config
-from . import work_types
+from . import cat, work_types
 from .db import execute, insert, one, rows
 from .telegram import send
 
@@ -166,3 +166,31 @@ def send_due():
         execute("update reminders set sent_at = now() where id = %s", (reminder["id"],))
         sent += 1
     return sent
+
+
+def reminder_users(reminder):
+    ids = {reminder["created_by"]} if reminder["created_by"] else set()
+    if reminder["audience"] == "admins":
+        ids |= {row["user_id"] for row in rows(
+            """select m.user_id from memberships m join users u on u.id = m.user_id
+               where m.company_id = %s and m.role = 'admin' and u.status = 'active'""",
+            (reminder["company_id"],),
+        )}
+    return sorted(ids)
+
+
+def notify_due():
+    due = rows(
+        """select r.*, c.name as company_name from reminders r
+           join companies c on c.id = r.company_id
+           where r.noted_at is null and r.done_at is null and r.remind_at <= now() and c.status = 'active'
+           order by r.remind_at limit 100"""
+    )
+    for reminder in due:
+        about = describe(reminder["company_id"], reminder["entity"], reminder["entity_id"])
+        label, href = about if about else (ENTITIES.get(reminder["entity"], "Record"), "/reminders")
+        message = f"{reminder['company_name']} · {label}\n{reminder['note']}"
+        for user_id in reminder_users(reminder):
+            cat.send(user_id, message, "reminder", reminder["created_by"], href, reminder["company_id"])
+        execute("update reminders set noted_at = now() where id = %s", (reminder["id"],))
+    return len(due)

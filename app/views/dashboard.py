@@ -1,7 +1,7 @@
 from flask import Blueprint, g, render_template
 
 from .. import hos
-from ..auth import login_required
+from . import site
 from ..db import rows
 from ..filters import ago
 from ..queries import attention_score, company_summary, expiring_documents, service_status, trucks_with_service
@@ -40,9 +40,14 @@ def fleet_pins(fleet, hours=None):
 
 
 @bp.get("/")
-@login_required
-@company_required
 def index():
+    if not getattr(g, "session", None):
+        return site.landing()
+    return home()
+
+
+@company_required
+def home():
     company_id = g.company["id"]
     summary = company_summary(company_id)
     fleet = [truck for truck in trucks_with_service(company_id) if not truck["is_outside"]]

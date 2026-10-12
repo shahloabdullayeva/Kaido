@@ -1,7 +1,7 @@
 import hashlib
 from pathlib import Path
 
-from .db import execute, insert, rows
+from .db import execute, insert, one, rows
 
 
 def _version():
@@ -17,7 +17,7 @@ VERSION = _version()
 
 def pending(user_id):
     notes = rows(
-        """select id, kind, message from cat_notes
+        """select id, kind, message, href from cat_notes
            where user_id = %s and done_at is null
            order by created_at""",
         (user_id,),
@@ -30,11 +30,15 @@ def pending(user_id):
     return notes
 
 
-def send(user_id, message, kind="note", sent_by=None):
+def send(user_id, message, kind="note", sent_by=None, href=None, company_id=None):
     return insert(
-        "insert into cat_notes (user_id, kind, message, sent_by) values (%s, %s, %s, %s) returning id",
-        (user_id, kind, message, sent_by),
+        "insert into cat_notes (user_id, kind, message, sent_by, href, company_id) values (%s, %s, %s, %s, %s, %s) returning id",
+        (user_id, kind, message, sent_by, href, company_id),
     )["id"]
+
+
+def target(note_id, user_id):
+    return one("select href, company_id from cat_notes where id = %s and user_id = %s and href is not null", (note_id, user_id))
 
 
 def done(note_id, user_id):
@@ -50,7 +54,7 @@ def done_all(user_id):
 
 def history(user_id, limit=20):
     return rows(
-        """select n.id, n.kind, n.message, n.created_at, n.done_at, u.name as sender
+        """select n.id, n.kind, n.message, n.href, n.created_at, n.done_at, u.name as sender
            from cat_notes n left join users u on u.id = n.sent_by
            where n.user_id = %s and n.done_at is not null
            order by n.created_at desc limit %s""",

@@ -215,6 +215,7 @@ def cmd_followup(args):
     from app import billing
     billing.issue_missing()
     reminded = reminders.send_due()
+    reminders.notify_due()
     alerted = followup.send_fault_alerts()
     sent = followup.run()
     from app import pti_driver
@@ -351,12 +352,6 @@ def cmd_telegram(args):
                 send(chat_id, f"Linked. Sign-in codes for {user['name']} will arrive here.")
             elif parts[0] == "/start":
                 send(chat_id, "Send /link followed by the code from your Kaido account page.")
-
-
-def cmd_encourage(args):
-    from app import encourage
-    print(encourage.run())
-    return 0
 
 
 def cmd_cat(args):
@@ -525,7 +520,6 @@ def main():
     summary_parser.add_argument("--backup", nargs="*")
     summary_parser.set_defaults(func=cmd_summary)
 
-    sub.add_parser("encourage", help="the cat brings Charlotte and John their 8pm note").set_defaults(func=cmd_encourage)
 
     cat_parser = sub.add_parser("cat", help="send a note the cat brings to someone in the app")
     cat_parser.add_argument("--to", required=True, help="email or name")

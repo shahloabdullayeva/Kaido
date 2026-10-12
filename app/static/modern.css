@@ -274,7 +274,6 @@
 [data-style="modern"] .notif-button:hover { color: var(--ink); border-color: var(--face-dark); background: var(--paper); }
 [data-style="modern"] .notif-button[aria-expanded="true"] { color: var(--accent); border-color: var(--accent); }
 [data-style="modern"] .notif.has .notif-button { color: var(--ink); }
-[data-style="modern"] .notif.has .pixcat { width: 52px; height: 28px; }
 [data-style="modern"] .notif-count { border-radius: 999px; font-size: 10.5px; line-height: 17px; min-width: 17px; padding: 0 5px; }
 [data-style="modern"] .notif-panel { width: 340px; left: auto; right: -8px; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-lg); overflow: hidden; }
 [data-style="modern"] .notif-panel::before { display: none; }
@@ -316,3 +315,10 @@
 [data-style="modern"] .who-panel a, [data-style="modern"] .who-panel button.link { font-size: 13.5px; padding: 8px 10px; border-radius: 6px; color: var(--ink); text-decoration: none; }
 [data-style="modern"] .who-panel a:hover, [data-style="modern"] .who-panel button.link:hover { background: var(--hover); }
 [data-style="modern"] .who-panel form { border-top-color: var(--line); }
+
+[data-style="modern"] .notif-item { font-family: var(--sans); padding: 12px 14px; }
+[data-style="modern"] .notif-hi { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+[data-style="modern"] .notif-text { font-size: 13.5px; }
+[data-style="modern"] .notif-actions { display: flex; gap: 8px; align-items: center; }
+[data-style="modern"] .notif-old { font-family: var(--sans); }
+[data-style="modern"] .notif-old a { margin-left: 6px; }

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en" data-style="modern">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kaido · Fleet maintenance for carriers</title>
+<meta name="description" content="Work orders, service reminders, driver inspections and fault codes for every truck you run, and every carrier you manage.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Kaido">
+<meta property="og:title" content="Kaido · Fleet maintenance for carriers">
+<meta property="og:description" content="Work orders, service reminders, driver inspections and fault codes for every truck you run.">
+<meta property="og:url" content="{{ app_config.APP_URL }}/">
+<meta property="og:image" content="{{ app_config.APP_URL }}/static/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="stylesheet" href="/static/app.css?v={{ cat_version }}">
+<link rel="stylesheet" href="/static/modern.css?v={{ cat_version }}">
+<link rel="stylesheet" href="/static/landing.css?v={{ cat_version }}">
+<link rel="icon" href="/static/favicon.svg">
+</head>
+<body class="land">
+<header class="land-top">
+  <a class="land-brand" href="/">Kai<span>do</span></a>
+  <nav><a href="#what">What it does</a><a href="#contact">Contact</a><a class="btn" href="/login">Sign in</a></nav>
+</header>
+
+<main>
+<section class="land-hero">
+  <div class="land-hero-text">
+    <p class="land-eyebrow">Fleet maintenance for carriers</p>
+    <h1>Every truck's maintenance, in one place.</h1>
+    <p class="land-lead">Kaido keeps the work orders, service reminders, driver inspections and fault codes for every truck you run, and for every carrier you manage.</p>
+    <div class="land-cta"><a class="btn" href="#contact">Contact us</a><a class="btn ghost" href="/login">Sign in</a></div>
+  </div>
+  <div class="land-card" aria-hidden="true">
+    <div class="land-card-head"><strong>Unit 208</strong><span>2022 Freightliner Cascadia · 412,650 mi</span></div>
+    <ul>
+      <li><span>Oil &amp; filter</span><em class="badge ok">18,400 mi to go</em></li>
+      <li><span>PM-A</span><em class="badge warn">1,200 mi to go</em></li>
+      <li><span>Air dryer</span><em class="badge bad">3,100 mi overdue</em></li>
+      <li><span>DOT annual</span><em class="badge ok">142 days left</em></li>
+      <li><span>Coolant</span><em class="badge ok">96,000 mi to go</em></li>
+    </ul>
+    <div class="land-card-foot"><i></i>Pre-trip signed this morning</div>
+  </div>
+</section>
+
+<div class="land-road" aria-hidden="true"></div>
+
+<section class="land-grid" id="what">
+  <article><h2>Work orders</h2><p>Parts, labor, shop, invoice files and the next due date on one page, for your own trucks and outside ones.</p></article>
+  <article><h2>Service reminders</h2><p>Oil, PM-A, PM-B, DOT annual and anything you add. Counted from the odometer, per company or per truck.</p></article>
+  <article><h2>Driver inspections</h2><p>Drivers open a link in Telegram, walk the truck and send photos. Defects reach the office right away.</p></article>
+  <article><h2>Fault codes, explained</h2><p>Engine fault codes arrive from your ELD and come with a plain explanation of what to do next.</p></article>
+  <article><h2>Fleet map</h2><p>Where every truck is, coloured by what needs attention, with the nearest repair shops one click away.</p></article>
+  <article><h2>Many carriers, one login</h2><p>Manage several companies from one account. Each carrier's people see only their own trucks.</p></article>
+</section>
+
+<section class="land-contact" id="contact">
+  <div>
+    <h2>Talk to us</h2>
+    <p>Tell us about your fleet and we will get back to you. Pricing is per truck, and we will quote it for your fleet.</p>
+    <p class="land-name"><b>Kaidō</b> — the old highways of Japan.</p>
+  </div>
+  <form method="post" action="/contact">
+    <input type="hidden" name="csrf" value="{{ anon_csrf() }}">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
+    {% endwith %}
+    <label class="field"><span>Your name</span><input name="name" maxlength="120" required autocomplete="name"></label>
+    <div class="land-two">
+      <label class="field"><span>Company</span><input name="company" maxlength="160" autocomplete="organization"></label>
+      <label class="field"><span>Trucks</span><input name="trucks" maxlength="20" inputmode="numeric"></label>
+    </div>
+    <label class="field"><span>Phone, Telegram or email</span><input name="reach" maxlength="160" required></label>
+    <label class="field"><span>Message</span><textarea name="message" rows="3" maxlength="1500"></textarea></label>
+    <label class="land-trap">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+    <button class="btn" type="submit">Send</button>
+  </form>
+</section>
+</main>
+
+<footer class="land-foot"><span>© Kaido</span><a href="/login">Sign in</a></footer>
+</body>
+</html>
