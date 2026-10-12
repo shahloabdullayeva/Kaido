@@ -2,17 +2,11 @@
 
 ## Live
 
-- **https://kaido.shahlo.blog** — the address, Let's Encrypt cert, renews itself
-
-The second hostname, `kaido.89.39.94.118.sslip.io`, was **removed on 12 Sep** at
-her request; its Caddy block is gone and the name no longer answers. It had been
-the way in while her ISP's DNS cache still held a negative answer for
-kaido.shahlo.blog. If that ever happens again, the block can be pasted back from
-`/etc/caddy/Caddyfile.bak.20260912-053830` and reloaded — sslip.io resolves any
-name with an IP in it, so it needs no DNS of its own.
-
-When kaidofleet.com is bought: `./bin/golive.sh kaidofleet.com` (add A records for
-`@` and `www` to 89.39.94.118 first).
+- **https://kaidofleet.com** — the address since 13 Oct 2026, Let's Encrypt cert, renews itself
+- `www.kaidofleet.com` and the old `kaido.shahlo.blog` both redirect to it, path kept, so links
+  already sent over Telegram (PTI, reports, sign-in alerts) still open. That redirect block was
+  added to `/etc/caddy/Caddyfile` by hand; `bin/golive.sh` only writes the block for the domain itself.
+- Sessions belong to the host, so everyone signs in once more on the new address.
 
 ## Running by itself
 
@@ -174,7 +168,6 @@ rather than an empty map.
    the numbers. Check the default intervals against the trucks' OEM manuals too.
 2. **EFS automatic feed.** The upload works today. For hands-off, ask EFS for a data feed
    username and password for your own software, then Kaido can pull on a schedule.
-3. **kaidofleet.com** when it is bought — `bin/golive.sh kaidofleet.com`.
 
 ## Known gaps
 

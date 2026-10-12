@@ -25,7 +25,7 @@ NEARBY_CACHE_DEGREES = 0.07
 FALLBACK_CACHE_DEGREES = 0.35
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
 NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
-USER_AGENT = "Kaido/1.0 fleet maintenance (+https://kaido.shahlo.blog)"
+USER_AGENT = "Kaido/1.0 fleet maintenance (+https://kaidofleet.com)"
 CACHE_DAYS = 7
 GEOCODE_DAYS = 90
 # Google's terms allow only brief caching of Places content (coordinates up to 30 days).

@@ -298,7 +298,7 @@ page is a Dynamic Maps load, 10,000 free a month.
 
 Use two keys in Google Cloud: `GOOGLE_MAPS_API_KEY` restricted to this server's IP and
 to *Places API (New)* and *Geocoding API*; `GOOGLE_MAPS_BROWSER_KEY` restricted to
-`https://kaido.shahlo.blog/*` and to *Maps JavaScript API*. The browser key is visible
+`https://kaidofleet.com/*` and to *Maps JavaScript API*. The browser key is visible
 in the page, which is why it gets its own restrictions. Set a budget alert on the
 billing account as well.
 
