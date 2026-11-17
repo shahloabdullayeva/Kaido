@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Reminders</h1><p>Every open reminder in {{ company.name }}. Set a new one from any truck, driver, work order, breakdown or fault.</p></div>
+  <div><h1>Reminders</h1></div>
 </div>
 <section class="panel">
   {% if items %}
@@ -25,6 +25,6 @@
       {% endfor %}
     </tbody>
   </table></div>
-  {% else %}<p class="empty">No open reminders. Open a truck, work order, breakdown or fault and set one at the bottom of the page.</p>{% endif %}
+  {% else %}<p class="empty">No open reminders.</p>{% endif %}
 </section>
 {% endblock %}

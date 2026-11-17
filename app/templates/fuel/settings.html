@@ -2,7 +2,7 @@
 {% from "_macros.html" import field %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Fuel assistant</h1><p>Kaido watches each truck's tank and sends the driver the best stops ahead, then checks the receipt.</p></div>
+  <div><h1>Fuel assistant</h1></div>
 </div>
 {% set tab = 'settings' %}{% include "fuel/_tabs.html" %}
 <div class="grid-2">
@@ -53,7 +53,7 @@
       {% endfor %}
     </tbody>
   </table></div>
-  {% else %}<p class="empty">No truck has a Telegram group yet. Open a truck's page for its /truck code.</p>{% endif %}
+  {% else %}<p class="empty">No truck has a Telegram group yet.</p>{% endif %}
 </section>
 <section class="panel">
   <div class="panel-head"><h2>Driver preferences</h2><span class="subtle">set by drivers with /fuelprefs or learned from their answers</span></div>

@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% from "_macros.html" import field %}
 {% block body %}
-<div class="page-head"><div><h1>{{ company.name }}</h1><p>Company settings, people and activity</p></div>
+<div class="page-head"><div><h1>{{ company.name }}</h1></div>
   {% if session.platform_role or session.can_add_companies %}<a class="btn" href="/companies/new">Add company</a>{% endif %}</div>
 
 <section class="panel">
@@ -32,7 +32,6 @@
         <select name="followup_hour">{% for hour in range(4, 22) %}<option value="{{ hour }}" {% if company.followup_hour == hour %}selected{% endif %}>{{ '%02d:00'|format(hour) }}</option>{% endfor %}</select>
         <em>{{ company.timezone }} time</em></label>
     </div>
-    <p class="subtle">Lists open breakdowns, overdue service, work that was due, reminders due today, new fault codes, service due soon and papers expiring. Stop-lamp faults and reminders are sent the moment they happen, not saved for the follow-up.</p>
     <div class="form-actions"><button class="btn" type="submit">Save</button></div>
   </form>
   <form method="post" action="/company/followup/preview" class="inline" data-confirm="Send today's follow-up to everyone in {{ company.name }} now?">
@@ -69,7 +68,6 @@
         <select name="pti_evening_hour">{% for hour in range(13, 24) %}<option value="{{ hour }}" {% if company.pti_evening_hour == hour %}selected{% endif %}>{{ '%02d:00'|format(hour) }}</option>{% endfor %}</select>
         <em>{{ company.timezone }} time</em></label>
     </div>
-    <p class="subtle">FMCSA 396.13 and 396.11: pre-trip reminder on the mornings picked (the rule itself is every day: check the truck and read the last repair sign-off before driving), post-trip reminder on those evenings, and on any day a one-off reminder to a truck's group when it drives 10+ miles with no pre-trip.</p>
     <div class="form-actions"><button class="btn" type="submit">Save</button></div>
   </form>
   {% if truck_groups %}

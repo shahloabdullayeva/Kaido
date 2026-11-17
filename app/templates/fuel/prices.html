@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Fuel prices</h1><p>Kaido learns your discounted price at every station from your EFS purchases. Add a daily price list to cover stations you haven't used lately.</p></div>
+  <div><h1>Fuel prices</h1></div>
 </div>
 {% set tab = 'prices' %}{% include "fuel/_tabs.html" %}
 <section class="panel">
@@ -9,13 +9,13 @@
   <form method="post" action="/fuel/prices" enctype="multipart/form-data" class="fuel-upload">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <label class="field"><span>CSV or Excel file</span><input type="file" name="sheet" accept=".csv,.xlsx,.xlsm,.txt" required>
-      <em>Needs a station name column and either a net price ("your price", "net price", "disc ppu") or retail + discount columns. City, state, date, latitude and longitude are used when present.</em></label>
+      </label>
     <div class="form-actions"><button class="btn" type="submit">Import prices</button>
       <a class="btn ghost" href="/fuel/prices/sample.csv">Download a sample built from your purchases</a></div>
   </form>
 </section>
 <section class="panel">
-  <div class="panel-head"><h2>Latest known prices</h2><span class="subtle">{{ prices|length }} stations · cheapest first · today's website prices show your price after your usual discount at that brand · prices older than 90 days are not used</span></div>
+  <div class="panel-head"><h2>Latest known prices</h2><span class="subtle">{{ prices|length }} stations · cheapest first</span></div>
   {% if prices %}
   <div class="table-wrap"><table>
     <thead><tr><th>Station</th><th>City</th><th class="right">Your price</th><th class="right">Pump</th><th class="right">Discount</th><th>Source</th><th>Seen</th></tr></thead>

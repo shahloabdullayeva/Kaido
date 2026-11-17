@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Driver fuel suggestions</h1><p>Every fuel card Kaido sent to a truck's Telegram group and what the driver did with it.</p></div>
+  <div><h1>Driver fuel suggestions</h1></div>
 </div>
 {% set tab = 'offers' %}{% include "fuel/_tabs.html" %}
 <section class="panel">
@@ -49,6 +49,6 @@
       {% endfor %}
     </tbody>
   </table></div>
-  {% else %}<p class="empty">No fuel suggestions sent yet. Turn the fuel assistant on and connect trucks to Telegram groups{% if at_least(role, 'admin') %} on <a href="/fuel/settings">Fuel assistant</a>{% endif %}.</p>{% endif %}
+  {% else %}<p class="empty">No fuel suggestions yet.</p>{% endif %}
 </section>
 {% endblock %}

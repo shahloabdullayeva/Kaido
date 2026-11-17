@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Trips</h1><p>Paste a load and Kaido plans the route from the truck's live position: fuel stops, gallons, driving hours and ETAs.</p></div>
+  <div><h1>Trips</h1></div>
   {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn" href="/trips/new">Plan a trip</a></div>{% endif %}
 </div>
 <section class="panel">

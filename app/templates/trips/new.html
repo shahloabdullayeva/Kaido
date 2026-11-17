@@ -2,7 +2,7 @@
 {% block scripts %}<script src="/static/trips.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Plan a trip</h1><p>Paste the load as the broker sent it. Kaido reads the stops, routes from the truck's live position and plans fuel and rest.</p></div>
+  <div><h1>Plan a trip</h1></div>
   <a class="btn ghost" href="/trips">Back to trips</a>
 </div>
 <section class="panel">
@@ -17,7 +17,6 @@
         <option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>Unit {{ truck.label }}{% if truck.driver_name %} · {{ truck.driver_name|title }}{% endif %}{% if truck.fuel_percent is not none %} · tank {{ truck.fuel_percent|number }}%{% endif %}{% if truck.location %} · {{ truck.location[:60] }}{% elif truck.latitude is none %} · no position{% endif %}</option>
         {% endfor %}
       </select>
-      <em>The plan starts where Samsara last saw the truck, with its tank level and the driver's hours from Horizon.</em>
     </label>
     <label class="field"><span>Load</span>
       <textarea name="load" rows="14" required spellcheck="false" placeholder="Load ID: 88M4295
@@ -30,7 +29,6 @@ FCFS: 2026-11-17 04:00 - 23:55
 DEL1: P&amp;g Wcmc
 16110 Cosmos Street, Moreno Valley, CA 92551
 FCFS: 2026-11-21 00:01 - 23:55">{{ text }}</textarea>
-      <em>Each stop starts with a line like "PU1: name" or "DEL1: name", then the address, then the window ("FCFS:" or "APPT:" with date and times).</em>
     </label>
     <div class="form-actions">
       <button class="btn" type="submit" data-planning-button>Plan the trip</button>

@@ -73,7 +73,6 @@
   {% elif at_least(role, 'admin') %}
   <form method="post" action="/pti/report/{{ item.id }}/certify">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
-    <p class="muted">FMCSA 396.11: before the truck runs again, someone signs off that each defect was repaired or that repair is not needed for safe operation.</p>
     <div class="form-grid">
       <label class="field"><span>Sign-off <span class="req">*</span></span>
         <select name="certification" required>
@@ -106,11 +105,11 @@
         <td>{{ finding.note }}</td></tr>
     {% endfor %}</tbody>
   </table></div>
-  <p class="subtle pad">AI can miss things and can be wrong. It is a second look, not the inspection.</p>
+  <p class="subtle pad">AI can be wrong.</p>
   {% elif item.ai_status == 'over_budget' %}<p class="empty">Today's AI spending cap is used up. Try again tomorrow.</p>
   {% elif item.ai_status == 'failed' %}<p class="empty">The AI check could not run on these photos.</p>
   {% elif item.ai_status in ('no_photos', 'no_key') %}<p class="empty">No photos to check.</p>
-  {% else %}<p class="empty">Not checked. The AI looks at the photos only when someone presses “Check photos with AI”.</p>{% endif %}
+  {% else %}<p class="empty">Not checked.</p>{% endif %}
 </section>
 
 <section class="panel">

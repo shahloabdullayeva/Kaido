@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block body %}
-<div class="page-head"><div><h1>Settings</h1><p>Your own preferences, and where every other setting lives.</p></div></div>
+<div class="page-head"><div><h1>Settings</h1></div></div>
 
 <section class="panel">
   <div class="panel-head"><h2>Appearance</h2><span class="subtle">saved to your account, so it follows you to any device</span></div>
@@ -63,10 +63,9 @@
     <div><span>AI</span><strong>{{ 'on' if site.ai_on else 'off — no API key' }}</strong></div>
     {% if site.ai_out_of_credit %}<div><span>AI credit</span><strong><span class="badge bad">out of credit</span></strong><em class="subtle">Anthropic refused calls since {{ site.ai_out_of_credit|stamp }}: the account balance is empty. Top up at console.anthropic.com → Billing. The same balance also pays for the shift-report bot.</em></div>{% endif %}
     <div><span>Kaido AI spent today</span><strong>${{ '%.3f'|format(site.ai_today) }}</strong><em class="subtle">Kaido stops calling AI for the day once this reaches ${{ '%.2f'|format(site.ai_cap) }}.</em></div>
-    <div><span>Kaido AI spent all time</span><strong>${{ '%.2f'|format(site.ai_total) }} over {{ site.ai_calls }} calls</strong><em class="subtle">Only Kaido's own calls. Your Anthropic balance can drop faster if other tools use the same account.</em></div>
+    <div><span>Kaido AI spent all time</span><strong>${{ '%.2f'|format(site.ai_total) }} over {{ site.ai_calls }} calls</strong></div>
     <div><span>AI models</span><strong>{{ site.ai_photo_model }} for PTI photos, {{ site.ai_model }} for the rest</strong></div>
   </div>
-  <p class="subtle pad">These come from the server's configuration. Ask Claude to change them.</p>
 </section>
 {% endif %}
 {% endblock %}
