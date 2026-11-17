@@ -404,8 +404,9 @@ number of stops), pick a truck, and Kaido plans the whole trip:
   trips up to 8 days old, while the truck's position is under an hour old and within 15 miles of the
   route):
   - When the next planned stop is under 80 miles ahead, or the tank is at or under the alert level,
-    the driver gets that one stop in four lines: name and city, miles ahead, gallons, price and Map,
-    "Fill the tank, fuel ahead costs more" when it is a fill-up before a dearer state, and tank %
+    the driver gets that one stop in a few lines: station name; street address, city and Map; miles
+    ahead, about what % the tank will be at on arrival, and truck parking spots; gallons and price;
+    "Fill the tank, fuel ahead costs more" when it is a fill-up before a dearer state; and tank %
     with drive and shift hours left. When the clock runs out first it says "Rest first". A location
     pin follows. Buttons: **Fuel there** or **Skip this stop**.
   - A tank jump of 15 points marks the stop done; the next one comes when it is close.

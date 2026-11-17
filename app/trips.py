@@ -292,7 +292,7 @@ def make_stop(item, price, tank, offset=0.0):
         "arrive_percent": round(item["arrive_gallons"] / tank * 100), "depart_percent": round(item["depart_gallons"] / tank * 100),
         "price": price["net"], "retail": price["retail"], "source": price["source"], "age_days": price["age_days"],
         "estimated_discount": price["estimated_discount"], "cost": round(item["buy"] * price["net"], 2), "eta": item.get("eta"),
-        "amenities": station["amenities"] or {},
+        "amenities": station["amenities"] or {}, "address": station.get("address"),
     }
 
 
@@ -809,13 +809,33 @@ def replan(trip, truck, mile, avoid=()):
     return fresh
 
 
+def stop_address(stop):
+    address = stop.get("address")
+    if address is None and stop.get("station_id"):
+        found = one("select address from fuel_stations where id = %s", (stop["station_id"],))
+        address = found["address"] if found else None
+    where = ", ".join(p for p in [address, stop.get("city"), stop.get("state")] if p)
+    return where
+
+
 def next_stop_message(trip, truck, stop, mile, hos, why):
     miles_to = max(0.0, stop["mile"] - mile)
+    tank = int(trip["tank_gallons"])
     lines = [f"<b>Next fuel</b> · Unit {escape(fuel.unit_label(truck['unit_number']))}"]
     if why:
         lines.append(escape(why))
-    lines += short_stop(stop)
-    lines[-1] = f"{miles_to:,.0f} mi ahead · " + lines[-1]
+    lines.append(f"<b>{escape(stop['name'])}</b>")
+    where = stop_address(stop)
+    lines.append((escape(where) + " · " if where else "") + f"<a href=\"{fuel.maps_link(stop)}\">Map</a>")
+    facts = [f"{miles_to:,.0f} mi ahead"]
+    if truck.get("fuel_percent") is not None:
+        arrive = float(truck["fuel_percent"]) - miles_to / float(trip["mpg"]) / tank * 100
+        facts.append(f"~{max(0, arrive):.0f}% on arrival")
+    spaces = (stop.get("amenities") or {}).get("spaces")
+    if spaces:
+        facts.append(f"{spaces} truck spots")
+    lines.append(" · ".join(facts))
+    lines.append(f"Buy {stop['gallons']:.0f} gal at ${stop['price']:.2f}")
     if stop.get("fill_reason"):
         lines.append("Fill the tank, fuel ahead costs more.")
     status = []
