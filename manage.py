@@ -225,7 +225,10 @@ def cmd_followup(args):
     try:
         fueled = fuel_bot.run()
         reports = fuel_report.run()
-        from app import trips
+        from app import fuel_guard, trips
+        guarded = fuel_guard.run()
+        if guarded["alerts"]:
+            print(f"fuel checks {guarded}")
         followed = trips.follow()
         if followed:
             print(f"trips {followed}")

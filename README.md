@@ -355,6 +355,28 @@ by default), and a nudge on those same days when the truck drives without one. W
 connected Kaido renames it to the unit ("Unit 5831"); the bot needs to be a group admin
 with "Change group info" for that. `/rename` in the group does it again later.
 
+## Fuel checks (fraud and theft)
+
+`app/fuel_guard.py`, run every 5 minutes from `bin/followup.sh`, page Fuel → Fuel checks. Every
+diesel purchase is checked once against what Samsara saw; each finding is stored in `fuel_alerts`
+and sent to the company admins on Telegram (never to the driver), with a link to the page:
+
+- **Fuel not in the tank**: 40+ gal bought but the tank rose by less than 60% of it (minus 10 gal
+  of slack). High when under 30%.
+- **Card used away from the truck**: the truck was never within 15 miles of the station (40 when the
+  station is only placed at its city) around the purchase time.
+- **More than the tank holds**: more gallons than the tank size, or than the room left in the tank
+  just before (with 15% + 15 gal of slack).
+- **Two fills close together**: two diesel purchases for one truck under 2 hours apart.
+- **Tank dropped while parked**: Samsara's tank fell 12+ points (25+ gal) within an hour while the
+  truck stood still and did not come back up: a siphon or a leak.
+
+EFS times carry no time zone, so a purchase is matched to the truck's track across UTC, Central
+and the station's own zone, one hour either side. Tank and location checks need the truck's
+Samsara track, which Kaido keeps from 17 Nov 2026 on, so older purchases only get the capacity and
+double-fill checks. Only findings from the last 3 days are sent to Telegram, so importing an old file
+does not flood anyone. Admins mark each one "Looks OK" or "Confirmed problem", with a note.
+
 ## Trip planning
 
 `app/trips.py`, the Trips page and `manage.py trip`. Paste a load as the load board or broker

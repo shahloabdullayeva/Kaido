@@ -656,3 +656,4 @@ html.splash-out body::before, html.splash-out body::after { animation: kaido-fad
   .trip-timeline td:nth-child(3), .trip-timeline td:nth-child(4) { grid-column: 2; }
   .trip-when { white-space: normal; color: var(--muted); }
 }
+.fuel-review{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.fuel-review input[type=text]{min-width:140px;flex:1}

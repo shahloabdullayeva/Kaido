@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Fuel checks</h1><p>Every EFS purchase is checked against what Samsara saw: did the tank rise by what was bought, was the truck at the station, could the tank hold it. Kaido also watches for the tank dropping while the truck is parked. Admins get each new one on Telegram.</p></div>
+</div>
+{% set tab = 'alerts' %}{% include "fuel/_tabs.html" %}
+<section class="panel">
+  <div class="panel-head">
+    <div class="actions-row">
+      <a class="btn {{ '' if show == 'open' else 'ghost' }} small" href="/fuel/alerts?show=open">To review ({{ counts.open }})</a>
+      <a class="btn {{ '' if show == 'all' else 'ghost' }} small" href="/fuel/alerts?show=all">All</a>
+    </div>
+    <span class="subtle">{{ counts.confirmed }} confirmed problem{{ '' if counts.confirmed == 1 else 's' }} · {{ counts.ok }} checked and OK</span>
+  </div>
+  {% if entries %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Unit</th><th>Driver</th><th>Check</th><th>What Kaido saw</th><th>Status</th>{% if at_least(role, 'admin') %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td>{{ entry.happened_at|day }}<div class="subtle">{{ entry.happened_at|ago }}</div></td>
+        <td>{% if entry.truck_id %}<a href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a>{% else %}—{% endif %}</td>
+        <td>{{ (entry.driver_name or '—')|title }}</td>
+        <td><span class="badge {{ 'bad' if entry.severity == 'high' else 'warn' }}">{{ labels[entry.kind] }}</span></td>
+        <td>{{ entry.summary }}{% if entry.details.invoice %}<div class="subtle">Invoice {{ entry.details.invoice }}{% if entry.details.card %} · card {{ entry.details.card }}{% endif %}</div>{% endif %}</td>
+        <td>{% if entry.status == 'open' %}<span class="badge warn">to review</span>{% elif entry.status == 'ok' %}<span class="badge ok">OK</span>{% else %}<span class="badge bad">confirmed</span>{% endif %}
+          {% if entry.reviewer %}<div class="subtle">{{ entry.reviewer }}{% if entry.note %}: {{ entry.note }}{% endif %}</div>{% endif %}</td>
+        {% if at_least(role, 'admin') %}<td>
+          <form method="post" action="/fuel/alerts/{{ entry.id }}" class="fuel-review">
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <input type="hidden" name="back" value="/fuel/alerts?show={{ show }}">
+            <input type="text" name="note" placeholder="Note (optional)" value="{{ entry.note or '' }}">
+            <button class="btn ghost small" name="status" value="ok">Looks OK</button>
+            <button class="btn ghost small danger" name="status" value="confirmed">Confirmed problem</button>
+          </form>
+        </td>{% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">{{ 'Nothing to review.' if show == 'open' else 'No fuel checks have fired yet.' }}</p>{% endif %}
+</section>
+{% endblock %}

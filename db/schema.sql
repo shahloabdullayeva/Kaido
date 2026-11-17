@@ -1151,3 +1151,35 @@ create policy company_lock on fuel_refuels
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
   with check (coalesce(current_setting('kaido.company_id', true), '') = ''
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+alter table fuel_transactions add column if not exists fraud_checked_at timestamptz;
+
+create table if not exists fuel_alerts (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int references trucks(id) on delete cascade,
+  driver_id int references drivers(id) on delete set null,
+  transaction_id bigint references fuel_transactions(id) on delete cascade,
+  kind text not null check (kind in ('not_in_tank', 'away_from_truck', 'over_capacity', 'double_fill', 'tank_drop')),
+  severity text not null default 'warn' check (severity in ('warn', 'high')),
+  happened_at timestamptz not null,
+  summary text not null,
+  details jsonb not null default '{}',
+  notified_at timestamptz,
+  status text not null default 'open' check (status in ('open', 'ok', 'confirmed')),
+  reviewed_by int references users(id) on delete set null,
+  reviewed_at timestamptz,
+  note text,
+  created_at timestamptz not null default now(),
+  unique (company_id, kind, transaction_id),
+  unique (truck_id, kind, happened_at)
+);
+create index if not exists fuel_alerts_company_idx on fuel_alerts (company_id, created_at desc);
+alter table fuel_alerts enable row level security;
+alter table fuel_alerts force row level security;
+drop policy if exists company_lock on fuel_alerts;
+create policy company_lock on fuel_alerts
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);

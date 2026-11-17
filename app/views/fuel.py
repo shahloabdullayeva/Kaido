@@ -6,7 +6,7 @@ import io
 
 from flask import Blueprint, Response, flash, g, redirect, render_template, request
 
-from .. import forms, fuel, fuel_import
+from .. import forms, fuel, fuel_guard, fuel_import
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -382,6 +382,44 @@ def offers_log():
     )
     return render_template("fuel/offers.html", title="Fuel suggestions", active="/fuel", entries=entries,
                            trucks=active_trucks(), truck_id=truck_id, skip_labels=SKIP_LABELS)
+
+
+@bp.get("/fuel/alerts")
+@login_required
+@company_required
+def alerts():
+    show = request.args.get("show") if request.args.get("show") in ("open", "all") else "open"
+    entries = rows(
+        f"""select a.*, t.unit_number, d.name as driver_name, u.name as reviewer
+            from fuel_alerts a left join trucks t on t.id = a.truck_id left join drivers d on d.id = a.driver_id
+            left join users u on u.id = a.reviewed_by
+            where a.company_id = %s{" and a.status = 'open'" if show == 'open' else ''}
+            order by a.happened_at desc limit 300""",
+        (g.company["id"],),
+    )
+    counts = one(
+        """select count(*) filter (where status = 'open') as open, count(*) filter (where status = 'confirmed') as confirmed,
+                  count(*) filter (where status = 'ok') as ok from fuel_alerts where company_id = %s""",
+        (g.company["id"],),
+    )
+    return render_template("fuel/alerts.html", title="Fuel checks", active="/fuel", entries=entries, show=show,
+                           counts=counts, labels=fuel_guard.LABELS)
+
+
+@bp.post("/fuel/alerts/<int:alert_id>")
+@login_required
+@role_required("admin")
+def review_alert(alert_id):
+    status = forms.pick(request.form.get("status"), ["ok", "confirmed", "open"], "ok")
+    done = execute(
+        """update fuel_alerts set status = %s, note = %s, reviewed_by = %s, reviewed_at = now()
+           where id = %s and company_id = %s""",
+        (status, forms.text(request.form.get("note"), 500), g.session["user_id"], alert_id, g.company["id"]),
+    )
+    if done:
+        audit("fuel.alert_reviewed", "fuel_alert", alert_id, {"status": status})
+        flash("Saved.", "ok")
+    return redirect(request.form.get("back") or "/fuel/alerts")
 
 
 def recent_prices():
