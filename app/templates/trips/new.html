@@ -11,6 +11,8 @@
     <label class="field"><span>Truck</span>
       <select name="truck_id" required>
         <option value="">Select a truck</option>
+        <option value="nearest">Closest truck to the pickup that is live on Samsara now</option>
+        <option value="random">Any truck live on Samsara right now (random, with a driver)</option>
         {% for truck in trucks %}
         <option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>Unit {{ truck.label }}{% if truck.driver_name %} · {{ truck.driver_name|title }}{% endif %}{% if truck.fuel_percent is not none %} · tank {{ truck.fuel_percent|number }}%{% endif %}{% if truck.location %} · {{ truck.location[:60] }}{% elif truck.latitude is none %} · no position{% endif %}</option>
         {% endfor %}

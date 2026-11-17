@@ -5,7 +5,7 @@ from . import pti
 from .db import execute, one, rows
 from .reminders import zone_for
 from .security import random_token
-from .telegram import send
+from .telegram import call, send
 
 WINDOW_HOURS = 3
 WEEKDAYS = [(1, "Mon"), (2, "Tue"), (3, "Wed"), (4, "Thu"), (5, "Fri"), (6, "Sat"), (7, "Sun")]
@@ -225,3 +225,12 @@ def run(now=None):
             if truck["id"] in missing and not already(company["id"], day, "nudge", truck["id"]):
                 sent.append((truck["unit_number"], "nudge", deliver(truck, "nudge", day)))
     return sent
+
+
+def rename_group(chat_id, truck):
+    from .fuel import unit_label
+    title = f"Unit {unit_label(truck['unit_number'])}"[:128]
+    result = call("setChatTitle", {"chat_id": chat_id, "title": title})
+    if result.get("ok"):
+        execute("update trucks set telegram_chat_title = %s where telegram_chat_id = %s", (title, chat_id))
+    return result

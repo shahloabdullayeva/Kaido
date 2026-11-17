@@ -90,7 +90,15 @@ def new():
 @role_required("admin")
 def create():
     text = (request.form.get("load") or "").strip()
-    truck = company_truck(forms.integer(request.form.get("truck_id")))
+    if request.form.get("truck_id") in ("random", "nearest"):
+        truck = trips.random_active_truck(g.company["id"]) if request.form.get("truck_id") == "random" \
+            else trips.nearest_active_truck(g.company["id"], trips.parse_load(text))
+        if not truck:
+            flash("No truck with a driver is live on Samsara in the last hour.", "bad")
+            return render_template("trips/new.html", title="Plan a trip", active="/trips", trucks=company_trucks(),
+                                   truck_id=None, text=text)
+    else:
+        truck = company_truck(forms.integer(request.form.get("truck_id")))
     if not text or not truck:
         flash("Paste the load and pick a truck.", "bad")
         return render_template("trips/new.html", title="Plan a trip", active="/trips", trucks=company_trucks(),

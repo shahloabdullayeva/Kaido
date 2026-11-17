@@ -1,5 +1,6 @@
 import json
 import math
+import random
 import re
 from datetime import datetime, timedelta, timezone
 from html import escape
@@ -513,6 +514,8 @@ def build(company_id, truck, load, user_id=None, text=None):
         "burn_gallons": round(total / mpg), "arrive_percent": round(plan["arrive_gallons"] / tank * 100) if plan.get("arrive_gallons") is not None else None,
         "stations_on_route": len(stations), "priced_on_route": len(priced), "hos_known": bool(hos), "duty_status": duty,
         "impossible": plan.get("impossible", False), "hos": hos,
+        "fuel_reading_at": truck["fuel_percent_at"].isoformat() if truck.get("fuel_percent_at") else None,
+        "fuel_known": truck.get("fuel_percent") is not None,
         "restart_needed": any(r["kind"] == "restart" for r in clock.rests),
         "late": any(s.get("late_hours") for s in load["stops"]),
     }
@@ -569,7 +572,7 @@ def message(trip, truck):
              f"Unit {escape(fuel.unit_label(truck['unit_number']))}" + (f" · {escape(fuel.person(truck['driver_name']))}" if truck.get("driver_name") else ""),
              f"{escape(first.get('address') or first.get('name') or '')} to {escape(last.get('address') or last.get('name') or '')}",
              f"{summary['miles']:,.0f} mi ({summary['empty_miles']:,.0f} mi to pickup) · about {summary['drive_hours']:.0f} h driving",
-             f"Tank now {float(trip['start_fuel_percent']):.0f}% of {trip['tank_gallons']} gal · {float(trip['mpg']):.1f} mpg"]
+             tank_line(trip, summary)]
     if trip.get("rate"):
         lines.append(f"Rate ${float(trip['rate']):,.0f} · ${summary.get('rate_per_mile', 0):.2f}/mi all miles")
     hos = summary.get("hos") or {}
@@ -607,6 +610,20 @@ def message(trip, truck):
     return "\n".join(lines)
 
 
+def tank_line(trip, summary):
+    percent = float(trip["start_fuel_percent"])
+    gallons = percent / 100 * int(trip["tank_gallons"])
+    line = (f"Tank {percent:.0f}% of {trip['tank_gallons']} gal: about {gallons:,.0f} gal, {gallons * float(trip['mpg']):,.0f} mi "
+            f"at {float(trip['mpg']):.1f} mpg")
+    if not summary.get("fuel_known", True):
+        return line + " (Samsara has no tank reading for this truck, 50% assumed)"
+    if summary.get("fuel_reading_at"):
+        age = (datetime.now(timezone.utc) - datetime.fromisoformat(summary["fuel_reading_at"])).total_seconds() / 3600
+        if age >= 2:
+            line += f" (tank reading {age:.0f} h old)"
+    return line
+
+
 def stop_lines(stop, title):
     price = f"${stop['price']:.3f}" + (" est." if stop["source"] == "website" else "")
     lines = [f"<b>{title}:</b> {escape(place_name(stop))}, mile {stop['mile']:,.0f}",
@@ -640,6 +657,34 @@ def rest_lines(rest, hos_known):
 def keyboard(trip_id):
     return {"inline_keyboard": [[{"text": "Accept plan", "callback_data": f"ta:{trip_id}"},
                                  {"text": "Problem with plan", "callback_data": f"tp:{trip_id}"}]]}
+
+
+LIVE_MINUTES = 60
+
+
+def random_active_truck(company_id):
+    live = live_trucks(company_id)
+    return random.choice(live) if live else None
+
+
+def nearest_active_truck(company_id, load):
+    first = load["stops"][0] if load.get("stops") else None
+    place = geocode_address(first["address"] or first["name"] or "") if first else None
+    live = live_trucks(company_id)
+    if not place or not live:
+        return None
+    return min(live, key=lambda t: fuel.haversine(place["latitude"], place["longitude"], t["latitude"], t["longitude"]))
+
+
+def live_trucks(company_id):
+    from .fuel_bot import TRUCK_SQL
+    return rows(
+        TRUCK_SQL + """ where t.company_id = %s and t.status = 'active' and t.driver_id is not null
+                         and t.location_source = 'samsara' and t.latitude is not null
+                         and t.located_at > now() - make_interval(mins => %s)
+                         and t.fuel_percent is not null and t.fuel_percent_at > now() - make_interval(mins => %s)""",
+        (company_id, LIVE_MINUTES, LIVE_MINUTES),
+    )
 
 
 def load_truck(truck_id):

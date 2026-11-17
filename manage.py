@@ -261,6 +261,13 @@ def handle_group_update(update, send):
         _truck, reply = pti_driver.claim_unit(chat["id"], message.get("from") or {}, " ".join(parts[1:]))
         send(chat["id"], reply, reply_to_message_id=message.get("message_id"))
         return True
+    if command == "/rename":
+        linked = pti_driver.group_trucks(chat["id"])
+        if len(linked) != 1:
+            send(chat["id"], "This group is not connected to one truck. Send /truck with the code from the truck's page first.")
+        elif not pti_driver.rename_group(chat["id"], linked[0]).get("ok"):
+            send(chat["id"], "The bot needs to be an admin with \"Change group info\" to rename the group.")
+        return True
     if command.startswith("/fuel"):
         from app import fuel_bot
         from app.logs import get
@@ -281,6 +288,10 @@ def handle_group_update(update, send):
         return True
     send(chat["id"], f"Connected to Unit {truck['unit_number']} ({truck['company_name']}). "
                      "PTI reminders for this truck only will come here. Driver: send /unit once so they tag you.")
+    renamed = pti_driver.rename_group(chat["id"], truck)
+    if not renamed.get("ok"):
+        send(chat["id"], "To name this group after the unit, make the bot an admin with \"Change group info\" "
+                         "and send /rename, or rename it by hand.")
     return True
 
 
@@ -433,14 +444,19 @@ def cmd_trip(args):
     if not company:
         print(f"No company named {args.company}")
         return 1
-    found = [t for t in rows(TRUCK_SQL + " where t.company_id = %s and t.status <> 'sold'", (company["id"],))
-             if t["unit_number"].split()[0].lstrip("0") == args.truck.lstrip("0")]
+    text = Path(args.file).read_text() if args.file else sys.stdin.read()
+    if args.truck in ("random", "nearest"):
+        picked = trips.random_active_truck(company["id"]) if args.truck == "random" \
+            else trips.nearest_active_truck(company["id"], trips.parse_load(text))
+        found = [picked] if picked else []
+    else:
+        found = [t for t in rows(TRUCK_SQL + " where t.company_id = %s and t.status <> 'sold'", (company["id"],))
+                 if t["unit_number"].split()[0].lstrip("0") == args.truck.lstrip("0")]
     if not found:
         print(f"No unit {args.truck}")
         return 1
     from datetime import datetime, timezone
     found.sort(key=lambda t: t["located_at"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-    text = Path(args.file).read_text() if args.file else sys.stdin.read()
     trip = trips.build(company["id"], found[0], trips.parse_load(text), text=text)
     print(f"trip #{trip['id']}")
     print(trips.message(trip, found[0]))
@@ -633,7 +649,7 @@ def main():
     fbrand.set_defaults(func=cmd_brand_prices)
     trip = sub.add_parser("trip", help="plan a load: route, fuel stops, hours, ETAs")
     trip.add_argument("--company", required=True)
-    trip.add_argument("--truck", required=True, help="unit number")
+    trip.add_argument("--truck", required=True, help="unit number, random (any truck live on Samsara) or nearest (closest live truck to the pickup)")
     trip.add_argument("--file", help="the load text (default: read from stdin)")
     trip.add_argument("--send", action="store_true", help="send the plan to the truck's Telegram group")
     trip.set_defaults(func=cmd_trip)

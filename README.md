@@ -351,7 +351,9 @@ the next driver has to confirm they read it. The PTI page lists trucks that drov
 office. Add @kaidofleet_bot, send `/truck <code>` (the code is on the truck page),
 and the driver sends `/unit` once. A group only ever hears about its own truck:
 pre-trip and post-trip reminders on the company's chosen days (Monday and Thursday
-by default), and a nudge any day the truck drives without one.
+by default), and a nudge any day the truck drives without one. When the group is
+connected Kaido renames it to the unit ("Unit 5831"); the bot needs to be a group admin
+with "Change group info" for that. `/rename` in the group does it again later.
 
 ## Trip planning
 
@@ -359,6 +361,11 @@ by default), and a nudge any day the truck drives without one.
 sends it (load ID, $rate, `PU1:` name / address / `FCFS:` or `APPT:` window, `DEL1:` ..., any
 number of stops), pick a truck, and Kaido plans the whole trip:
 
+- **Truck.** Pick one, or let Kaido pick: "closest truck to the pickup that is live on Samsara now"
+  (`--truck nearest`) or "any truck live on Samsara" at random (`--truck random`). Live means a
+  driver is set and Samsara gave a position and a tank reading in the last hour.
+- **Remaining fuel.** The plan starts from the truck's tank % from Samsara and shows it as gallons and
+  miles of range. A reading over 2 hours old is flagged; without one, 50% is assumed and the plan says so.
 - **Route.** The stop addresses are geocoded (Nominatim, cached; when the full address does not
   resolve, it retries without the house number, then with city/state/ZIP). The road route
   from the truck's live position through every stop comes from the free OSRM demo server
