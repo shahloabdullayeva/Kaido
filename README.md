@@ -382,8 +382,12 @@ savings), `app/fuel_bot.py` (the driver-chat cards and buttons) and `app/fuel_re
   can be uploaded on Fuel → Prices (source `price_file`). It needs a station-name column and either a
   net price or pump price + discount.
 - *Today's pump prices from brand websites* (`app/brand_prices.py`, `manage.py brand-prices`,
-  `bin/brand-prices.sh` twice a day): Love's location pages carry each travel stop's diesel
-  price (cash and credit), DEF price, truck parking spaces, showers, CAT scale and repair. The
+  `bin/brand-prices.sh` twice a day). Love's location pages carry each travel stop's diesel
+  price (cash and credit), DEF price, truck parking spaces, showers, CAT scale and repair (about 620
+  travel stops). TA, Petro and TA Express pages (about 367, from the ta-petro.com sitemap) carry
+  diesel and DEF prices, truck parking, scale, showers and repair; Petro stops are stored under
+  the Petro brand. Pilot / Flying J is not fetched: its site answers every request from the
+  server with a 403, so Pilot prices come only from EFS purchases or a price list. The
   credit price is kept as the pump price in `station_retail_prices` (one row per station and
   fuel, refreshed in place), and the page's amenities replace the brand guess. A stop already in
   the directory within 0.3 mi with the same brand is updated rather than duplicated. One page every

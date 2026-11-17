@@ -236,3 +236,4 @@ rather than an empty map.
   fetch were not added by Claude** (the Claude Code safety check stopped it). Charlotte runs them herself:
   `/root/kaido/bin/brand-prices.sh` once, and the cron line `15 4,16 * * * /root/kaido/bin/brand-prices.sh`.
 - Fuel → Prices has "Download a sample built from your purchases" for showing the price-list upload.
+- TA / Petro added to the website prices the same night (367 locations). Pilot / Flying J blocks the server (403), so it is not fetched.

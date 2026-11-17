@@ -15,6 +15,7 @@ USER_AGENT = "Mozilla/5.0 (compatible; Kaido/1.0; +https://kaidofleet.com)"
 PAUSE = 1.5
 FRESH_HOURS = 30
 LOVES_SITEMAP = "https://www.loves.com/sitemap-locations.xml"
+TA_SITEMAP = "https://www.ta-petro.com/sitemap-xml/"
 LOVES_DIESEL = ("Diesel", "Bio-Diesel", "Ultra Low Sulfur Diesel", "Renewable Diesel")
 
 
@@ -112,32 +113,82 @@ def save(found, source):
     return station_id
 
 
-def loves(limit=None, only=None):
-    run = insert("insert into brand_fetches (brand) values ('loves') returning id")
-    sitemap = fetch(LOVES_SITEMAP)
-    urls = [u for u in re.findall(r"<loc>([^<]+)</loc>", sitemap) if "travel-stop" in u]
-    if only:
-        urls = [u for u in urls if any(f"/locations/{s.lower()}/" in u for s in only)]
+def crawl(brand, urls, parser, limit=None):
+    run = insert("insert into brand_fetches (brand) values (%s) returning id", (brand,))
     pages = prices = failed = 0
     for url in urls[:limit] if limit else urls:
         try:
-            found = loves_page(url, fetch(url))
+            found = parser(url, fetch(url))
             pages += 1
             if found:
-                save(found, "loves")
+                save(found, brand)
                 prices += 1
         except (requests.RequestException, ValueError) as err:
             failed += 1
-            log.info("Love's page %s failed: %s", url, err)
+            log.info("%s page %s failed: %s", brand, url, err)
             if failed >= 25 and failed > pages:
                 break
         time.sleep(PAUSE)
     execute("update brand_fetches set finished_at = now(), pages = %s, prices = %s, failed = %s where id = %s",
             (pages, prices, failed, run["id"]))
-    return {"pages": pages, "prices": prices, "failed": failed}
+    return {"pages": pages, "prices": prices, "failed": failed, "locations": len(urls)}
 
 
-FETCHERS = {"loves": loves}
+def loves(limit=None, only=None):
+    sitemap = fetch(LOVES_SITEMAP)
+    urls = [u for u in re.findall(r"<loc>([^<]+)</loc>", sitemap) if "travel-stop" in u]
+    if only:
+        urls = [u for u in urls if any(f"/locations/{s.lower()}/" in u for s in only)]
+    return crawl("loves", urls, loves_page, limit)
+
+
+def ta_page(url, page):
+    prices = {}
+    for value, label in re.findall(r'<span class="price">\$([\d.]+)</span>\s*<span>([^<]+)</span>', page):
+        prices.setdefault(unescape(label).strip().upper(), float(value))
+    diesel = next((v for k, v in prices.items() if k.startswith("DIESEL")), None) or prices.get("AUTO DIESEL")
+    if not diesel:
+        return None
+    block = re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.S)
+    try:
+        data = json.loads(block.group(1)) if block else {}
+    except ValueError:
+        return None
+    geo = data.get("geo") or {}
+    address = data.get("address") or {}
+    if not geo.get("latitude") or not geo.get("longitude"):
+        return None
+    name = unescape(data.get("name") or "TA")
+    number = re.search(r"#\s*(\d+)", name)
+    brand = fuel.brand_of(name) or "TA"
+    items = set(re.findall(r"<li>([^<]{2,80})</li>", page))
+    parking = re.search(r"(?i)(\d+)\s*truck parking spaces", page)
+    amenities = {"parking": bool(parking) or "Truck Parking" in items, "showers": bool(re.search(r"(?i)shower", page)),
+                 "food": True, "scale": "CAT Scale" in items, "def": "DEF" in prices,
+                 "repair": "Truck Service Amenities" in page}
+    if parking:
+        amenities["spaces"] = parking.group(1)
+    short = re.sub(r"\s*#\s*\d+$", "", name).strip()
+    return {
+        "key": f"ta:{number.group(1).lstrip('0') if number else url.rstrip('/').rsplit('/', 1)[-1]}",
+        "name": f"{short} #{number.group(1).lstrip('0')}" if number else short,
+        "brand": brand, "latitude": float(geo["latitude"]), "longitude": float(geo["longitude"]),
+        "city": unescape(address.get("addressLocality") or "") or None,
+        "state": (address.get("addressRegion") or "")[:2].upper() or None,
+        "address": unescape(address.get("streetAddress") or "") or None, "amenities": amenities,
+        "retail": diesel, "cash": diesel, "changed_at": None, "def": prices.get("DEF"),
+    }
+
+
+def ta(limit=None, only=None):
+    sitemap = fetch(TA_SITEMAP)
+    urls = [u for u in re.findall(r"<loc>([^<]+)</loc>", sitemap) if re.search(r"/location/[a-z]{2}/[^/]+/$", u)]
+    if only:
+        urls = [u for u in urls if any(f"/location/{s.lower()}/" in u for s in only)]
+    return crawl("ta", urls, ta_page, limit)
+
+
+FETCHERS = {"loves": loves, "ta": ta}
 
 
 def run(brands=None, limit=None, only=None):
