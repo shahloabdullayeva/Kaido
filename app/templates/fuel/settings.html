@@ -26,17 +26,35 @@
       <div class="form-actions"><button class="btn" type="submit">Save</button></div>
     </form>
   </section>
-  <section class="panel">
-    <div class="panel-head"><h2>How drivers use it</h2><span class="subtle">{{ connected }} truck{{ '' if connected == 1 else 's' }} connected</span></div>
-    <ol class="fuel-steps">
-      <li>Make a Telegram group for the truck, add the Kaido bot, and send <code>/truck</code> with the code from the truck's page.</li>
-      <li>The driver sends <code>/unit</code> once so Kaido knows who they are.</li>
-      <li>When the tank gets low, Kaido posts the best 3 stops ahead: price after discount, pump price, savings, parking, showers, map link. The driver taps <strong>Take</strong> on a stop or <strong>Skip</strong> with a reason.</li>
-      <li>Kaido matches the EFS receipt and learns: skipped brands stop showing up, favourite brands go first.</li>
-    </ol>
-    <p class="subtle">Commands in the group: <code>/fuel</code> best stops now · <code>/fuelprefs</code> reminder level, must-haves, brands · <code>/fuelweek</code> last week's report card.</p>
-  </section>
 </div>
+<section class="panel">
+  <div class="panel-head"><h2>Connected trucks</h2><span class="subtle">{{ trucks|length }} truck{{ '' if trucks|length == 1 else 's' }} with a Telegram group</span></div>
+  {% if trucks %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Group</th><th>Driver</th><th class="right">Tank</th><th>Where</th><th>Fuel stop sent</th><th>Did they fuel?</th></tr></thead>
+    <tbody>
+      {% for truck in trucks %}
+      <tr>
+        <td><a href="/trucks/{{ truck.id }}">{{ truck.label }}</a></td>
+        <td>{{ truck.telegram_chat_title or '—' }}</td>
+        <td>{{ (truck.driver_name or '—')|title }}</td>
+        <td class="right">{% if truck.fuel_percent is not none %}<strong>{{ truck.fuel_percent|number }}%</strong><div class="subtle">{{ truck.fuel_percent_at|ago }}</div>{% else %}—{% endif %}</td>
+        <td>{{ (truck.location or '—')[:50] }}{% if truck.located_at %}<div class="subtle">{{ truck.located_at|ago }}</div>{% endif %}</td>
+        <td>{% if truck.stop %}{{ truck.stop.name }}{% if truck.stop.city %}, {{ truck.stop.city }} {{ truck.stop.state or '' }}{% endif %}
+            <div class="subtle">{{ truck.stop.gallons|number }} gal at {{ truck.stop.price|money }}{% if truck.stop_sent_at %} · sent {{ truck.stop_sent_at|ago }}{% endif %}{% if truck.trip_id %} · <a href="/trips/{{ truck.trip_id }}">trip #{{ truck.trip_id }}</a>{% endif %}</div>
+          {% elif truck.offer %}{{ truck.offer.chosen_name or 'Stops offered' }}<div class="subtle">/fuel card {{ truck.offer.created_at|ago }}</div>
+          {% else %}<span class="subtle">nothing sent yet</span>{% endif %}</td>
+        <td>{% if truck.refuel %}<span class="badge ok">Fueled</span> {{ truck.refuel.from_percent|number }}% to {{ truck.refuel.to_percent|number }}%, ~{{ truck.refuel.gallons|number }} gal
+            <div class="subtle">{{ truck.refuel.station_name or 'unknown station' }} · {{ truck.refuel.detected_at|ago }}{% if truck.refuel.planned is sameas true %} · planned stop{% elif truck.refuel.planned is sameas false %} · not the planned stop{% endif %}</div>
+          {% elif truck.answer %}<span class="badge {{ 'warn' if truck.answer == 'skipped' else 'muted' }}">{{ truck.answer }}</span>
+          {% elif truck.stop %}<span class="badge muted">not yet</span>
+          {% else %}<span class="subtle">—</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No truck has a Telegram group yet. Open a truck's page for its /truck code.</p>{% endif %}
+</section>
 <section class="panel">
   <div class="panel-head"><h2>Driver preferences</h2><span class="subtle">set by drivers with /fuelprefs or learned from their answers</span></div>
   {% if prefs %}

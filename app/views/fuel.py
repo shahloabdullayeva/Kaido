@@ -6,7 +6,7 @@ import io
 
 from flask import Blueprint, Response, flash, g, redirect, render_template, request
 
-from .. import forms, fuel, fuel_guard, fuel_import
+from .. import brand_prices, forms, fuel, fuel_guard, fuel_import
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -440,6 +440,23 @@ def prices():
     cutoff = datetime.now(timezone.utc) - timedelta(days=fuel.PRICE_OLD_DAYS)
     for price in found:
         price["stale"] = price["observed_at"] < cutoff
+    discounts = brand_prices.brand_discounts(g.company["id"])
+    own = {p["station_id"]: p for p in found}
+    for row in rows(
+        """select r.station_id, r.retail_ppu, r.fetched_at, r.source as site, s.name, s.city, s.state, s.brand
+           from station_retail_prices r join fuel_stations s on s.id = r.station_id
+           where r.fuel_type = 'diesel' and r.fetched_at > now() - interval '30 hours'"""
+    ):
+        mine = own.get(row["station_id"])
+        if mine and mine["observed_at"] > cutoff + timedelta(days=fuel.PRICE_OLD_DAYS - 7):
+            continue
+        discount = discounts.get(row["brand"], 0.0)
+        entry = {"station_id": row["station_id"], "name": row["name"], "city": row["city"], "state": row["state"],
+                 "brand": row["brand"], "retail_ppu": float(row["retail_ppu"]), "net_ppu": round(float(row["retail_ppu"]) - discount, 4),
+                 "source": "website", "observed_at": row["fetched_at"], "stale": False, "estimated": bool(discount)}
+        if mine:
+            found.remove(mine)
+        found.append(entry)
     found.sort(key=lambda p: (p["stale"], p["net_ppu"], p["name"]))
     return render_template("fuel/prices.html", title="Fuel prices", active="/fuel", prices=found, report=None)
 
@@ -497,10 +514,57 @@ def settings():
         (g.company["id"],),
     )
     company = one("select * from companies where id = %s", (g.company["id"],))
-    connected = one("select count(*) as n from trucks where company_id = %s and telegram_chat_id is not null and status <> 'sold'",
-                    (g.company["id"],))
     return render_template("fuel/settings.html", title="Fuel assistant", active="/fuel", company=company, prefs=prefs,
-                           weekdays=list(enumerate(WEEKDAY_NAMES, start=1)), connected=connected["n"], needs=fuel.NEEDS)
+                           weekdays=list(enumerate(WEEKDAY_NAMES, start=1)), trucks=connected_trucks(), needs=fuel.NEEDS)
+
+
+def connected_trucks():
+    found = rows(
+        """select t.id, t.unit_number, t.telegram_chat_title, t.fuel_percent, t.fuel_percent_at, t.location, t.located_at,
+                  d.name as driver_name
+           from trucks t left join drivers d on d.id = t.driver_id
+           where t.company_id = %s and t.telegram_chat_id is not null and t.status <> 'sold'
+           order by lower(t.unit_number)""",
+        (g.company["id"],),
+    )
+    for truck in found:
+        truck["label"] = fuel.unit_label(truck["unit_number"])
+        trip = one(
+            """select id, plan from trips where truck_id = %s and status in ('sent', 'accepted')
+               order by id desc limit 1""",
+            (truck["id"],),
+        )
+        truck["stop"] = truck["trip_id"] = truck["stop_sent_at"] = truck["answer"] = None
+        since = None
+        if trip:
+            live = trip["plan"].get("live") or {}
+            sent = live.get("sent") or {}
+            stops = trip["plan"].get("fuel_stops") or []
+            index = max((int(k) for k in sent), default=None)
+            if index is not None and index < len(stops):
+                truck["stop"] = stops[index]
+                truck["trip_id"] = trip["id"]
+                truck["stop_sent_at"] = datetime.fromisoformat(sent[str(index)]["at"]) if sent[str(index)].get("at") else None
+                since = truck["stop_sent_at"]
+                if sent[str(index)].get("confirmed"):
+                    truck["answer"] = "will fuel there"
+                if stops[index]["station_id"] in (live.get("skipped") or []):
+                    truck["answer"] = "skipped"
+        truck["offer"] = one(
+            """select o.*, s.name as chosen_name from fuel_offers o left join fuel_stations s on s.id = o.chosen_station_id
+               where o.truck_id = %s order by o.created_at desc limit 1""",
+            (truck["id"],),
+        )
+        if not since and truck["offer"]:
+            since = truck["offer"]["created_at"]
+            truck["answer"] = {"accepted": "took a stop", "skipped": "skipped", "fueled": None}.get(truck["offer"]["status"])
+        truck["refuel"] = one(
+            """select r.*, s.name as station_name from fuel_refuels r left join fuel_stations s on s.id = r.station_id
+               where r.truck_id = %s and r.detected_at >= coalesce(%s, now() - interval '3 days')
+               order by r.detected_at desc limit 1""",
+            (truck["id"], since),
+        )
+    return found
 
 
 @bp.post("/fuel/settings")

@@ -15,7 +15,7 @@
   </form>
 </section>
 <section class="panel">
-  <div class="panel-head"><h2>Latest known prices</h2><span class="subtle">{{ prices|length }} stations · cheapest first · prices older than 90 days are not used for suggestions</span></div>
+  <div class="panel-head"><h2>Latest known prices</h2><span class="subtle">{{ prices|length }} stations · cheapest first · today's website prices show your price after your usual discount at that brand · prices older than 90 days are not used</span></div>
   {% if prices %}
   <div class="table-wrap"><table>
     <thead><tr><th>Station</th><th>City</th><th class="right">Your price</th><th class="right">Pump</th><th class="right">Discount</th><th>Source</th><th>Seen</th></tr></thead>
@@ -25,8 +25,8 @@
         <td>{{ price.city or '—' }} {{ price.state or '' }}</td>
         <td class="right"><strong>{{ price.net_ppu|money }}</strong></td>
         <td class="right">{{ price.retail_ppu|money }}</td>
-        <td class="right fuel-good">{% if price.retail_ppu %}{{ (price.retail_ppu - price.net_ppu)|money }}{% else %}—{% endif %}</td>
-        <td>{{ 'price list' if price.source == 'price_file' else 'purchase' if price.source == 'transaction' else price.source }}</td>
+        <td class="right fuel-good">{% if price.retail_ppu %}{{ (price.retail_ppu|float - price.net_ppu|float)|money }}{% else %}—{% endif %}</td>
+        <td>{{ 'price list' if price.source == 'price_file' else 'purchase' if price.source == 'transaction' else ('today, ' ~ (price.brand or '') ~ ' website' ~ (' (your price est.)' if price.estimated else '')) if price.source == 'website' else price.source }}</td>
         <td>{{ price.observed_at|ago }}{% if price.stale %} <span class="badge muted">too old</span>{% endif %}</td></tr>
       {% endfor %}
     </tbody>

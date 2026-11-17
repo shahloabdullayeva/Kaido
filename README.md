@@ -541,6 +541,12 @@ brands with 30%+ of a driver's fills in 90 days count as favourites.
 **Truck group commands:** `/fuel` (best stops from here, now), `/fuelprefs`, `/fuelweek`
 (last week's report now).
 
+**Fuel → Fuel assistant** has the settings, a **Connected trucks** table (group name, driver, tank %
+and how old it is, where, the fuel stop last sent and whether the driver fueled: the fueled note's
+% before and after, gallons, station, planned or not), and the drivers' preferences. Fuel → Prices
+lists the company's own prices and today's Love's / TA / Petro website prices (with the estimated
+price after the usual discount at that brand), about 1,100 stations.
+
 **Weekly reports** (`fuel_report.run`, on the company's report weekday and hour, default
 Monday 08:00 local, once per week per target, logged in `fuel_reports`). The report covers
 the previous Monday–Sunday:
