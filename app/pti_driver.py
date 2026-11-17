@@ -126,7 +126,7 @@ def unit_block(truck, label):
     line = f"<b>Unit {escape(truck['unit_number'])}</b>" + (f" — {tag}" if tag else "")
     lines = [line, f"<a href=\"{escape(pti.link_for(pti.ensure_token(truck)))}\">{label}</a>"]
     if truck["open_defect"]:
-        lines.append("⚠️ The last report has a defect that is not signed off. Check it before you drive.")
+        lines.append("Warning: the last report has a defect that is not signed off. Check it before you drive.")
     return lines
 
 
@@ -151,13 +151,13 @@ def completed(inspection):
         return False
     kind = pti.KINDS.get(inspection["kind"], "Inspection").lower()
     who = mention(truck) if truck["driver_id"] and inspection["driver_id"] == truck["driver_id"] else ""
-    lines = [f"✅ <b>Unit {escape(truck['unit_number'])}</b> — {kind} done by {escape(inspection['driver_name'] or 'driver')}"
+    lines = [f"<b>Unit {escape(truck['unit_number'])}</b> — {kind} done by {escape(inspection['driver_name'] or 'driver')}"
              + (f" {who}" if who else "")]
     found = pti.defects_of(inspection)
     if not found:
         lines.append("No defects.")
     else:
-        lines.append(f"{'🛑 NOT SAFE TO DRIVE — ' if inspection['safe_to_drive'] is False else ''}"
+        lines.append(f"{'NOT SAFE TO DRIVE — ' if inspection['safe_to_drive'] is False else ''}"
                      f"{len(found)} defect{'' if len(found) == 1 else 's'} reported:")
         lines += [f"• {escape(d['label'])}" + (f" — {escape(d['note'][:120])}" if d["note"] else "") for d in found]
         lines.append("The office has it and will sign off the repair.")
@@ -172,7 +172,7 @@ def rejected(inspection, reason):
     tag = mention(truck)
     zone = zone_for(one("select timezone from companies where id = %s", (truck["company_id"],))["timezone"])
     when = inspection["submitted_at"].astimezone(zone).strftime("%d %b %H:%M")
-    lines = [f"❌ <b>Unit {escape(truck['unit_number'])}</b>" + (f" {tag}" if tag else ""),
+    lines = [f"<b>Unit {escape(truck['unit_number'])}</b>" + (f" {tag}" if tag else ""),
              f"Your {kind} from {when} was done wrong, so it was not accepted.",
              f"What was wrong: {escape(reason)}",
              "",

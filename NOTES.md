@@ -237,3 +237,4 @@ rather than an empty map.
   `/root/kaido/bin/brand-prices.sh` once, and the cron line `15 4,16 * * * /root/kaido/bin/brand-prices.sh`.
 - Fuel → Prices has "Download a sample built from your purchases" for showing the price-list upload.
 - TA / Petro added to the website prices the same night (367 locations). Pilot / Flying J blocks the server (403), so it is not fetched.
+- **No emojis in any message Kaido sends** (her rule, 17 Nov): fuel cards, buttons, reports, PTI and summary messages are plain text. Stops are numbered "1.", buttons say "Take 1. ...", "Skip", "More stops".

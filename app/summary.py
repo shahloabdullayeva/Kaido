@@ -58,7 +58,7 @@ def build(company, backups):
     lines = [f"<b>Twice-weekly summary</b> · {escape(company['name'])}", ""]
     saved = [f"{escape(os.path.basename(path))} ({_size(path)})" for path in backups if _size(path)]
     lines.append("<b>Backup</b>")
-    lines.append("• Saved: " + ", ".join(saved) if saved else "• ⚠️ Backup files are missing — check the server.")
+    lines.append("• Saved: " + ", ".join(saved) if saved else "• Warning: backup files are missing — check the server.")
     lines.append("")
     lines.append("<b>PTIs since the last summary</b>")
     lines.append(f"• {stats['total']} sent, {stats['with_defects']} with defects")

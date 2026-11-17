@@ -428,8 +428,8 @@ Telegram group and a tank reading under 90 minutes old):
 - The card shows up to three stops (with "More stops" for three more): net price, pump price
   and discount, how old the price is, estimated savings against the nearest priced stop on a
   full fill, amenities and a Google Maps link.
-- Buttons: **✅ Accept** a stop, which edits the card and sends the stop as a location pin to
-  navigate to. **⏭ Skip** asks why: already fueling, off my route, no parking, don't like this
+- Buttons: **Take** a stop, which edits the card and sends the stop as a location pin to
+  navigate to. **Skip** asks why: already fueling, off my route, no parking, don't like this
   brand, found cheaper, or remind me later (asks again in 90 minutes).
 - When the tank jumps 15 points or more, the suggestion is marked fueled and Kaido checks
   whether it happened within 2 miles of the chosen stop. When the EFS purchase arrives it is

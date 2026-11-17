@@ -19,14 +19,14 @@ SHOWN = 3
 KEPT = 6
 AHEAD_DEGREES = 70
 NEAR_MILES = 12
-NUMBERS = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣"]
+NUMBERS = ["1.", "2.", "3.", "4.", "5.", "6."]
 SKIP_REASONS = [
-    ("busy", "⛽ Already fueling"),
-    ("far", "↩️ Off my route"),
-    ("park", "🅿️ No parking there"),
-    ("brand", "🚫 Don't like this brand"),
-    ("price", "💲 Found cheaper"),
-    ("later", "⏰ Remind me later"),
+    ("busy", "Already fueling"),
+    ("far", "Off my route"),
+    ("park", "No parking there"),
+    ("brand", "Don't like this brand"),
+    ("price", "Found cheaper"),
+    ("later", "Remind me later"),
 ]
 SKIP_TEXT = dict(SKIP_REASONS)
 PERCENTS = [20, 25, 30, 35, 40, 50]
@@ -215,18 +215,17 @@ def price_age(option):
 
 def amenity_line(amenities):
     shown = []
-    for key, label in fuel.NEEDS.items():
+    words = {"parking": "parking", "showers": "showers", "scale": "scale", "def": "DEF", "food": "food", "repair": "repair"}
+    for key, word in words.items():
         if amenities.get(key):
-            shown.append(label.split(" ")[0])
-    if amenities.get("spaces"):
-        shown.append(f"{amenities['spaces']} spots")
-    return " ".join(shown)
+            shown.append(f"parking ({amenities['spaces']} spots)" if key == "parking" and amenities.get("spaces") else word)
+    return ", ".join(shown)
 
 
 def option_lines(index, option):
     where = ", ".join(p for p in [option.get("city"), option.get("state")] if p)
     head = f"{NUMBERS[index]} <b>{escape(option['name'])}</b>" + (f" — {escape(where)}" if where else "")
-    head += f" · {distance_text(option)}" + (" ⭐" if option.get("liked") else "")
+    head += f" · {distance_text(option)}" + (" (favourite)" if option.get("liked") else "")
     lines = [head]
     if option["net"] is not None:
         price = f"   <b>${option['net']:.3f}</b>/gal"
@@ -234,26 +233,26 @@ def option_lines(index, option):
             lines.append(price + (f" est. (pump ${option['retail']:.3f} now, −${option['estimated_discount']:.2f} your usual discount)"
                                   if option.get("estimated_discount") else f" pump price now"))
             if option.get("saves") and option["saves"] >= 5:
-                lines.append(f"   💰 saves ~${option['saves']:.0f} on ~{option['fill']} gal vs the nearest stop")
+                lines.append(f"   Saves about ${option['saves']:.0f} on ~{option['fill']} gal vs the nearest stop")
             extras = amenity_line(option["amenities"])
-            lines.append(f"   {extras + ' · ' if extras else ''}📍 <a href=\"{fuel.maps_link(option)}\">map</a>")
+            lines.append(f"   {extras + ' · ' if extras else ''}<a href=\"{fuel.maps_link(option)}\">Map</a>")
             return lines
         if option.get("retail") and option["retail"] - option["net"] >= 0.005:
             price += f" (pump ${option['retail']:.3f}, −${option['retail'] - option['net']:.2f} discount)"
         lines.append(price + f" · {price_age(option)}")
         if option.get("saves") and option["saves"] >= 5:
-            lines.append(f"   💰 saves ~${option['saves']:.0f} on ~{option['fill']} gal vs the nearest stop")
+            lines.append(f"   Saves about ${option['saves']:.0f} on ~{option['fill']} gal vs the nearest stop")
     else:
         lines.append("   price not known yet")
     extras = amenity_line(option["amenities"])
-    link = f"<a href=\"{fuel.maps_link(option)}\">map</a>"
-    lines.append(f"   {extras + ' · ' if extras else ''}📍 {link}")
+    link = f"<a href=\"{fuel.maps_link(option)}\">Map</a>"
+    lines.append(f"   {extras + ' · ' if extras else ''}{link}")
     return lines
 
 
 def card(truck, offer, options, page=0):
     pct = offer["fuel_percent"]
-    top = f"⛽ <b>Unit {escape(fuel.unit_label(truck['unit_number']))}</b>"
+    top = f"<b>Unit {escape(fuel.unit_label(truck['unit_number']))}</b>"
     if pct is not None:
         top += f" — tank {float(pct):.0f}%"
         if offer.get("range_miles"):
@@ -278,13 +277,13 @@ def card(truck, offer, options, page=0):
 
 def keyboard(offer_id, options, page=0):
     shown = options[page * SHOWN:(page + 1) * SHOWN]
-    buttons = [[{"text": f"✅ {NUMBERS[page * SHOWN + i]} {short(o)}", "callback_data": f"fa:{offer_id}:{page * SHOWN + i}"}]
+    buttons = [[{"text": f"Take {NUMBERS[page * SHOWN + i]} {short(o)}", "callback_data": f"fa:{offer_id}:{page * SHOWN + i}"}]
                for i, o in enumerate(shown)]
-    row = [{"text": "⏭ Skip", "callback_data": f"fs:{offer_id}"}]
+    row = [{"text": "Skip", "callback_data": f"fs:{offer_id}"}]
     if len(options) > (page + 1) * SHOWN:
-        row.append({"text": "More stops ▸", "callback_data": f"fm:{offer_id}:{page + 1}"})
+        row.append({"text": "More stops", "callback_data": f"fm:{offer_id}:{page + 1}"})
     elif page:
-        row.append({"text": "◂ First stops", "callback_data": f"fm:{offer_id}:0"})
+        row.append({"text": "First stops", "callback_data": f"fm:{offer_id}:0"})
     buttons.append(row)
     return {"inline_keyboard": buttons}
 
@@ -458,7 +457,7 @@ def handle_callback(query):
         return True
     if kind == "fs":
         buttons = [[{"text": text, "callback_data": f"fr:{offer_id}:{code}"}] for code, text in SKIP_REASONS]
-        buttons.append([{"text": "◂ Back to stops", "callback_data": f"fb:{offer_id}"}])
+        buttons.append([{"text": "Back to stops", "callback_data": f"fb:{offer_id}"}])
         call("editMessageReplyMarkup", {"chat_id": chat_id, "message_id": message_id, "reply_markup": {"inline_keyboard": buttons}})
         answer(query["id"], "Why skip? It helps Kaido pick better stops.")
         return True
@@ -476,7 +475,7 @@ def handle_callback(query):
         if option.get("brand"):
             learn(truck, "accepted", option["brand"])
         who = escape(user.get("first_name") or user.get("username") or "Driver")
-        lines = [f"✅ <b>Unit {escape(fuel.unit_label(truck['unit_number']))}</b> — {who} is going to:", ""]
+        lines = [f"<b>Unit {escape(fuel.unit_label(truck['unit_number']))}</b> — {who} is going to:", ""]
         lines += option_lines(index, option)
         lines += ["", "Kaido will match the receipt when it comes in. Drive safe."]
         edit(chat_id, message_id, "\n".join(lines))
@@ -511,7 +510,7 @@ def handle_callback(query):
         if code == "far" and top:
             learn(truck, "off_route", str(top["station_id"]))
         tail = "I'll check again in about 90 minutes." if code == "later" else "OK, no suggestion this time."
-        edit(chat_id, message_id, f"⏭ <b>Unit {escape(fuel.unit_label(truck['unit_number']))}</b> — skipped: {SKIP_TEXT.get(code, code)}.\n{tail}{extra}")
+        edit(chat_id, message_id, f"<b>Unit {escape(fuel.unit_label(truck['unit_number']))}</b> — skipped: {SKIP_TEXT.get(code, code)}.\n{tail}{extra}")
         answer(query["id"], "Thanks — noted.")
         return True
     answer(query["id"])
@@ -520,7 +519,7 @@ def handle_callback(query):
 
 def prefs_text(truck, prefs):
     threshold = prefs.get("alert_percent") or truck["fuel_alert_percent"]
-    lines = [f"⚙️ <b>Fuel preferences — Unit {escape(fuel.unit_label(truck['unit_number']))}</b>"
+    lines = [f"<b>Fuel preferences — Unit {escape(fuel.unit_label(truck['unit_number']))}</b>"
              + (f" ({escape(fuel.person(truck['driver_name']))})" if truck.get("driver_name") else "")]
     lines.append(f"Remind me at: <b>{threshold}%</b> tank")
     lines.append("Must have: " + (", ".join(fuel.NEEDS[n] for n in prefs["needs"] if n in fuel.NEEDS) or "nothing special"))
@@ -529,22 +528,22 @@ def prefs_text(truck, prefs):
     usual = usual_brands(truck)
     if usual:
         lines.append("Kaido noticed you usually fuel at: " + ", ".join(sorted(usual)))
-    lines += ["", "Tap to change. Tapping a brand cycles ⭐ favourite → 🚫 never → normal."]
+    lines += ["", "Tap to change. Tapping a brand cycles: favourite, then never, then normal."]
     return "\n".join(lines)
 
 
 def prefs_keyboard(truck, prefs):
     threshold = prefs.get("alert_percent") or truck["fuel_alert_percent"]
     tid = truck["id"]
-    rows_out = [[{"text": f"Remind at {threshold}% ▸", "callback_data": f"fp:{tid}:pct"}]]
+    rows_out = [[{"text": f"Remind at {threshold}% (tap to change)", "callback_data": f"fp:{tid}:pct"}]]
     needs = []
     for key in ("parking", "showers", "scale", "def", "food", "repair"):
         on = key in (prefs["needs"] or [])
-        needs.append({"text": ("✔️ " if on else "") + fuel.NEEDS[key].split(" ", 1)[1], "callback_data": f"fp:{tid}:n:{key}"})
+        needs.append({"text": ("[x] " if on else "[ ] ") + fuel.NEEDS[key], "callback_data": f"fp:{tid}:n:{key}"})
     rows_out += [needs[:3], needs[3:]]
     brands = []
     for brand in PREF_BRANDS:
-        mark = "⭐ " if brand in (prefs["brands_liked"] or []) else "🚫 " if brand in (prefs["brands_avoided"] or []) else ""
+        mark = "Fav: " if brand in (prefs["brands_liked"] or []) else "Never: " if brand in (prefs["brands_avoided"] or []) else ""
         brands.append({"text": mark + brand, "callback_data": f"fp:{tid}:b:{PREF_BRANDS.index(brand)}"})
     rows_out += [brands[:3], brands[3:]]
     return {"inline_keyboard": rows_out}

@@ -21,12 +21,12 @@ COMPARE_MILES = 30
 ROUTE_MILES = 3
 MIN_MISSED_PPU = 0.03
 NEEDS = {
-    "parking": "🅿️ truck parking",
-    "showers": "🚿 showers",
-    "scale": "⚖️ scale",
-    "def": "💧 DEF at pump",
-    "food": "🍔 food",
-    "repair": "🔧 repair",
+    "parking": "Truck parking",
+    "showers": "Showers",
+    "scale": "Scale",
+    "def": "DEF at pump",
+    "food": "Food",
+    "repair": "Repair",
 }
 
 BRANDS = [

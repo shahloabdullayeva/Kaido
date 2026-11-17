@@ -310,7 +310,7 @@ def render_driver(data, start):
     if week["avg"] and fleet["avg"]:
         diff = week["avg"] - fleet["avg"]
         avg_note = ("same as fleet " + money(fleet["avg"], True)) if abs(diff) < 0.005 else \
-            f"{'▲' if diff > 0 else '▼'} ${abs(diff):.2f} vs fleet {money(fleet['avg'], True)}"
+            f"${abs(diff):.2f} {'above' if diff > 0 else 'below'} fleet {money(fleet['avg'], True)}"
     missed = float(week["missed"] or 0)
     canvas.tile([56, top, 56 + half, top + 170], "Spent on diesel", money(week["spend"]),
                 f"{int(week['fills'])} fills" + (f" · DEF {money(week['def_spend'])}" if week["def_spend"] else ""))
@@ -355,7 +355,7 @@ def render_fleet(data, start):
     change = None
     if before["spend"] and float(before["spend"]) > 0:
         pct = (float(week["spend"]) - float(before["spend"])) / float(before["spend"]) * 100
-        change = "same as last week" if abs(pct) < 0.5 else f"{'▲' if pct > 0 else '▼'} {abs(pct):.0f}% vs last week"
+        change = "same as last week" if abs(pct) < 0.5 else f"{'up' if pct > 0 else 'down'} {abs(pct):.0f}% vs last week"
     sent = int(asks["sent"] or 0)
     tiles = [
         ("Diesel spend", money(week["spend"]), change, MUTED, INK),
@@ -421,7 +421,7 @@ def render_fleet(data, start):
 def driver_caption(data, start):
     week = data["week"]
     truck = data["truck"]
-    lines = [f"⛽ <b>Weekly fuel — Unit {escape(unit_label(truck['unit_number']))}</b> ({start:%d %b}–{start + timedelta(days=6):%d %b})"]
+    lines = [f"<b>Weekly fuel — Unit {escape(unit_label(truck['unit_number']))}</b> ({start:%d %b}–{start + timedelta(days=6):%d %b})"]
     if not week["fills"]:
         lines.append("No diesel purchases on this truck last week.")
         return "\n".join(lines)
@@ -435,7 +435,7 @@ def driver_caption(data, start):
 
 def fleet_caption(data, start):
     week = data["week"]
-    lines = [f"⛽ <b>Fleet fuel — {escape(data['company']['name'])}</b> ({start:%d %b}–{start + timedelta(days=6):%d %b})",
+    lines = [f"<b>Fleet fuel — {escape(data['company']['name'])}</b> ({start:%d %b}–{start + timedelta(days=6):%d %b})",
              (f"{money(week['spend'])} on {float(week['gallons']):,.0f} gal · avg {money(week['avg'], True)}/gal"
               if week["avg"] else "No diesel purchases last week."),
              f"Discounts {money(week['discount'])} · missed savings <b>{money(week['missed'])}</b>"]
