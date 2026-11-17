@@ -563,95 +563,55 @@ def maps_route(trip):
     return url + (f"&waypoints={quote(waypoints, safe=',|')}" if waypoints else "")
 
 
+def short_when(iso, longitude):
+    if not iso:
+        return "?"
+    moment = local(datetime.fromisoformat(iso), longitude)
+    return moment.strftime("%a %H:%M ") + (moment.tzname() or "")
+
+
+def city_of(stop):
+    found = re.findall(r"([A-Za-z][A-Za-z .'-]+),\s*([A-Z]{2})\b", stop.get("address") or "")
+    if found:
+        return f"{found[-1][0].strip()}, {found[-1][1]}"
+    return stop.get("name") or ""
+
+
+def short_stop(stop):
+    where = ", ".join(p for p in [stop.get("city"), stop.get("state")] if p)
+    price = f"${stop['price']:.2f}"
+    return [f"<b>Fuel:</b> {escape(stop['name'])}" + (f", {escape(where)}" if where else ""),
+            f"Buy {stop['gallons']:.0f} gal at {price} · <a href=\"{fuel.maps_link(stop)}\">Map</a>"]
+
+
 def message(trip, truck):
     plan = trip["plan"]
     summary = plan["summary"]
     stops = trip["stops"]
-    first, last = stops[0], stops[-1]
-    lines = [f"<b>Trip plan{' — Load ' + escape(trip['load_number']) if trip['load_number'] else ''}</b>",
-             f"Unit {escape(fuel.unit_label(truck['unit_number']))}" + (f" · {escape(fuel.person(truck['driver_name']))}" if truck.get("driver_name") else ""),
-             f"{escape(first.get('address') or first.get('name') or '')} to {escape(last.get('address') or last.get('name') or '')}",
-             f"{summary['miles']:,.0f} mi ({summary['empty_miles']:,.0f} mi to pickup) · about {summary['drive_hours']:.0f} h driving",
-             tank_line(trip, summary)]
-    if trip.get("rate"):
-        lines.append(f"Rate ${float(trip['rate']):,.0f} · ${summary.get('rate_per_mile', 0):.2f}/mi all miles")
-    hos = summary.get("hos") or {}
-    if hos:
-        lines.append("Hours now (Horizon): " + ", ".join(
-            f"{label} {hos[key]:.1f} h" for key, label in (("drive", "drive"), ("shift", "shift"), ("cycle", "70-hour cycle")) if key in hos))
-    if summary.get("restart_needed"):
-        lines.append("<b>A 34-hour restart is needed on this trip: the 70-hour cycle runs out on the way.</b>")
-    if summary.get("late"):
-        lines.append("<b>With these hours the load arrives late. Call the office before you accept.</b>")
-    lines.append("")
+    head = f"<b>Load {escape(trip['load_number'])}</b>" if trip["load_number"] else "<b>Trip</b>"
+    lines = [f"{head} · Unit {escape(fuel.unit_label(truck['unit_number']))}",
+             f"{escape(city_of(stops[0]))} to {escape(city_of(stops[-1]))} · {summary['miles']:,.0f} mi"]
     for stop in stops:
         label = "Pickup" if stop["kind"] == "pickup" else "Delivery"
-        window = ""
-        if stop.get("window_start"):
-            opens = datetime.fromisoformat(stop["window_start"])
-            closes = datetime.fromisoformat(stop["window_end"])
-            window = f" ({stop.get('window_type') or 'window'} {opens:%b %d %H:%M} to {closes:%b %d %H:%M})"
-        lines.append(f"<b>{label}:</b> {escape(stop.get('name') or '')}{window}")
-        state = "on time" if not stop.get("late_hours") else f"LATE by about {stop['late_hours']:.0f} h"
-        lines.append(f"   ETA {when_text(stop.get('eta'), stop['longitude'])}, {state}"
-                     + (f", wait {stop['wait_hours']:.1f} h for the window" if stop.get("wait_hours") else ""))
+        late = f" (late {stop['late_hours']:.0f} h)" if stop.get("late_hours") else ""
+        lines.append(f"{label} {short_when(stop.get('eta'), stop['longitude'])}{late}")
+    percent = float(trip["start_fuel_percent"])
+    hos = summary.get("hos") or {}
+    status = f"Tank {percent:.0f}%"
+    if hos.get("drive") is not None:
+        status += f" · Drive {hos['drive']:.1f} h · Cycle {hos.get('cycle', 0):.1f} h"
+    lines.append(status)
+    if summary.get("restart_needed") or summary.get("late"):
+        lines.append("<b>Needs a 34 h restart, will be late. Call the office.</b>" if summary.get("restart_needed")
+                     else "<b>Will be late. Call the office.</b>")
     lines.append("")
     if summary.get("impossible"):
-        lines.append("<b>Fuel:</b> no safe fuel plan with the prices Kaido knows on this route. Fuel at the first big truck stop and call the office.")
+        lines.append("<b>Fuel:</b> fuel at the first big truck stop and call the office.")
     elif not plan["fuel_stops"]:
-        lines.append("<b>Fuel:</b> no stop needed, the tank covers the whole trip.")
+        lines.append("<b>Fuel:</b> no stop needed.")
     else:
-        lines += stop_lines(plan["fuel_stops"][0], "First fuel stop")
-        lines.append("Kaido sends the next stop when you get close to it or the tank gets low. One stop at a time.")
-    rest = next((r for r in plan["rests"] if r["kind"] in ("rest", "restart")), None)
-    if rest:
-        lines += [""] + rest_lines(rest, summary.get("hos_known"))
-    lines += ["", f"<a href=\"{maps_route(trip)}\">Open the route in Google Maps</a>"]
+        lines += short_stop(plan["fuel_stops"][0])
     return "\n".join(lines)
-
-
-def tank_line(trip, summary):
-    percent = float(trip["start_fuel_percent"])
-    gallons = percent / 100 * int(trip["tank_gallons"])
-    line = (f"Tank {percent:.0f}% of {trip['tank_gallons']} gal: about {gallons:,.0f} gal, {gallons * float(trip['mpg']):,.0f} mi "
-            f"at {float(trip['mpg']):.1f} mpg")
-    if not summary.get("fuel_known", True):
-        return line + " (Samsara has no tank reading for this truck, 50% assumed)"
-    if summary.get("fuel_reading_at"):
-        age = (datetime.now(timezone.utc) - datetime.fromisoformat(summary["fuel_reading_at"])).total_seconds() / 3600
-        if age >= 2:
-            line += f" (tank reading {age:.0f} h old)"
-    return line
-
-
-def stop_lines(stop, title):
-    price = f"${stop['price']:.3f}" + (" est." if stop["source"] == "website" else "")
-    lines = [f"<b>{title}:</b> {escape(place_name(stop))}, mile {stop['mile']:,.0f}",
-             f"   Buy {stop['gallons']:.0f} gal at {price}" + (f" (pump ${stop['retail']:.3f})" if stop.get("retail") and stop["retail"] - stop["price"] > 0.005 else ""),
-             f"   Get there about {when_text(stop.get('eta'), stop['longitude'])} with about {stop['arrive_percent']}% in the tank"]
-    if stop.get("fill_reason"):
-        lines.append(f"   <b>{escape(stop['fill_reason'])}</b>")
-    extras = amenity_text(stop.get("amenities") or {})
-    lines.append(f"   {extras + ' · ' if extras else ''}<a href=\"{fuel.maps_link(stop)}\">Map</a>")
-    return lines
-
-
-def amenity_text(amenities):
-    words = []
-    if amenities.get("parking"):
-        words.append(f"parking ({amenities['spaces']} spots)" if amenities.get("spaces") else "parking")
-    for key, word in (("showers", "showers"), ("scale", "scale"), ("def", "DEF"), ("food", "food"), ("repair", "repair")):
-        if amenities.get(key):
-            words.append(word)
-    return ", ".join(words)
-
-
-def rest_lines(rest, hos_known):
-    spot = rest.get("spot")
-    where = f" at {escape(place_name(spot))}" + (f", {spot['spaces']} spots" if spot and spot.get("spaces") else "") if spot else ""
-    hours = "34 h restart" if rest["kind"] == "restart" else f"{rest['hours']:.0f} h rest"
-    return [f"<b>Next rest:</b> {hours} around mile {rest['mile']:,.0f}{where}, from {when_text(rest['start'], rest['longitude'])}"
-            + ("" if hos_known else " (driver hours not known, assumed a fresh 11/14)")]
 
 
 def keyboard(trip_id):
@@ -846,36 +806,27 @@ def replan(trip, truck, mile, avoid=()):
     return fresh
 
 
-def hours_line(hos):
-    if not hos:
-        return "Hours left: not known from the ELD right now."
-    parts = [f"{label} {hos[key]:.1f} h" for key, label in (("drive", "drive"), ("shift", "shift"), ("cycle", "70-hour cycle")) if key in hos]
-    return "Hours left on the ELD: " + ", ".join(parts)
-
-
 def next_stop_message(trip, truck, stop, mile, hos, why):
-    speed = average_speed(trip)
     miles_to = max(0.0, stop["mile"] - mile)
-    hours_to = miles_to / speed
-    mpg = float(trip["mpg"])
-    percent = truck.get("fuel_percent")
-    lines = [f"<b>Next fuel{' — Load ' + escape(trip['load_number']) if trip['load_number'] else ''}</b> · Unit {escape(fuel.unit_label(truck['unit_number']))}"]
+    lines = [f"<b>Next fuel</b> · Unit {escape(fuel.unit_label(truck['unit_number']))}"]
     if why:
         lines.append(escape(why))
-    lines += stop_lines(stop, "Fuel at")
-    lines.insert(len(lines) - (2 if stop.get("fill_reason") else 1),
-                 f"   {miles_to:,.0f} mi ahead, about {hours_to:.1f} h of driving")
-    if percent is not None:
-        left = max(0.0, float(percent) / 100 * int(trip["tank_gallons"]) * mpg)
-        lines.append(f"Tank now {float(percent):.0f}%, about {left:,.0f} mi of fuel.")
-    lines.append(hours_line(hos))
+    lines += short_stop(stop)
+    lines[-1] = f"{miles_to:,.0f} mi ahead · " + lines[-1]
+    if stop.get("fill_reason"):
+        lines.append("Fill the tank, fuel ahead costs more.")
+    status = []
+    if truck.get("fuel_percent") is not None:
+        status.append(f"Tank {float(truck['fuel_percent']):.0f}%")
+    if hos.get("drive") is not None:
+        status.append(f"Drive {hos['drive']:.1f} h")
+    if hos.get("shift") is not None:
+        status.append(f"Shift {hos['shift']:.1f} h")
+    if status:
+        lines.append(" · ".join(status))
     clocks = [hos.get(k) for k in ("drive", "shift") if hos.get(k) is not None]
-    if clocks and min(clocks) < hours_to:
-        lines.append(f"<b>Your clock runs out in {min(clocks):.1f} h, before this stop. Take your 10 h rest at a truck stop first, Kaido will send the stop after your rest.</b>")
-    delivery = trip["stops"][-1]
-    if delivery.get("eta"):
-        late = f", LATE by about {delivery['late_hours']:.0f} h" if delivery.get("late_hours") else ", on time"
-        lines.append(f"Delivery ETA {when_text(delivery['eta'], delivery['longitude'])}{late}")
+    if clocks and min(clocks) < miles_to / average_speed(trip):
+        lines.append("<b>Rest first, your clock runs out before this stop.</b>")
     return "\n".join(lines)
 
 
@@ -931,7 +882,7 @@ def follow():
         alert = float(truck["fuel_alert_percent"] or 35)
         if state["current"] >= len(stops):
             if percent is not None and percent <= alert:
-                if replan(trip, truck, mile) and send_next(trip, truck, mile, "The tank is getting low, here is the best stop ahead."):
+                if replan(trip, truck, mile) and send_next(trip, truck, mile, "Tank getting low."):
                     done.append((trip["id"], "low, replanned"))
             continue
         stop = stops[state["current"]]
@@ -944,13 +895,13 @@ def follow():
             elif mile > stop["mile"] + PASSED_MILES:
                 state["skipped"].append(stop["station_id"])
                 replan(trip, truck, mile, state["skipped"])
-                if send_next(trip, truck, mile, f"You passed {stop['name']} without fueling, so Kaido looked again. Best stop from here:"):
+                if send_next(trip, truck, mile, f"Passed {stop['name']}. Next best:"):
                     done.append((trip["id"], "passed, replanned"))
             continue
         usable = None if percent is None else (percent - 10) / 100 * int(trip["tank_gallons"]) * float(trip["mpg"])
         if usable is not None and usable < stop["mile"] - mile:
             replan(trip, truck, mile, state["skipped"])
-            if send_next(trip, truck, mile, "The tank is lower than planned, so Kaido looked again. Best stop from here:"):
+            if send_next(trip, truck, mile, "Tank lower than planned. Next best:"):
                 done.append((trip["id"], "short on fuel, replanned"))
             continue
         if stop["mile"] - mile <= NEXT_STOP_MILES or (percent is not None and percent <= alert):
@@ -971,8 +922,7 @@ def stop_callback(query, parts, trip, truck, chat_id, message_id, who):
         state["sent"].setdefault(str(index), {})["confirmed"] = datetime.now(timezone.utc).isoformat()
         save_plan(trip)
         call("editMessageReplyMarkup", {"chat_id": chat_id, "message_id": message_id, "reply_markup": {"inline_keyboard": []}})
-        send(chat_id, f"{who} will fuel at {escape(place_name(stop))}. Buy about {stop['gallons']:.0f} gal. "
-                      "Kaido sends the next stop when it is time.", reply_to_message_id=message_id)
+        send(chat_id, f"OK, {escape(stop['name'])}, {stop['gallons']:.0f} gal.", reply_to_message_id=message_id)
         answer(query["id"], "Saved.")
         return True
     state["skipped"].append(stop["station_id"])
@@ -982,7 +932,7 @@ def stop_callback(query, parts, trip, truck, chat_id, message_id, who):
     fresh = replan(trip, truck, mile, state["skipped"])
     answer(query["id"], "Looking for another stop.")
     if fresh:
-        send_next(trip, truck, mile, f"{who} skipped {stop['name']}. Next best stop from here:")
+        send_next(trip, truck, mile, f"Skipped {stop['name']}. Next best:")
     else:
         send(chat_id, f"{who} skipped {escape(stop['name'])}. Kaido found no other priced stop in range, fuel at the next big truck stop.")
     notify_office(trip, truck, f"skipped fuel at {stop['name']}")

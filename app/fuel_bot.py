@@ -198,84 +198,28 @@ def display_name(station):
     return name
 
 
-def distance_text(option):
-    text = f"{option['miles']} mi"
-    if option.get("compass"):
-        text += f" {option['compass']}"
-    if option.get("behind"):
-        text += " (behind you)"
-    return text
-
-
-def price_age(option):
-    if not option.get("price_at"):
-        return ""
-    then = datetime.fromisoformat(option["price_at"])
-    days = (datetime.now(timezone.utc) - then).days
-    if option.get("price_source") == "price_file":
-        return "today's list" if days < 1 else f"price list {days}d old"
-    return "paid today" if days < 1 else f"paid {days}d ago"
-
-
-def amenity_line(amenities):
-    shown = []
-    words = {"parking": "parking", "showers": "showers", "scale": "scale", "def": "DEF", "food": "food", "repair": "repair"}
-    for key, word in words.items():
-        if amenities.get(key):
-            shown.append(f"parking ({amenities['spaces']} spots)" if key == "parking" and amenities.get("spaces") else word)
-    return ", ".join(shown)
-
-
 def option_lines(index, option):
     where = ", ".join(p for p in [option.get("city"), option.get("state")] if p)
-    head = f"{NUMBERS[index]} <b>{escape(option['name'])}</b>" + (f" — {escape(where)}" if where else "")
-    head += f" · {distance_text(option)}" + (" (favourite)" if option.get("liked") else "")
-    lines = [head]
-    if option["net"] is not None:
-        price = f"   <b>${option['net']:.3f}</b>/gal"
-        if option.get("price_source") == "website":
-            lines.append(price + (f" est. (pump ${option['retail']:.3f} now, −${option['estimated_discount']:.2f} your usual discount)"
-                                  if option.get("estimated_discount") else f" pump price now"))
-            if option.get("saves") and option["saves"] >= 5:
-                lines.append(f"   Saves about ${option['saves']:.0f} on ~{option['fill']} gal vs the nearest stop")
-            extras = amenity_line(option["amenities"])
-            lines.append(f"   {extras + ' · ' if extras else ''}<a href=\"{fuel.maps_link(option)}\">Map</a>")
-            return lines
-        if option.get("retail") and option["retail"] - option["net"] >= 0.005:
-            price += f" (pump ${option['retail']:.3f}, −${option['retail'] - option['net']:.2f} discount)"
-        lines.append(price + f" · {price_age(option)}")
-        if option.get("saves") and option["saves"] >= 5:
-            lines.append(f"   Saves about ${option['saves']:.0f} on ~{option['fill']} gal vs the nearest stop")
-    else:
-        lines.append("   price not known yet")
-    extras = amenity_line(option["amenities"])
-    link = f"<a href=\"{fuel.maps_link(option)}\">Map</a>"
-    lines.append(f"   {extras + ' · ' if extras else ''}{link}")
-    return lines
+    head = f"{NUMBERS[index]} <b>{escape(option['name'])}</b>" + (f", {escape(where)}" if where else "")
+    head += f" · {option['miles']} mi"
+    price = f"${option['net']:.2f}" if option["net"] is not None else "price unknown"
+    if option.get("saves") and option["saves"] >= 5:
+        price += f" · saves ${option['saves']:.0f}"
+    return [head, f"{price} · <a href=\"{fuel.maps_link(option)}\">Map</a>"]
 
 
 def card(truck, offer, options, page=0):
     pct = offer["fuel_percent"]
-    top = f"<b>Unit {escape(fuel.unit_label(truck['unit_number']))}</b>"
+    top = f"<b>Fuel</b> · Unit {escape(fuel.unit_label(truck['unit_number']))}"
     if pct is not None:
-        top += f" — tank {float(pct):.0f}%"
-        if offer.get("range_miles"):
-            top += f", about {offer['range_miles']} mi left"
+        top += f" · Tank {float(pct):.0f}%"
     who = mention(truck)
     lines = [top + (f" {who}" if who else "")]
     shown = options[page * SHOWN:(page + 1) * SHOWN]
-    if offer["reason"] == "asked":
-        lines.append("Best places to fuel from where you are now:")
-    elif any(o.get("behind") for o in shown):
-        lines.append("Time to plan fuel. Best stops near your route:")
-    else:
-        lines.append("Time to plan fuel. Best stops ahead on your way:")
     if not shown:
-        lines += ["", "No truck stops with known prices in range. Fuel at the next big truck stop and keep the receipt."]
+        lines.append("No priced truck stops in range. Fuel at the next big truck stop.")
     for index, option in enumerate(shown):
-        lines.append("")
         lines += option_lines(page * SHOWN + index, option)
-    lines += ["", "Tap the stop you'll take, or skip."]
     return "\n".join(lines)
 
 

@@ -393,19 +393,22 @@ number of stops), pick a truck, and Kaido plans the whole trip:
   of arriving empty. When a stop fills the tank because diesel ahead is at least $0.25/gal dearer,
   the stop says so ("Fill the tank here: diesel ahead in CA averages $7.35, $1.48/gal more").
   Each purchase is at least 50 gallons, or a fill if the tank needs less.
-- **To the driver, one stop at a time.** "Send to driver" posts a plain-text overview to the truck's
-  group: miles, hours left on the ELD, pickup and delivery ETAs (with late and 34-hour-restart
-  warnings), the **first** fuel stop only, the next rest, and a Google Maps link. Buttons: **Accept
-  plan** or **Problem with plan** (different route, not enough hours, tank info is wrong, other).
-  The answer is saved on the trip and goes to the company admins on Telegram.
+- **To the driver, one stop at a time, short.** Drivers do not read long messages, so every
+  driver message is a few lines. "Send to driver" posts: load and unit, from/to cities and miles,
+  pickup and delivery ETA (with "late N h"), tank % and drive/cycle hours left, one warning
+  line when a restart is needed or it will be late, and the **first** fuel stop (name, city,
+  gallons, price, Map). Buttons: **Accept plan** or **Problem with plan** (different route,
+  not enough hours, tank info is wrong, other). The answer is saved on the trip and goes to the
+  company admins on Telegram. The full plan (every stop, rests, timeline, map) is on the trip's
+  page in Kaido.
 - **Live follow-up** (`trips.follow`, every 5 minutes from `bin/followup.sh`, for sent and accepted
   trips up to 8 days old, while the truck's position is under an hour old and within 15 miles of the
   route):
   - When the next planned stop is under 80 miles ahead, or the tank is at or under the alert level,
-    the driver gets that one stop: where, mile, gallons, price, how far and how long, tank now,
-    the hours left on the ELD, and the delivery ETA. If the drive or shift clock runs out before the
-    stop, it says to take the 10-hour rest first. A location pin follows. Buttons: **Fuel there**
-    or **Skip this stop**.
+    the driver gets that one stop in four lines: name and city, miles ahead, gallons, price and Map,
+    "Fill the tank, fuel ahead costs more" when it is a fill-up before a dearer state, and tank %
+    with drive and shift hours left. When the clock runs out first it says "Rest first". A location
+    pin follows. Buttons: **Fuel there** or **Skip this stop**.
   - A tank jump of 15 points marks the stop done; the next one comes when it is close.
   - **Skip**, or driving 8 miles past the stop without fueling, re-plans the rest of the route from
     the truck's position and tank (the skipped stations are left out) and sends the new next stop at
@@ -491,9 +494,9 @@ Telegram group and a tank reading under 90 minutes old):
   small penalty per mile, a bonus for the driver's favourite and usual brands, and a penalty
   for unknown amenities the driver needs.
 - Prices count for 90 days; the card always says how old each one is ("paid 12d ago").
-- The card shows up to three stops (with "More stops" for three more): net price, pump price
-  and discount, how old the price is, estimated savings against the nearest priced stop on a
-  full fill, amenities and a Google Maps link.
+- The card is short: "Fuel · Unit N · Tank X%", then up to three stops of two lines each (name,
+  city, miles; price, savings against the nearest priced stop on a full fill, Map), with "More stops"
+  for three more. Price age, pump price and amenities are on the web pages, not in the chat.
 - Buttons: **Take** a stop, which edits the card and sends the stop as a location pin to
   navigate to. **Skip** asks why: already fueling, off my route, no parking, don't like this
   brand, found cheaper, or remind me later (asks again in 90 minutes).
