@@ -10,7 +10,8 @@
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <label class="field"><span>CSV or Excel file</span><input type="file" name="sheet" accept=".csv,.xlsx,.xlsm,.txt" required>
       <em>Needs a station name column and either a net price ("your price", "net price", "disc ppu") or retail + discount columns. City, state, date, latitude and longitude are used when present.</em></label>
-    <div class="form-actions"><button class="btn" type="submit">Import prices</button></div>
+    <div class="form-actions"><button class="btn" type="submit">Import prices</button>
+      <a class="btn ghost" href="/fuel/prices/sample.csv">Download a sample built from your purchases</a></div>
   </form>
 </section>
 <section class="panel">

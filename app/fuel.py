@@ -535,7 +535,13 @@ def import_price_file(company_id, filename, data):
         city = str(value(city_col) or "").title() or None
         state = str(value(state_col) or "").upper()[:2] or None
         lat, lon = number(value(lat_col)), number(value(lon_col))
+        twin = None
         if lat and lon:
+            close = nearby_stations(lat, lon, 0.25)
+            twin = close[0] if close else None
+        if twin:
+            station = resolve_station(twin)
+        elif lat and lon:
             station = insert(
                 """insert into fuel_stations (key, name, brand, latitude, longitude, city, state, located_by, source)
                    values (%s, %s, %s, %s, %s, %s, %s, 'file', 'transaction')

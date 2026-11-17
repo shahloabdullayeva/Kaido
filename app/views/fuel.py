@@ -1,7 +1,10 @@
 import math
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, flash, g, redirect, render_template, request
+import csv
+import io
+
+from flask import Blueprint, Response, flash, g, redirect, render_template, request
 
 from .. import forms, fuel, fuel_import
 from ..audit import audit
@@ -401,6 +404,30 @@ def prices():
         price["stale"] = price["observed_at"] < cutoff
     found.sort(key=lambda p: (p["stale"], p["net_ppu"], p["name"]))
     return render_template("fuel/prices.html", title="Fuel prices", active="/fuel", prices=found, report=None)
+
+
+@bp.get("/fuel/prices/sample.csv")
+@login_required
+@role_required("admin")
+def sample_prices():
+    found = rows(
+        """select distinct on (p.station_id) p.retail_ppu, p.net_ppu, s.name, s.city, s.state, s.latitude, s.longitude
+           from fuel_prices p join fuel_stations s on s.id = p.station_id
+           where p.company_id = %s and p.fuel_type = 'diesel' and p.source = 'transaction' and s.latitude is not null
+           order by p.station_id, p.observed_at desc""",
+        (g.company["id"],),
+    )
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Station Name", "City", "State", "Latitude", "Longitude", "Retail Price", "Discount", "Your Price", "Price Date"])
+    today = datetime.now().strftime("%Y-%m-%d")
+    for price in sorted(found, key=lambda p: (p["state"] or "", p["name"])):
+        retail = float(price["retail_ppu"] or price["net_ppu"])
+        net = float(price["net_ppu"])
+        writer.writerow([price["name"], price["city"] or "", price["state"] or "", f"{float(price['latitude']):.6f}",
+                         f"{float(price['longitude']):.6f}", f"{retail:.3f}", f"{retail - net:.3f}", f"{net:.3f}", today])
+    return Response(out.getvalue(), mimetype="text/csv",
+                    headers={"Content-Disposition": f"attachment; filename=sample-price-list-{today}.csv"})
 
 
 @bp.post("/fuel/prices")

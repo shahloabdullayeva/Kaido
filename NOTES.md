@@ -229,3 +229,10 @@ rather than an empty map.
 - **It is switched off for every company.** Turn it on in Fuel → Fuel assistant. Drivers only get cards in truck groups that are connected (`/truck` code, then `/unit`), and **no truck group is connected yet**.
 - No live daily prices yet: suggestions use the prices the company paid in the last 90 days (age shown on the card), plus any price list uploaded on Fuel → Prices. BOOKIT's last EFS import is 13 Oct, so cards show October prices marked with their age until a new EFS report or price list is imported.
 - The old-job shift bots (pfp-swap) were taken off cron the same night; nothing in Kaido depended on them.
+- **Later on 17 Nov:** she wants prices fetched from the brand websites ("fine" with it). Love's is built:
+  `manage.py brand-prices` reads every Love's travel stop page (about 620) for today's diesel and DEF price,
+  parking spaces, showers, scale and repair. Cards then show "$5.160/gal est. (pump $5.619 now, −$0.46 your usual
+  discount)", using the company's average discount at that brand. The **twice-a-day cron line and the first full
+  fetch were not added by Claude** (the Claude Code safety check stopped it). Charlotte runs them herself:
+  `/root/kaido/bin/brand-prices.sh` once, and the cron line `15 4,16 * * * /root/kaido/bin/brand-prices.sh`.
+- Fuel → Prices has "Download a sample built from your purchases" for showing the price-list upload.

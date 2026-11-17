@@ -1062,3 +1062,27 @@ begin
       'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
   end loop;
 end $$;
+
+alter table fuel_stations drop constraint if exists fuel_stations_source_check;
+alter table fuel_stations add constraint fuel_stations_source_check check (source in ('osm', 'transaction', 'manual', 'brand'));
+
+create table if not exists station_retail_prices (
+  station_id int not null references fuel_stations(id) on delete cascade,
+  fuel_type text not null default 'diesel',
+  retail_ppu numeric(8,4) not null,
+  cash_ppu numeric(8,4),
+  changed_at timestamptz,
+  fetched_at timestamptz not null default now(),
+  source text not null,
+  primary key (station_id, fuel_type)
+);
+
+create table if not exists brand_fetches (
+  id bigserial primary key,
+  brand text not null,
+  started_at timestamptz not null default now(),
+  finished_at timestamptz,
+  pages int not null default 0,
+  prices int not null default 0,
+  failed int not null default 0
+);

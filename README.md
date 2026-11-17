@@ -219,6 +219,8 @@ off the fleet map and the totals.
                                           load truck stops from OpenStreetMap
     manage.py fuel-prepare [--company] [--recheck]
                                           match purchases to stations, find missed savings
+    manage.py brand-prices [--brand loves] [--states TX,OK] [--limit N]
+                                          today's pump prices from truck-stop websites
     manage.py fuel [--force]              send fuel stop suggestions, match refuels
     manage.py fuel-report [--company] [--dry-run] [--force]
                                           weekly fuel reports to drivers and admins
@@ -379,6 +381,22 @@ savings), `app/fuel_bot.py` (the driver-chat cards and buttons) and `app/fuel_re
   (`fuel_prices`, source `transaction`). A daily price or discount list from the fuel program
   can be uploaded on Fuel → Prices (source `price_file`). It needs a station-name column and either a
   net price or pump price + discount.
+- *Today's pump prices from brand websites* (`app/brand_prices.py`, `manage.py brand-prices`,
+  `bin/brand-prices.sh` twice a day): Love's location pages carry each travel stop's diesel
+  price (cash and credit), DEF price, truck parking spaces, showers, CAT scale and repair. The
+  credit price is kept as the pump price in `station_retail_prices` (one row per station and
+  fuel, refreshed in place), and the page's amenities replace the brand guess. A stop already in
+  the directory within 0.3 mi with the same brand is updated rather than duplicated. One page every
+  1.5 s, travel stops only. Used for 30 hours after fetching.
+- *Your estimated price at a brand*: pump price − the company's average discount at that brand
+  over its last 60 days of EFS fills (all history if fewer than two recent ones). A card marks it
+  "est." and shows the discount it assumed. When the company has a real price under 7 days
+  old at that station, that price is used instead.
+- *Sample price list*: Fuel → Prices → "Download a sample built from your purchases" writes a
+  CSV in the usual price-list layout (station, city, state, latitude, longitude, retail,
+  discount, your price, date) from the latest price paid at each station, dated today. It is
+  there to show and test the upload; uploading it makes those older prices count as today's.
+  A row with coordinates is attached to the station already within 0.25 mi when there is one.
 - *Matching purchases to stations*: the EFS location name + city + state is geocoded at the
   city level (Nominatim, cached 90 days) and matched to the nearest OSM station of the same
   brand within 20 miles. Unbranded stops are geocoded by name. A station still placed only

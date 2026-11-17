@@ -411,6 +411,13 @@ def cmd_fuel_report(args):
     return 0
 
 
+def cmd_brand_prices(args):
+    from app import brand_prices
+    only = [s.strip().upper() for s in args.states.split(",")] if args.states else None
+    print(brand_prices.run(args.brand or None, limit=args.limit, only=only))
+    return 0
+
+
 def cmd_cat(args):
     from app import cat
     user = one("select id, name from users where lower(email) = lower(%s) or lower(name) = lower(%s)", (args.to, args.to))
@@ -588,6 +595,11 @@ def main():
     frun = sub.add_parser("fuel", help="send fuel stop suggestions to low trucks and match refuels")
     frun.add_argument("--force", action="store_true")
     frun.set_defaults(func=cmd_fuel)
+    fbrand = sub.add_parser("brand-prices", help="today's pump prices from truck-stop brand websites")
+    fbrand.add_argument("--brand", action="append", help="loves (default: every brand)")
+    fbrand.add_argument("--states", help="comma-separated, e.g. TX,OK")
+    fbrand.add_argument("--limit", type=int)
+    fbrand.set_defaults(func=cmd_brand_prices)
     frep = sub.add_parser("fuel-report", help="weekly fuel reports for drivers and the office")
     frep.add_argument("--company")
     frep.add_argument("--dry-run", dest="dry_run", action="store_true")

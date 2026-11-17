@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from html import escape
 
-from . import fuel
+from . import brand_prices, fuel
 from .db import execute, insert, one, rows
 from .logs import get
 from .telegram import answer, call, edit, send
@@ -126,6 +126,9 @@ def suggestions(truck, prefs=None, limit=KEPT):
         station["behind"] = moving and station["miles"] > 1 and fuel.angle_between(truck["heading"], direction) > 100
         picked.append(station)
     prices = fuel.latest_prices(truck["company_id"], [s["id"] for s in picked])
+    fresh_after = datetime.now(timezone.utc) - timedelta(days=fuel.PRICE_FRESH_DAYS)
+    stale = [s["id"] for s in picked if s["id"] not in prices or prices[s["id"]]["observed_at"] < fresh_after]
+    prices.update(brand_prices.website_prices(truck["company_id"], stale))
     tank = float(truck["tank_gallons"] or 200)
     pct = float(truck["fuel_percent"] or 30)
     options = []
@@ -151,6 +154,7 @@ def suggestions(truck, prefs=None, limit=KEPT):
             "retail": float(price["retail_ppu"]) if price and price["retail_ppu"] else None,
             "price_at": price["observed_at"].isoformat() if price else None,
             "price_source": price["source"] if price else None,
+            "estimated_discount": price.get("estimated_discount") if price else None,
             "amenities": station["amenities"] or {}, "fill": round(fill), "score": round(score, 4),
             "liked": station["brand"] in liked,
         })
@@ -226,6 +230,14 @@ def option_lines(index, option):
     lines = [head]
     if option["net"] is not None:
         price = f"   <b>${option['net']:.3f}</b>/gal"
+        if option.get("price_source") == "website":
+            lines.append(price + (f" est. (pump ${option['retail']:.3f} now, −${option['estimated_discount']:.2f} your usual discount)"
+                                  if option.get("estimated_discount") else f" pump price now"))
+            if option.get("saves") and option["saves"] >= 5:
+                lines.append(f"   💰 saves ~${option['saves']:.0f} on ~{option['fill']} gal vs the nearest stop")
+            extras = amenity_line(option["amenities"])
+            lines.append(f"   {extras + ' · ' if extras else ''}📍 <a href=\"{fuel.maps_link(option)}\">map</a>")
+            return lines
         if option.get("retail") and option["retail"] - option["net"] >= 0.005:
             price += f" (pump ${option['retail']:.3f}, −${option['retail'] - option['net']:.2f} discount)"
         lines.append(price + f" · {price_age(option)}")
