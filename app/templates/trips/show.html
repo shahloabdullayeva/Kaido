@@ -1,0 +1,127 @@
+{% extends "layout.html" %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/trips.js?v={{ cat_version }}"></script>{% endblock %}
+{% block body %}
+{% set first = trip.stops[0] if trip.stops else {} %}
+{% set last = trip.stops[-1] if trip.stops else {} %}
+<div class="page-head">
+  <div>
+    <h1>{% if trip.load_number %}Load {{ trip.load_number }}{% else %}Trip #{{ trip.id }}{% endif %}
+      <span class="badge {{ tones.get(trip.status, 'muted') }}">{{ trip.status }}</span></h1>
+    <p>Unit {{ unit }}{% if who %} · {{ who }}{% endif %} · planned {{ trip.created_at|ago }}</p>
+  </div>
+  <div class="actions-row">
+    <a class="btn ghost" href="/trips">All trips</a>
+    <a class="btn ghost" href="{{ maps_url }}" target="_blank" rel="noopener">Open in Google Maps</a>
+  </div>
+</div>
+
+{% if summary.late %}<div class="flash bad trip-alert"><strong>This load arrives late with these hours.</strong> Check the ETAs below before the driver accepts.</div>{% endif %}
+{% if summary.restart_needed %}<div class="flash bad trip-alert trip-alert-warn"><strong>A 34-hour restart is needed on this trip.</strong> The driver's 70-hour cycle runs out on the way.</div>{% endif %}
+{% if summary.impossible %}<div class="flash bad trip-alert"><strong>No safe fuel plan.</strong> Kaido does not know enough prices on this route to keep the tank above the reserve.</div>{% endif %}
+{% if trip.answered_at %}<div class="flash {{ 'ok' if trip.status == 'accepted' else 'bad' }} trip-alert">
+  Driver {{ 'accepted the plan' if trip.status == 'accepted' else 'flagged a problem' }} {{ trip.answered_at|ago }}{% if trip.answer_note %}: {{ trip.answer_note }}{% endif %}.</div>{% endif %}
+
+<div class="stats trip-stats">
+  <div class="stat"><div class="stat-label">Route</div><div class="stat-value">{{ summary.miles|number }} mi</div>
+    <div class="stat-hint">{{ summary.empty_miles|number }} mi empty to pickup</div></div>
+  <div class="stat"><div class="stat-label">Driving</div><div class="stat-value">{{ summary.drive_hours|number }} h</div>
+    <div class="stat-hint">door to door about {{ summary.trip_hours|number }} h</div></div>
+  <div class="stat"><div class="stat-label">Rate</div><div class="stat-value">{% if trip.rate %}${{ trip.rate|number }}{% else %}—{% endif %}</div>
+    <div class="stat-hint">{% if summary.rate_per_mile %}${{ '%.2f'|format(summary.rate_per_mile) }}/mi all · ${{ '%.2f'|format(summary.rate_per_loaded_mile or 0) }}/mi loaded{% else %}no rate in the load{% endif %}</div></div>
+  <div class="stat"><div class="stat-label">Truck now</div><div class="stat-value">{{ trip.start_fuel_percent|number }}%</div>
+    <div class="stat-hint">{{ trip.tank_gallons }} gal tank · {{ '%.1f'|format(trip.mpg|float) }} mpg</div></div>
+  <div class="stat {{ 'warn' if summary.restart_needed else '' }}"><div class="stat-label">Driver hours</div>
+    {% if summary.hos %}<div class="stat-value">{{ '%.1f'|format(summary.hos.drive or 0) }} h</div>
+    <div class="stat-hint">drive left · shift {{ '%.1f'|format(summary.hos.shift or 0) }} h · cycle {{ '%.1f'|format(summary.hos.cycle or 0) }} h</div>
+    {% elif summary.hos_known %}<div class="stat-value">—</div><div class="stat-hint">clocks used but not saved with this plan; re-plan to see them</div>
+    {% else %}<div class="stat-value">—</div><div class="stat-hint">not in Horizon; assumed fresh 11/14/70</div>{% endif %}</div>
+</div>
+
+<div class="trip-pair">
+  <section class="panel">
+    <div class="panel-head"><h2>Map</h2><span class="subtle">Truck, pickup, delivery, fuel stops and rests</span></div>
+    <div id="trip-map" data-trip='{{ map_json }}'></div>
+    <div class="trip-legend subtle">
+      <span><i class="trip-dot trip-dot-start"></i>Truck now</span>
+      <span><i class="trip-dot trip-dot-stop"></i>Pickup / delivery</span>
+      <span><i class="trip-dot trip-dot-fuel"></i>Fuel stop</span>
+      <span><i class="trip-dot trip-dot-rest"></i>Rest</span>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Fuel</h2><span class="subtle">{{ summary.stations_on_route }} stops on the route, {{ summary.priced_on_route }} with a price</span></div>
+    <div class="stats trip-fuel">
+      <div class="stat"><div class="stat-label">Buy</div><div class="stat-value">{{ summary.gallons|number }} gal</div>
+        <div class="stat-hint">in {{ (plan.fuel_stops or [])|length }} stop{{ '' if (plan.fuel_stops or [])|length == 1 else 's' }} · burns about {{ summary.burn_gallons|number }} gal</div></div>
+      <div class="stat"><div class="stat-label">Fuel cost</div><div class="stat-value">{{ summary.fuel_cost|money }}</div>
+        <div class="stat-hint">{% if per_mile %}about ${{ '%.2f'|format(per_mile) }}/mi{% endif %}</div></div>
+      <div class="stat ok"><div class="stat-label">Saves</div><div class="stat-value fuel-good">{% if summary.savings %}{{ summary.savings|money }}{% else %}—{% endif %}</div>
+        <div class="stat-hint">{% if summary.average_price %}vs route average ${{ '%.3f'|format(summary.average_price) }}{% endif %}</div></div>
+      <div class="stat"><div class="stat-label">At delivery</div><div class="stat-value">{% if summary.arrive_percent is not none %}{{ summary.arrive_percent }}%{% else %}—{% endif %}</div>
+        <div class="stat-hint">{% if summary.after_fuel %}rate after fuel {{ summary.after_fuel|money }}{% else %}left in the tank{% endif %}</div></div>
+    </div>
+  </section>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Plan</h2><span class="subtle">In order along the route · times are local to each place</span></div>
+  <div class="table-wrap"><table class="trip-timeline">
+    <thead><tr><th class="right">Mile</th><th>What</th><th>Details</th><th>When</th></tr></thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr class="trip-{{ entry.kind }}">
+        <td class="right">{% if entry.mile is not none %}{{ entry.mile|number }}{% endif %}</td>
+        <td><span class="badge {{ entry.tone }}">{% if entry.kind == 'fuel' %}Fuel {{ entry.number }}{% elif entry.kind == 'start' %}Start{% elif entry.kind == 'pickup' %}Pickup{% elif entry.kind == 'delivery' %}Delivery{% elif entry.kind == 'restart' %}Restart{% elif entry.kind == 'rest' %}Rest{% else %}Break{% endif %}</span>
+          <div class="trip-title">{{ entry.title }}</div></td>
+        <td>{{ entry.detail }}{% if entry.extra %}<div class="subtle {{ 'fuel-miss' if 'LATE' in entry.extra else '' }}">{{ entry.extra }}</div>{% endif %}
+          {% if entry.link %}<a href="{{ entry.link }}" target="_blank" rel="noopener">Map</a>{% endif %}</td>
+        <td class="trip-when">{{ entry.when }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<div class="trip-pair">
+  <section class="panel">
+    <div class="panel-head"><h2>What the driver gets</h2><span class="subtle">Sent to the truck's Telegram group with Accept / Problem buttons</span></div>
+    <div class="trip-message">{{ preview|safe }}</div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Actions</h2></div>
+    <div class="trip-actions">
+      {% if at_least(role, 'admin') %}
+        {% if trip.status != 'cancelled' %}
+          {% if trip.telegram_chat_id %}
+          <form method="post" action="/trips/{{ trip.id }}/send" data-confirm="Send this plan to the driver's Telegram group?">
+            <input type="hidden" name="csrf" value="{{ session.csrf }}">
+            <button class="btn" type="submit">{{ 'Send again' if trip.sent_at else 'Send to driver' }}</button>
+            {% if trip.sent_at %}<span class="subtle">sent {{ trip.sent_at|ago }}</span>{% endif %}
+          </form>
+          {% else %}
+          <div><button class="btn ghost" type="button" disabled>Send to driver</button>
+            <p class="subtle">Connect this truck's group first: /truck CODE from the <a href="/trucks/{{ trip.truck_id }}">truck page</a>.</p></div>
+          {% endif %}
+        {% endif %}
+        <form method="post" action="/trips/{{ trip.id }}/replan" data-planning>
+          <input type="hidden" name="csrf" value="{{ session.csrf }}">
+          <button class="btn ghost" type="submit" data-planning-button>Re-plan with current truck position</button>
+          <span class="subtle trip-planning" hidden>Planning... this takes about 15 seconds.</span>
+        </form>
+        {% if trip.status not in ('cancelled', 'done') %}
+        <form method="post" action="/trips/{{ trip.id }}/cancel" data-confirm="Cancel this trip?">
+          <input type="hidden" name="csrf" value="{{ session.csrf }}">
+          <button class="btn ghost danger" type="submit">Cancel trip</button>
+        </form>
+        {% endif %}
+      {% endif %}
+      <a class="btn ghost" href="{{ maps_url }}" target="_blank" rel="noopener">Open in Google Maps</a>
+    </div>
+    {% if trip.source_text %}
+    <details class="trip-source"><summary>The load as pasted</summary><pre>{{ trip.source_text }}</pre></details>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

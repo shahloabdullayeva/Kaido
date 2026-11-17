@@ -1086,3 +1086,42 @@ create table if not exists brand_fetches (
   prices int not null default 0,
   failed int not null default 0
 );
+
+create table if not exists trips (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  driver_id int references drivers(id) on delete set null,
+  load_number text,
+  rate numeric(12,2),
+  source_text text,
+  stops jsonb not null default '[]',
+  route jsonb,
+  distance_miles numeric(8,1),
+  empty_miles numeric(8,1),
+  drive_hours numeric(6,2),
+  start_latitude numeric(9,6),
+  start_longitude numeric(9,6),
+  start_fuel_percent numeric(5,1),
+  tank_gallons int,
+  mpg numeric(4,2),
+  plan jsonb not null default '{}',
+  status text not null default 'draft' check (status in ('draft', 'sent', 'accepted', 'declined', 'done', 'cancelled')),
+  chat_id bigint,
+  message_id bigint,
+  answer_note text,
+  answered_at timestamptz,
+  sent_at timestamptz,
+  created_by int references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists trips_company_idx on trips (company_id, created_at desc);
+alter table trips enable row level security;
+alter table trips force row level security;
+drop policy if exists company_lock on trips;
+create policy company_lock on trips
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);

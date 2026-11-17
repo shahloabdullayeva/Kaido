@@ -221,6 +221,8 @@ off the fleet map and the totals.
                                           match purchases to stations, find missed savings
     manage.py brand-prices [--brand loves] [--states TX,OK] [--limit N]
                                           today's pump prices from truck-stop websites
+    manage.py trip --company --truck UNIT [--file load.txt] [--send]
+                                          plan a load: route, fuel stops, hours, ETAs
     manage.py fuel [--force]              send fuel stop suggestions, match refuels
     manage.py fuel-report [--company] [--dry-run] [--force]
                                           weekly fuel reports to drivers and admins
@@ -351,6 +353,61 @@ and the driver sends `/unit` once. A group only ever hears about its own truck:
 pre-trip and post-trip reminders on the company's chosen days (Monday and Thursday
 by default), and a nudge any day the truck drives without one.
 
+## Trip planning
+
+`app/trips.py`, the Trips page and `manage.py trip`. Paste a load as the load board or broker
+sends it (load ID, $rate, `PU1:` name / address / `FCFS:` or `APPT:` window, `DEL1:` ..., any
+number of stops), pick a truck, and Kaido plans the whole trip:
+
+- **Route.** The stop addresses are geocoded (Nominatim, cached; when the full address does not
+  resolve, it retries without the house number, then with city/state/ZIP). The road route
+  from the truck's live position through every stop comes from the free OSRM demo server
+  (`router.project-osrm.org`). It is a car route, so driving time is OSRM's × 1.12, and never
+  faster than 65 mph on average.
+- **Fuel stops.** Every directory station within 3 miles of the route gets a mile marker. Its
+  price is the company's own price when it is under 7 days old, otherwise today's website pump price
+  minus the company's usual discount at that brand, otherwise an older own price with an age
+  penalty of $0.004/gal per day. A dynamic program then picks where to stop and how many gallons
+  to buy, in 10-gallon steps, for the lowest total cost. It starts from the truck's real tank
+  level (Samsara) and tank size, uses the truck's MPG, never lets the tank go under the reserve
+  (company setting, at least 10%), adds the detour miles off the road, and counts each stop as
+  $12 so it does not split fuel into many small stops. Savings are shown against buying the same gallons at the
+  average known price on the route.
+- **Hours of service.** The driver's live clocks come from Horizon when they are under 12 hours old (drive,
+  shift, 70-hour cycle, break). Without them a fresh 11/14 is assumed. The simulation drives the route
+  with the 30-minute break after 8 hours of driving, a 10-hour rest when the 11 or 14 runs out, and a
+  34-hour restart when the cycle runs out. It counts 30 minutes per fuel stop and 2 hours at each dock,
+  and waits for a window that is not open yet. A 10-hour rest is placed at the truck stop with parking
+  in the 45 miles before the limit.
+- **ETAs** are shown in each stop's local time zone and checked against its window, so the plan says
+  "on time" or "LATE by about N h", and flags a restart the trip will need.
+- **Expensive states.** Fuel left in the tank at delivery is valued at the cheapest known price
+  within 120 miles of the delivery, so a trip into California fills up before the border instead
+  of arriving empty. When a stop fills the tank because diesel ahead is at least $0.25/gal dearer,
+  the stop says so ("Fill the tank here: diesel ahead in CA averages $7.35, $1.48/gal more").
+  Each purchase is at least 50 gallons, or a fill if the tank needs less.
+- **To the driver, one stop at a time.** "Send to driver" posts a plain-text overview to the truck's
+  group: miles, hours left on the ELD, pickup and delivery ETAs (with late and 34-hour-restart
+  warnings), the **first** fuel stop only, the next rest, and a Google Maps link. Buttons: **Accept
+  plan** or **Problem with plan** (different route, not enough hours, tank info is wrong, other).
+  The answer is saved on the trip and goes to the company admins on Telegram.
+- **Live follow-up** (`trips.follow`, every 5 minutes from `bin/followup.sh`, for sent and accepted
+  trips up to 8 days old, while the truck's position is under an hour old and within 15 miles of the
+  route):
+  - When the next planned stop is under 80 miles ahead, or the tank is at or under the alert level,
+    the driver gets that one stop: where, mile, gallons, price, how far and how long, tank now,
+    the hours left on the ELD, and the delivery ETA. If the drive or shift clock runs out before the
+    stop, it says to take the 10-hour rest first. A location pin follows. Buttons: **Fuel there**
+    or **Skip this stop**.
+  - A tank jump of 15 points marks the stop done; the next one comes when it is close.
+  - **Skip**, or driving 8 miles past the stop without fueling, re-plans the rest of the route from
+    the truck's position and tank (the skipped stations are left out) and sends the new next stop at
+    once. The admins are told about a skip. A tank lower than planned also triggers a re-plan.
+  - The trip is marked done when the truck reaches the delivery.
+
+Trips are stored in `trips` with the parsed stops, route, the fuel plan, rests and summary. Re-plan
+builds a new trip from the same load text with the truck's current position.
+
 ## Signed-out visitors
 
 `/` redirects to `/login` for anyone not signed in. The public front page and its contact
@@ -392,6 +449,8 @@ savings), `app/fuel_bot.py` (the driver-chat cards and buttons) and `app/fuel_re
   fuel, refreshed in place), and the page's amenities replace the brand guess. A stop already in
   the directory within 0.3 mi with the same brand is updated rather than duplicated. One page every
   1.5 s, travel stops only. Used for 30 hours after fetching.
+- *Older prices count for less*: in the fuel cards and the trip planner a price paid N days ago is ranked
+  as if $0.004/gal × (N − 1) dearer, so today's website prices win unless an old one is clearly cheaper.
 - *Your estimated price at a brand*: pump price − the company's average discount at that brand
   over its last 60 days of EFS fills (all history if fewer than two recent ones). A card marks it
   "est." and shows the discount it assumed. When the company has a real price under 7 days

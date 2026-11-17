@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Trips</h1><p>Paste a load and Kaido plans the route from the truck's live position: fuel stops, gallons, driving hours and ETAs.</p></div>
+  {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn" href="/trips/new">Plan a trip</a></div>{% endif %}
+</div>
+<section class="panel">
+  {% if trips %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Planned</th><th>Load</th><th>Unit</th><th>Driver</th><th>Route</th><th class="right">Miles</th>
+      <th class="right">Fuel cost</th><th class="right">Saves</th><th>Status</th></tr></thead>
+    <tbody>
+      {% for trip in trips %}
+      <tr class="clickrow" data-href="/trips/{{ trip.id }}">
+        <td>{{ trip.created_at|day }}</td>
+        <td><a class="rowlink" href="/trips/{{ trip.id }}">{{ trip.load_number or ('#' ~ trip.id) }}</a></td>
+        <td>{{ trip.unit }}</td>
+        <td>{{ trip.who or '—' }}</td>
+        <td>{{ trip.from_city }} <span class="subtle">to</span> {{ trip.to_city }}</td>
+        <td class="right">{{ trip.distance_miles|number }}</td>
+        <td class="right">{% if trip.summary.fuel_cost is not none %}{{ trip.summary.fuel_cost|money }}{% else %}—{% endif %}</td>
+        <td class="right fuel-good">{% if trip.summary.savings %}{{ trip.summary.savings|money }}{% else %}—{% endif %}</td>
+        <td class="trip-flags"><span class="badge {{ tones.get(trip.status, 'muted') }}">{{ trip.status }}</span>
+          {% if trip.summary.late %}<span class="badge bad">late</span>{% endif %}
+          {% if trip.summary.restart_needed %}<span class="badge warn">34 h restart</span>{% endif %}
+          {% if trip.summary.impossible %}<span class="badge bad">no fuel plan</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No trips yet. Plan one from a load confirmation.</p>{% endif %}
+</section>
+{% endblock %}

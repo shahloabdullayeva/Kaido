@@ -16,6 +16,7 @@ URGENT_REPEAT_MINUTES = 90
 SNOOZE_MINUTES = 90
 EXPIRE_HOURS = 12
 SHOWN = 3
+AGE_PENALTY_PER_DAY = 0.004
 KEPT = 6
 AHEAD_DEGREES = 70
 NEAR_MILES = 12
@@ -136,6 +137,9 @@ def suggestions(truck, prefs=None, limit=KEPT):
         price = prices.get(station["id"])
         fill = max(20.0, tank * (1 - pct / 100) + station["road_miles"] / mpg)
         score = float(price["net_ppu"]) if price else 99.0
+        if price and price["source"] != "website":
+            age = (datetime.now(timezone.utc) - price["observed_at"]).days
+            score += AGE_PENALTY_PER_DAY * max(0, age - 1)
         score += station["road_miles"] * 0.0004
         if station["behind"] and price:
             score += station["road_miles"] * 2 / mpg * float(price["net_ppu"]) / fill + 0.04

@@ -238,3 +238,10 @@ rather than an empty map.
 - Fuel → Prices has "Download a sample built from your purchases" for showing the price-list upload.
 - TA / Petro added to the website prices the same night (367 locations). Pilot / Flying J blocks the server (403), so it is not fetched.
 - **No emojis in any message Kaido sends** (her rule, 17 Nov): fuel cards, buttons, reports, PTI and summary messages are plain text. Stops are numbered "1.", buttons say "Take 1. ...", "Skip", "More stops".
+
+## Trip planning (18 Nov 2026, after midnight)
+- Paste a load, pick a truck, and Kaido routes it from the truck's position, picks the cheapest fuel stops and how many gallons to buy at each, simulates the driver's hours from Horizon, and gives ETAs against the windows. It sends the plan to the truck group with Accept / Problem buttons. README → Trip planning.
+- First real test: the sample load 88M4295 (Browns Summit NC to Moreno Valley CA, $5,699) on BOOKIT unit 5831 (Payton Day), trip #1. 2,658 mi (192 empty), 2 fuel stops (Love's Dickson TN 170 gal, Love's Amarillo 120 gal), about $1,518 of fuel, $102 under the route average. Horizon showed only 16.8 h left on his 70-hour cycle, so the plan needs a 34-hour restart and delivers about 22 h late. That is the warning the planner exists for.
+- Routing uses the free OSRM demo server (car profile, no truck restrictions such as low bridges or hazmat). A truck-aware router (e.g. a paid one or self-hosted OSRM with a truck profile) is the upgrade if it matters.
+- Her rules for trips (18 Nov): **one truck stop at a time** ("when it's almost over or close should ask again"), re-plan when the driver skips, show the hours left on the ELD, and **fill the tank before expensive states like California**. All built; re-planned trip #2 for the sample load fills in AR, TX and NM and tops off in AZ before CA ($7.35 avg there).
+- **Nothing is sent to any group until she says so** ("wait don't send message to group yet", 18 Nov). Trips #1 and #2 are drafts. Note that linking a truck group also starts the PTI reminders for that truck (company PTI setting), not only fuel.

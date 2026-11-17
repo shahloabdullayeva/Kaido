@@ -225,6 +225,10 @@ def cmd_followup(args):
     try:
         fueled = fuel_bot.run()
         reports = fuel_report.run()
+        from app import trips
+        followed = trips.follow()
+        if followed:
+            print(f"trips {followed}")
     except Exception:
         from app.logs import get
         get("fuel").exception("fuel run failed")
@@ -345,9 +349,13 @@ def cmd_telegram(args):
         for update in updates:
             offset = update["update_id"] + 1
             if update.get("callback_query"):
-                from app import fuel_bot
+                from app import fuel_bot, trips
                 try:
-                    fuel_bot.handle_callback(update["callback_query"])
+                    query = update["callback_query"]
+                    if (query.get("data") or "").startswith("t"):
+                        trips.handle_callback(query)
+                    else:
+                        fuel_bot.handle_callback(query)
                 except Exception:
                     log.exception("fuel button failed")
                 continue
@@ -415,6 +423,29 @@ def cmd_brand_prices(args):
     from app import brand_prices
     only = [s.strip().upper() for s in args.states.split(",")] if args.states else None
     print(brand_prices.run(args.brand or None, limit=args.limit, only=only))
+    return 0
+
+
+def cmd_trip(args):
+    from app import trips
+    from app.fuel_bot import TRUCK_SQL
+    company = one("select * from companies where lower(name) = lower(%s)", (args.company,))
+    if not company:
+        print(f"No company named {args.company}")
+        return 1
+    found = [t for t in rows(TRUCK_SQL + " where t.company_id = %s and t.status <> 'sold'", (company["id"],))
+             if t["unit_number"].split()[0].lstrip("0") == args.truck.lstrip("0")]
+    if not found:
+        print(f"No unit {args.truck}")
+        return 1
+    from datetime import datetime, timezone
+    found.sort(key=lambda t: t["located_at"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+    text = Path(args.file).read_text() if args.file else sys.stdin.read()
+    trip = trips.build(company["id"], found[0], trips.parse_load(text), text=text)
+    print(f"trip #{trip['id']}")
+    print(trips.message(trip, found[0]))
+    if args.send:
+        print(trips.send_to_driver(trip["id"]))
     return 0
 
 
@@ -600,6 +631,12 @@ def main():
     fbrand.add_argument("--states", help="comma-separated, e.g. TX,OK")
     fbrand.add_argument("--limit", type=int)
     fbrand.set_defaults(func=cmd_brand_prices)
+    trip = sub.add_parser("trip", help="plan a load: route, fuel stops, hours, ETAs")
+    trip.add_argument("--company", required=True)
+    trip.add_argument("--truck", required=True, help="unit number")
+    trip.add_argument("--file", help="the load text (default: read from stdin)")
+    trip.add_argument("--send", action="store_true", help="send the plan to the truck's Telegram group")
+    trip.set_defaults(func=cmd_trip)
     frep = sub.add_parser("fuel-report", help="weekly fuel reports for drivers and the office")
     frep.add_argument("--company")
     frep.add_argument("--dry-run", dest="dry_run", action="store_true")
