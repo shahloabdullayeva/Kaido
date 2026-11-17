@@ -220,8 +220,18 @@ def cmd_followup(args):
     sent = followup.run()
     from app import pti_driver
     drivers = pti_driver.run()
+    from app import fuel_bot, fuel_report
+    fueled, reports = {"offers": [], "refuels": 0, "receipts": 0}, {}
+    try:
+        fueled = fuel_bot.run()
+        reports = fuel_report.run()
+    except Exception:
+        from app.logs import get
+        get("fuel").exception("fuel run failed")
     if reminded or alerted or sent or drivers:
         print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}, driver PTI messages {drivers}")
+    if fueled["offers"] or fueled["refuels"] or fueled["receipts"] or reports:
+        print(f"fuel offers {fueled['offers']}, refuels matched {fueled['refuels']}, receipts matched {fueled['receipts']}, reports {reports}")
     return 0
 
 
@@ -246,6 +256,15 @@ def handle_group_update(update, send):
     if command == "/unit":
         _truck, reply = pti_driver.claim_unit(chat["id"], message.get("from") or {}, " ".join(parts[1:]))
         send(chat["id"], reply, reply_to_message_id=message.get("message_id"))
+        return True
+    if command.startswith("/fuel"):
+        from app import fuel_bot
+        from app.logs import get
+        try:
+            fuel_bot.handle_command(command, chat["id"], message)
+        except Exception:
+            get("telegram-bot").exception("fuel command %s failed", command)
+            send(chat["id"], "Something went wrong with that. The office has been told.")
         return True
     if command not in ("/truck", "/drivers"):
         return True
@@ -325,6 +344,13 @@ def cmd_telegram(args):
             continue
         for update in updates:
             offset = update["update_id"] + 1
+            if update.get("callback_query"):
+                from app import fuel_bot
+                try:
+                    fuel_bot.handle_callback(update["callback_query"])
+                except Exception:
+                    log.exception("fuel button failed")
+                continue
             if handle_group_update(update, send):
                 continue
             message = update.get("message") or {}
@@ -352,6 +378,37 @@ def cmd_telegram(args):
                 send(chat_id, f"Linked. Sign-in codes for {user['name']} will arrive here.")
             elif parts[0] == "/start":
                 send(chat_id, "Send /link followed by the code from your Kaido account page.")
+
+
+def cmd_fuel_directory(args):
+    from app import fuel
+    states = [s.strip().upper() for s in args.states.split(",")] if args.states else None
+    done = fuel.load_directory(states)
+    failed = [state for state, count in done.items() if count is None]
+    print(f"stations saved: {sum(c for c in done.values() if c)}; failed states: {','.join(failed) or 'none'}")
+    return 1 if failed else 0
+
+
+def cmd_fuel_prepare(args):
+    from app import fuel
+    company = one("select id from companies where lower(name) = lower(%s)", (args.company,)) if args.company else None
+    company_id = company["id"] if company else None
+    print(f"purchases matched to stations: {fuel.enrich(company_id)}")
+    print(f"purchases checked for cheaper stops: {fuel.analyse(company_id, recheck=args.recheck)}")
+    return 0
+
+
+def cmd_fuel(args):
+    from app import fuel_bot
+    print(fuel_bot.run(force=args.force))
+    return 0
+
+
+def cmd_fuel_report(args):
+    from app import fuel_report
+    company = one("select * from companies where lower(name) = lower(%s)", (args.company,)) if args.company else None
+    print(fuel_report.run(company=company, send=not args.dry_run, force=args.force))
+    return 0
 
 
 def cmd_cat(args):
@@ -520,6 +577,22 @@ def main():
     summary_parser.add_argument("--backup", nargs="*")
     summary_parser.set_defaults(func=cmd_summary)
 
+
+    fdir = sub.add_parser("fuel-directory", help="load truck stops from OpenStreetMap, state by state")
+    fdir.add_argument("--states", help="comma-separated, e.g. NV,AZ (default: all)")
+    fdir.set_defaults(func=cmd_fuel_directory)
+    fprep = sub.add_parser("fuel-prepare", help="match purchases to stations and find cheaper stops nearby")
+    fprep.add_argument("--company")
+    fprep.add_argument("--recheck", action="store_true")
+    fprep.set_defaults(func=cmd_fuel_prepare)
+    frun = sub.add_parser("fuel", help="send fuel stop suggestions to low trucks and match refuels")
+    frun.add_argument("--force", action="store_true")
+    frun.set_defaults(func=cmd_fuel)
+    frep = sub.add_parser("fuel-report", help="weekly fuel reports for drivers and the office")
+    frep.add_argument("--company")
+    frep.add_argument("--dry-run", dest="dry_run", action="store_true")
+    frep.add_argument("--force", action="store_true")
+    frep.set_defaults(func=cmd_fuel_report)
 
     cat_parser = sub.add_parser("cat", help="send a note the cat brings to someone in the app")
     cat_parser.add_argument("--to", required=True, help="email or name")

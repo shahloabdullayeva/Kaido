@@ -2,9 +2,11 @@
 {% block body %}
 <div class="page-head">
   <div><h1>Fuel</h1><p>{{ totals.entries }} purchases this month · {{ totals.gallons|number(1) }} gallons · {{ totals.total|money }}</p></div>
-  {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn ghost" href="/fuel/import">Import from EFS</a>
-    <a class="btn" href="/fuel/new">Log fuel</a></div>{% endif %}
+  <div class="actions-row"><a class="btn" href="/fuel/insights">Fuel insights</a>
+    {% if at_least(role, 'admin') %}<a class="btn ghost" href="/fuel/import">Import from EFS</a>
+    <a class="btn ghost" href="/fuel/new">Log fuel</a>{% endif %}</div>
 </div>
+{% set tab = 'list' %}{% include "fuel/_tabs.html" %}
 <section class="panel">
   <div class="panel-head">
     <form method="get" action="/fuel" class="filters" data-autosubmit>

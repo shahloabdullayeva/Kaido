@@ -39,6 +39,7 @@
       {% if mode == 'new' %}{{ field('Odometer', 'odometer', truck.odometer, type='number', attrs='min="0"') }}{% endif %}
       {{ field('Oil interval (miles)', 'oil_interval_miles', truck.oil_interval_miles, type='number', hint='25,000 standard duty, 15,000 severe.', attrs='min="1000" step="1000"') }}
       {{ field('Fuel card last 4', 'fuel_card_last4', truck.fuel_card_last4, attrs='maxlength="4"') }}
+      {{ field('Fuel tank size (gallons)', 'tank_gallons', truck.tank_gallons or 200, type='number', attrs='min="50" max="600"', hint='Both tanks together. Used to work out range for fuel suggestions.') }}
       {{ field('Registration expires', 'registration_expires', truck.registration_expires|date_input, type='date') }}
       {{ field('Insurance expires', 'insurance_expires', truck.insurance_expires|date_input, type='date') }}
       {{ field('Last DOT annual inspection', 'annual_inspection_on', truck.annual_inspection_on|date_input, type='date', hint='Next one is due 12 months later.') }}

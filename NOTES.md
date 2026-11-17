@@ -210,10 +210,22 @@ rather than an empty map.
 - Nothing was changed in either company's list: both still show the same eight services as before.
 
 ## Front page, bell, no cat (13 Oct 2026, later)
-- kaidofleet.com now opens a public front page for anyone not signed in: what Kaido does, no price ("contact us"), and a contact form. A request lands in Charlotte's Telegram and in the `contact_requests` table.
+- kaidofleet.com opened a public front page with a contact form. (Taken down again on 17 Nov 2026, see below.)
 - The cat is gone from the notification center; it is a plain bell now.
 - The 8pm daily notes are gone: the cron line, `bin/encourage.sh` and `app/encourage.py` were removed. Old ones stay in each person's "Earlier" list.
 - Reminders set by hand now also show in the bell when they are due, with an Open button to the record. The reminder on BOOKIT unit 114's work order (#29, "upload invoice once Loves issues PO") was already due, so it was put in the bell for Charlotte and John.
 - The daily follow-up on Telegram was not touched.
 - Picture captcha: sign-in uses hCaptcha's click-the-pictures check since 13 Oct (keys in `.env`). The hCaptcha account is on a 14-day Pro trial that drops to the free plan on 27 Oct; nothing to pay. If hCaptcha is unreachable, sign-in is refused: emptying `HCAPTCHA_SECRET` and restarting brings the built-in letters picture back.
 
+
+## Fuel desk, private site, new icon (17 Nov 2026)
+- **Kaido is private now.** The public front page and its contact form are gone (spam from "SEO" sellers). `/` goes to sign-in, robots.txt blocks everything, every page says noindex. The icon is a plain navy square with a white K.
+- **Fuel is the new focus.** README → Fuel has the full description. In short:
+  - Samsara now gives Kaido every truck's **tank %**, heading and speed (30/30 BOOKIT trucks, 33/35 LLAP report it). Each sync also keeps a position track in `truck_positions`.
+  - Truck stops come from OpenStreetMap (`manage.py fuel-directory`). The first full load ran on 17 Nov; Overpass was overloaded, so it went state by state.
+  - Every EFS purchase is split into pump price, discount and what we really paid, matched to a station, and checked for a cheaper stop nearby (**missed savings**). BOOKIT, 1 Sep–13 Oct: 295 diesel fills, $11,743 in discounts, $307.67 missed on 17 fills.
+  - **Fuel stop cards in the truck groups** with Accept / Skip (and a reason), driver preferences (`/fuelprefs`), `/fuel` on demand, `/fuelweek`, and weekly picture reports to drivers and admins.
+  - Web: Fuel → Insights / Purchases / Driver suggestions / Prices / Fuel assistant. The truck page shows tank %, range, MPG and recent suggestions. Tank size is on the truck form (default 200 gal).
+- **It is switched off for every company.** Turn it on in Fuel → Fuel assistant. Drivers only get cards in truck groups that are connected (`/truck` code, then `/unit`), and **no truck group is connected yet**.
+- No live daily prices yet: suggestions use the prices the company paid in the last 30 days, plus any price list uploaded on Fuel → Prices. BOOKIT's last EFS import is 13 Oct, so until a new one arrives, cards show stops with "price not known yet". Importing the latest EFS report brings the prices back.
+- The old-job shift bots (pfp-swap) were taken off cron the same night; nothing in Kaido depended on them.

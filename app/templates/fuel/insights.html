@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% from "fuel/_chart.html" import chart %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/fuel.js?v={{ cat_version }}"></script>{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Fuel insights</h1><p>Diesel only · last {{ days }} days · prices are what you paid after the card discount</p></div>
+  <div class="actions-row">
+    <div class="fuel-range" role="group" aria-label="Period">
+      {% for value in ranges %}<a class="btn {{ '' if value == days else 'ghost' }} small" href="/fuel/insights?days={{ value }}">{{ value }} days</a>{% endfor %}
+    </div>
+  </div>
+</div>
+{% set tab = 'insights' %}{% include "fuel/_tabs.html" %}
+
+<div class="stats fuel-stats">
+  <div class="stat"><div class="stat-label">Diesel spend</div><div class="stat-value">${{ kpi.spend|number }}</div>
+    <div class="stat-hint">{{ kpi.fills }} fills</div></div>
+  <div class="stat"><div class="stat-label">Gallons</div><div class="stat-value">{{ kpi.gallons|number }}</div>
+    <div class="stat-hint">{% if fleet_mpg %}{{ fleet_mpg|number(1) }} mpg fleet-wide{% else %}mpg needs odometer data{% endif %}</div></div>
+  <div class="stat"><div class="stat-label">Paid per gallon</div><div class="stat-value">{{ kpi.avg_net|money }}</div>
+    <div class="stat-hint">pump price {{ kpi.avg_pump|money }}</div></div>
+  <div class="stat ok"><div class="stat-label">Discounts captured</div><div class="stat-value fuel-good">${{ kpi.discount|number }}</div>
+    <div class="stat-hint">{{ kpi.no_discount }} fill{{ '' if kpi.no_discount == 1 else 's' }} with no discount</div></div>
+  <div class="stat {{ 'warn' if kpi.missed > 0 else '' }}"><div class="stat-label">Missed savings</div><div class="stat-value fuel-miss">${{ kpi.missed|number }}</div>
+    <div class="stat-hint">a cheaper stop was nearby · {{ kpi.checked }} of {{ kpi.fills }} fills checked</div></div>
+  <div class="stat"><div class="stat-label">Suggestions taken</div><div class="stat-value">{{ offers.taken }} / {{ offers.sent }}</div>
+    <div class="stat-hint">{% if offers.saved > 0 %}saved {{ offers.saved|money }}{% else %}from the Telegram fuel cards{% endif %}</div></div>
+</div>
+
+<div class="fuel-charts">
+  <section class="panel">{{ chart(price_chart, 'Price per gallon by week', 'what you paid vs the pump') }}</section>
+  <section class="panel">{{ chart(spend_chart, 'Diesel spend by week') }}</section>
+  <section class="panel fuel-wide">{{ chart(saving_chart, 'Discounts captured vs missed savings by week') }}</section>
+</div>
+
+<section class="panel">
+  <div class="panel-head"><h2>Drivers</h2><span class="subtle">Most missed savings first</span></div>
+  {% if drivers %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Driver</th><th class="right">Fills</th><th class="right">Gallons</th><th class="right">$/gal</th>
+      <th class="right">Discount</th><th class="right">Missed</th><th class="right">No discount</th><th class="right">Suggestions taken</th></tr></thead>
+    <tbody>
+      {% for row in drivers %}
+      <tr>
+        <td>{% if row.driver_id %}<a href="/drivers/{{ row.driver_id }}">{{ row.who }}</a>{% else %}{{ row.who }}{% endif %}</td>
+        <td class="right">{{ row.fills }}</td>
+        <td class="right">{{ row.gallons|number }}</td>
+        <td class="right">{{ row.avg|money }}</td>
+        <td class="right fuel-good">{{ row.discount|money }}</td>
+        <td class="right {{ 'fuel-miss' if row.missed > 0 else 'subtle' }}">{{ row.missed|money }}</td>
+        <td class="right">{{ row.no_discount or '—' }}</td>
+        <td class="right">{% if row.offered %}{{ row.taken }} / {{ row.offered }}{% else %}—{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No diesel purchases in this period.</p>{% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Missed opportunities</h2><span class="subtle">A cheaper stop on the route or within 30 mi, priced within 3 days</span></div>
+  {% if misses %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Date</th><th>Unit</th><th>Driver</th><th>Fuelled at</th><th class="right">Paid</th><th>Cheaper stop</th><th class="right">Price</th><th class="right">Distance</th><th class="right">Missed</th></tr></thead>
+    <tbody>
+      {% for miss in misses %}
+      <tr>
+        <td>{{ miss.purchased_at|day }}</td>
+        <td><a href="/trucks/{{ miss.truck_id }}">{{ miss.unit_number }}</a></td>
+        <td>{{ miss.who or '—' }}</td>
+        <td>{{ miss.station_name or miss.location or '—' }}{% if miss.station_state %} <span class="subtle">{{ miss.station_city or '' }} {{ miss.station_state }}</span>{% endif %}</td>
+        <td class="right">{{ miss.net_ppu|money }}</td>
+        <td>{{ miss.best_name or '—' }}{% if miss.best_state %} <span class="subtle">{{ miss.best_city or '' }} {{ miss.best_state }}</span>{% endif %}</td>
+        <td class="right fuel-good">{{ miss.best_net_ppu|money }}</td>
+        <td class="right">{{ miss.best_miles|number }} mi</td>
+        <td class="right fuel-miss"><strong>{{ miss.missed_usd|money }}</strong></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No missed savings found in this period.</p>{% endif %}
+</section>
+
+<div class="fuel-pair">
+  <section class="panel">
+    <div class="panel-head"><h2>Top stations</h2><span class="subtle">by gallons</span></div>
+    {% if stations %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Station</th><th class="right">Fills</th><th class="right">Gallons</th><th class="right">Avg paid</th><th class="right">Avg discount</th></tr></thead>
+      <tbody>
+        {% for station in stations %}
+        <tr><td class="fuel-station">{{ station.name }}<div class="subtle">{{ station.city or '' }} {{ station.state or '' }}</div></td>
+          <td class="right">{{ station.fills }}</td><td class="right">{{ station.gallons|number }}</td>
+          <td class="right">{{ station.avg|money }}</td><td class="right">{{ station.discount|money }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="empty">No stations matched yet.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Where the fleet fuels</h2><span class="subtle">dot colour = avg price paid, green cheapest</span></div>
+    {% if pins %}<div id="fuel-map" data-stations='{{ pins|json_attr }}'></div>
+    {% else %}<p class="empty">Stations appear here once purchases are matched to a location.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+<nav class="fuel-tabs" aria-label="Fuel sections">
+  <a href="/fuel/insights" {% if tab == 'insights' %}class="on"{% endif %}>Insights</a>
+  <a href="/fuel" {% if tab == 'list' %}class="on"{% endif %}>Purchases</a>
+  <a href="/fuel/offers" {% if tab == 'offers' %}class="on"{% endif %}>Driver suggestions</a>
+  {% if at_least(role, 'admin') %}<a href="/fuel/prices" {% if tab == 'prices' %}class="on"{% endif %}>Prices</a>
+  <a href="/fuel/settings" {% if tab == 'settings' %}class="on"{% endif %}>Fuel assistant</a>{% endif %}
+</nav>

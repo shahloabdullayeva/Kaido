@@ -1,6 +1,9 @@
+import math
+from datetime import datetime, timedelta, timezone
+
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms, fuel_import
+from .. import forms, fuel, fuel_import
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -138,3 +141,323 @@ def import_file():
     )
     return render_template("fuel/import.html", title="Import fuel", active="/fuel", history=history,
                            report=report, filename=upload.filename)
+
+
+RANGES = [7, 30, 90]
+WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+SKIP_LABELS = {"busy": "Already fueling", "far": "Off route", "park": "No parking", "brand": "Doesn't like the brand",
+               "price": "Found cheaper", "later": "Remind later"}
+CHART_W = 640
+CHART_H = 220
+PAD_L = 56
+PAD_R = 16
+PAD_T = 16
+PAD_B = 32
+
+
+def nice_ticks(low, high, count=4):
+    if high <= low:
+        high = low + 1
+    raw = (high - low) / count
+    power = 10 ** math.floor(math.log10(raw))
+    step = next(m * power for m in (1, 2, 2.5, 5, 10) if m * power >= raw)
+    start = math.floor(low / step) * step
+    ticks = []
+    value = start
+    while value <= high + step * 0.001:
+        ticks.append(round(value, 6))
+        value += step
+    if ticks[-1] < high:
+        ticks.append(round(ticks[-1] + step, 6))
+    return ticks
+
+
+def scale(ticks):
+    low, high = ticks[0], ticks[-1]
+    inner = CHART_H - PAD_T - PAD_B
+    return lambda v: PAD_T + inner - (float(v) - low) / ((high - low) or 1) * inner
+
+
+def line_chart(labels, series, fmt):
+    values = [v for s in series for v in s["values"] if v is not None]
+    if not values:
+        return None
+    spread = (max(values) - min(values)) or 0.1
+    ticks = nice_ticks(min(values) - spread * 0.15, max(values) + spread * 0.15)
+    y = scale(ticks)
+    slot = (CHART_W - PAD_L - PAD_R) / max(1, len(labels))
+    xs = [PAD_L + slot * i + slot / 2 for i in range(len(labels))]
+    lines = []
+    for item in series:
+        points = [(round(xs[i], 1), round(y(v), 1), v, labels[i]) for i, v in enumerate(item["values"]) if v is not None]
+        lines.append({"name": item["name"], "cls": item["cls"], "points": points,
+                      "path": " ".join(f"{'M' if n == 0 else 'L'}{p[0]},{p[1]}" for n, p in enumerate(points))})
+    return {"w": CHART_W, "h": CHART_H, "pad_l": PAD_L, "pad_r": PAD_R, "base": CHART_H - PAD_B,
+            "ticks": [{"y": round(y(t), 1), "label": fmt(t)} for t in ticks],
+            "labels": [{"x": round(x, 1), "text": l} for x, l in zip(xs, labels)], "lines": lines, "bars": [],
+            "fmt": fmt}
+
+
+def bar_chart(labels, series, fmt, width_px=CHART_W):
+    values = [v for s in series for v in s["values"] if v is not None]
+    if not values:
+        return None
+    ticks = nice_ticks(0, max(values) or 1)
+    y = scale(ticks)
+    base = CHART_H - PAD_B
+    slot = (width_px - PAD_L - PAD_R) / max(1, len(labels))
+    group = min(slot * 0.7, 26 * len(series) + 2 * (len(series) - 1))
+    width = (group - 2 * (len(series) - 1)) / len(series)
+    bars = []
+    for i, label in enumerate(labels):
+        left = PAD_L + slot * i + (slot - group) / 2
+        for n, item in enumerate(series):
+            value = item["values"][i]
+            if value is None:
+                continue
+            top = y(value)
+            x = left + n * (width + 2)
+            h = max(0.0, base - top)
+            r = min(4, width / 2, h)
+            path = (f"M{x:.1f},{base:.1f} L{x:.1f},{top + r:.1f} Q{x:.1f},{top:.1f} {x + r:.1f},{top:.1f} "
+                    f"L{x + width - r:.1f},{top:.1f} Q{x + width:.1f},{top:.1f} {x + width:.1f},{top + r:.1f} "
+                    f"L{x + width:.1f},{base:.1f} Z")
+            bars.append({"path": path, "cls": item["cls"], "title": f"{label} · {item['name']}: {fmt(value)}",
+                         "hit": (round(x - 2, 1), round(PAD_T, 1), round(width + 4, 1), round(base - PAD_T, 1))})
+    return {"w": width_px, "h": CHART_H, "pad_l": PAD_L, "pad_r": PAD_R, "base": base,
+            "ticks": [{"y": round(y(t), 1), "label": fmt(t)} for t in ticks],
+            "labels": [{"x": round(PAD_L + slot * i + slot / 2, 1), "text": l} for i, l in enumerate(labels)],
+            "lines": [], "bars": bars, "legend": [{"name": s["name"], "cls": s["cls"]} for s in series]}
+
+
+def dollars(value):
+    value = float(value)
+    return f"${value / 1000:,.1f}k" if abs(value) >= 1000 else f"${value:,.0f}"
+
+
+def per_gallon(value):
+    return f"${float(value):.2f}"
+
+
+def days_arg():
+    days = forms.integer(request.args.get("days"))
+    if days in RANGES:
+        return days
+    for days in RANGES[1:]:
+        if one(f"""select 1 from fuel_transactions where company_id = %s and fuel_type = 'diesel'
+                   and purchased_at >= now() - interval '{days} days' limit 1""", (g.company["id"],)):
+            return days
+    return 30
+
+
+@bp.get("/fuel/insights")
+@login_required
+@company_required
+def insights():
+    days = days_arg()
+    company_id = g.company["id"]
+    since = f"now() - interval '{days} days'"
+    kpi = one(
+        f"""select count(*) as fills, coalesce(sum(gallons), 0) as gallons, coalesce(sum(total), 0) as spend,
+                   sum(total) / nullif(sum(gallons), 0) as avg_net,
+                   sum(retail_ppu * gallons) / nullif(sum(gallons) filter (where retail_ppu is not null), 0) as avg_pump,
+                   coalesce(sum(discount_ppu * gallons), 0) as discount, coalesce(sum(missed_usd), 0) as missed,
+                   count(*) filter (where net_ppu is not null and coalesce(discount_ppu, 0) < 0.01) as no_discount,
+                   count(*) filter (where checked_at is not null) as checked
+            from fuel_transactions where company_id = %s and fuel_type = 'diesel' and purchased_at >= {since}""",
+        (company_id,),
+    )
+    offers = one(
+        f"""select count(*) filter (where status <> 'failed') as sent, count(*) filter (where chosen_station_id is not null) as taken,
+                   count(*) filter (where followed) as followed, coalesce(sum(saved_usd) filter (where saved_usd > 0), 0) as saved
+            from fuel_offers where company_id = %s and created_at >= {since}""",
+        (company_id,),
+    )
+    mpg = one(
+        f"""with per_truck as (
+              select t.id, (select max(miles) - min(miles) from odometer_readings r
+                            where r.truck_id = t.id and r.read_at >= {since}) as miles,
+                     (select sum(gallons) from fuel_transactions f
+                      where f.truck_id = t.id and f.fuel_type = 'diesel' and f.purchased_at >= {since}) as gallons
+              from trucks t where t.company_id = %s)
+            select sum(miles) as miles, sum(gallons) as gallons from per_truck
+            where miles between 300 and %s and gallons > 50 and miles / gallons between 4 and 9""",
+        (company_id, days * 1500),
+    )
+    fleet_mpg = None
+    if mpg and mpg["miles"] and mpg["gallons"]:
+        value = float(mpg["miles"]) / float(mpg["gallons"])
+        fleet_mpg = value if 3.5 <= value <= 11 else None
+    weeks = rows(
+        f"""select date_trunc('week', purchased_at) as week, sum(total) as spend,
+                   sum(total) / nullif(sum(gallons), 0) as net,
+                   sum(retail_ppu * gallons) / nullif(sum(gallons) filter (where retail_ppu is not null), 0) as pump,
+                   coalesce(sum(discount_ppu * gallons), 0) as discount, coalesce(sum(missed_usd), 0) as missed
+            from fuel_transactions where company_id = %s and fuel_type = 'diesel'
+              and purchased_at >= greatest({since}, now() - interval '84 days') - interval '{0 if days >= 30 else 21} days'
+            group by 1 order by 1""",
+        (company_id,),
+    )
+    labels = [w["week"].strftime("%d %b") for w in weeks]
+    price_chart = line_chart(labels, [
+        {"name": "You paid (after discount)", "cls": "s1", "values": [float(w["net"]) if w["net"] else None for w in weeks]},
+        {"name": "Pump price", "cls": "s0", "values": [float(w["pump"]) if w["pump"] else None for w in weeks]},
+    ], per_gallon)
+    if price_chart:
+        price_chart["legend"] = [{"name": "You paid (after discount)", "cls": "s1"}, {"name": "Pump price", "cls": "s0"}]
+    spend_chart = bar_chart(labels, [{"name": "Diesel spend", "cls": "s1", "values": [float(w["spend"]) for w in weeks]}], dollars)
+    if spend_chart:
+        spend_chart["legend"] = []
+    saving_chart = bar_chart(labels, [
+        {"name": "Discounts captured", "cls": "s3", "values": [float(w["discount"]) for w in weeks]},
+        {"name": "Missed savings", "cls": "s2", "values": [float(w["missed"]) for w in weeks]},
+    ], dollars, CHART_W * 2)
+    drivers = rows(
+        f"""select initcap(regexp_replace(trim(min(coalesce(d.name, f.raw->>'driver name', 'Unit ' || t.unit_number))), '\s+', ' ', 'g')) as who, max(f.driver_id) as driver_id,
+                   count(*) as fills, sum(f.gallons) as gallons, sum(f.total) / nullif(sum(f.gallons), 0) as avg,
+                   coalesce(sum(f.discount_ppu * f.gallons), 0) as discount, coalesce(sum(f.missed_usd), 0) as missed,
+                   count(*) filter (where f.net_ppu is not null and coalesce(f.discount_ppu, 0) < 0.01) as no_discount,
+                   (select count(*) from fuel_offers o where o.company_id = f.company_id and o.driver_id = max(f.driver_id)
+                      and o.created_at >= {since} and o.status <> 'failed') as offered,
+                   (select count(*) from fuel_offers o where o.company_id = f.company_id and o.driver_id = max(f.driver_id)
+                      and o.created_at >= {since} and o.chosen_station_id is not null) as taken
+            from fuel_transactions f join trucks t on t.id = f.truck_id left join drivers d on d.id = f.driver_id
+            where f.company_id = %s and f.fuel_type = 'diesel' and f.purchased_at >= {since}
+            group by lower(regexp_replace(trim(coalesce(d.name, f.raw->>'driver name', 'Unit ' || t.unit_number)), '\s+', ' ', 'g')),
+                     f.company_id
+            order by missed desc, gallons desc limit 25""",
+        (company_id,),
+    )
+    misses = rows(
+        f"""select f.*, t.unit_number, initcap(coalesce(d.name, f.raw->>'driver name')) as who,
+                   s.name as station_name, s.city as station_city, s.state as station_state,
+                   b.name as best_name, b.city as best_city, b.state as best_state
+            from fuel_transactions f join trucks t on t.id = f.truck_id left join drivers d on d.id = f.driver_id
+            left join fuel_stations s on s.id = f.station_id left join fuel_stations b on b.id = f.best_station_id
+            where f.company_id = %s and f.fuel_type = 'diesel' and f.purchased_at >= {since} and f.missed_usd > 0
+            order by f.missed_usd desc limit 25""",
+        (company_id,),
+    )
+    stations = rows(
+        f"""select s.id, s.name, s.brand, s.city, s.state, s.latitude, s.longitude, count(*) as fills,
+                   sum(f.gallons) as gallons, sum(f.total) / nullif(sum(f.gallons), 0) as avg,
+                   avg(f.discount_ppu) as discount, max(f.purchased_at) as last_at
+            from fuel_transactions f join fuel_stations s on s.id = f.station_id
+            where f.company_id = %s and f.fuel_type = 'diesel' and f.purchased_at >= {since}
+            group by s.id order by gallons desc""",
+        (company_id,),
+    )
+    pins = [{"lat": float(s["latitude"]), "lon": float(s["longitude"]), "name": s["name"],
+             "where": ", ".join(p for p in [s["city"], s["state"]] if p), "avg": round(float(s["avg"]), 3) if s["avg"] else None,
+             "fills": s["fills"], "gallons": round(float(s["gallons"]))}
+            for s in stations if s["latitude"] is not None]
+    return render_template("fuel/insights.html", title="Fuel insights", active="/fuel", days=days, ranges=RANGES,
+                           kpi=kpi, offers=offers, fleet_mpg=fleet_mpg, price_chart=price_chart,
+                           spend_chart=spend_chart, saving_chart=saving_chart, drivers=drivers, misses=misses,
+                           stations=stations[:12], pins=pins)
+
+
+@bp.get("/fuel/offers")
+@login_required
+@company_required
+def offers_log():
+    truck_id = forms.integer(request.args.get("truck_id"))
+    params = [g.company["id"]]
+    clause = ""
+    if truck_id:
+        clause = " and o.truck_id = %s"
+        params.append(truck_id)
+    entries = rows(
+        f"""select o.*, t.unit_number, d.name as driver_name, s.name as chosen_name, s.city as chosen_city,
+                   s.state as chosen_state, f.net_ppu as paid_ppu, f.gallons as paid_gallons, fs.name as paid_station
+            from fuel_offers o join trucks t on t.id = o.truck_id left join drivers d on d.id = o.driver_id
+            left join fuel_stations s on s.id = o.chosen_station_id
+            left join fuel_transactions f on f.id = o.transaction_id
+            left join fuel_stations fs on fs.id = f.station_id
+            where o.company_id = %s{clause} order by o.created_at desc limit 200""",
+        tuple(params),
+    )
+    return render_template("fuel/offers.html", title="Fuel suggestions", active="/fuel", entries=entries,
+                           trucks=active_trucks(), truck_id=truck_id, skip_labels=SKIP_LABELS)
+
+
+def recent_prices():
+    return rows(
+        """select distinct on (p.station_id) p.*, s.name, s.city, s.state, s.brand
+           from fuel_prices p join fuel_stations s on s.id = p.station_id
+           where p.company_id = %s and p.fuel_type = 'diesel'
+           order by p.station_id, p.observed_at desc""",
+        (g.company["id"],),
+    )
+
+
+@bp.get("/fuel/prices")
+@login_required
+@role_required("admin")
+def prices():
+    found = recent_prices()
+    cutoff = datetime.now(timezone.utc) - timedelta(days=fuel.PRICE_OLD_DAYS)
+    for price in found:
+        price["stale"] = price["observed_at"] < cutoff
+    found.sort(key=lambda p: (p["stale"], p["net_ppu"], p["name"]))
+    return render_template("fuel/prices.html", title="Fuel prices", active="/fuel", prices=found, report=None)
+
+
+@bp.post("/fuel/prices")
+@login_required
+@role_required("admin")
+def import_prices():
+    upload = request.files.get("sheet")
+    if not upload or not upload.filename:
+        flash("Choose the price list file.", "bad")
+        return redirect("/fuel/prices")
+    try:
+        report = fuel.import_price_file(g.company["id"], upload.filename, upload.read())
+    except Exception as err:
+        get("fuel").warning("price list import of %s failed", upload.filename, exc_info=True)
+        flash(f"Could not import that file. {str(err)[:400]}", "bad")
+        return redirect("/fuel/prices")
+    audit("fuel.prices_imported", "fuel_price", None, {"file": upload.filename, **report})
+    flash(f"{report['added']} prices saved, {report['skipped']} rows skipped.", "ok")
+    return redirect("/fuel/prices")
+
+
+@bp.get("/fuel/settings")
+@login_required
+@role_required("admin")
+def settings():
+    prefs = rows(
+        """select p.*, d.name as driver_name from driver_fuel_prefs p join drivers d on d.id = p.driver_id
+           where p.company_id = %s order by lower(d.name)""",
+        (g.company["id"],),
+    )
+    company = one("select * from companies where id = %s", (g.company["id"],))
+    connected = one("select count(*) as n from trucks where company_id = %s and telegram_chat_id is not null and status <> 'sold'",
+                    (g.company["id"],))
+    return render_template("fuel/settings.html", title="Fuel assistant", active="/fuel", company=company, prefs=prefs,
+                           weekdays=list(enumerate(WEEKDAY_NAMES, start=1)), connected=connected["n"], needs=fuel.NEEDS)
+
+
+@bp.post("/fuel/settings")
+@login_required
+@role_required("admin")
+def save_settings():
+    values = {
+        "enabled": request.form.get("fuel_assistant_enabled") == "on",
+        "alert": min(80, max(5, forms.integer(request.form.get("fuel_alert_percent")) or 35)),
+        "search": min(400, max(20, forms.integer(request.form.get("fuel_search_miles")) or 150)),
+        "reserve": min(40, max(0, forms.integer(request.form.get("fuel_reserve_percent")) or 10)),
+        "mpg": min(12, max(3, float(forms.decimal(request.form.get("fuel_default_mpg")) or 6.5))),
+        "weekday": min(7, max(1, forms.integer(request.form.get("fuel_report_weekday")) or 1)),
+        "hour": min(23, max(0, forms.integer(request.form.get("fuel_report_hour")) or 0)),
+    }
+    execute(
+        """update companies set fuel_assistant_enabled = %(enabled)s, fuel_alert_percent = %(alert)s,
+             fuel_search_miles = %(search)s, fuel_reserve_percent = %(reserve)s, fuel_default_mpg = %(mpg)s,
+             fuel_report_weekday = %(weekday)s, fuel_report_hour = %(hour)s, updated_at = now()
+           where id = %(id)s""",
+        {**values, "id": g.company["id"]},
+    )
+    audit("fuel.settings", "company", g.company["id"], values)
+    flash("Fuel assistant settings saved.", "ok")
+    return redirect("/fuel/settings")

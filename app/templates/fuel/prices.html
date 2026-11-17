@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Fuel prices</h1><p>Kaido learns your discounted price at every station from your EFS purchases. Add a daily price list to cover stations you haven't used lately.</p></div>
+</div>
+{% set tab = 'prices' %}{% include "fuel/_tabs.html" %}
+<section class="panel">
+  <div class="panel-head"><h2>Upload a price list</h2></div>
+  <form method="post" action="/fuel/prices" enctype="multipart/form-data" class="fuel-upload">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <label class="field"><span>CSV or Excel file</span><input type="file" name="sheet" accept=".csv,.xlsx,.xlsm,.txt" required>
+      <em>Needs a station name column and either a net price ("your price", "net price", "disc ppu") or retail + discount columns. City, state, date, latitude and longitude are used when present.</em></label>
+    <div class="form-actions"><button class="btn" type="submit">Import prices</button></div>
+  </form>
+</section>
+<section class="panel">
+  <div class="panel-head"><h2>Latest known prices</h2><span class="subtle">{{ prices|length }} stations · cheapest first · prices older than 30 days are not used for suggestions</span></div>
+  {% if prices %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Station</th><th>City</th><th class="right">Your price</th><th class="right">Pump</th><th class="right">Discount</th><th>Source</th><th>Seen</th></tr></thead>
+    <tbody>
+      {% for price in prices %}
+      <tr><td>{{ price.name }}{% if price.brand %} <span class="badge muted">{{ price.brand }}</span>{% endif %}</td>
+        <td>{{ price.city or '—' }} {{ price.state or '' }}</td>
+        <td class="right"><strong>{{ price.net_ppu|money }}</strong></td>
+        <td class="right">{{ price.retail_ppu|money }}</td>
+        <td class="right fuel-good">{% if price.retail_ppu %}{{ (price.retail_ppu - price.net_ppu)|money }}{% else %}—{% endif %}</td>
+        <td>{{ 'price list' if price.source == 'price_file' else 'purchase' if price.source == 'transaction' else price.source }}</td>
+        <td>{{ price.observed_at|ago }}{% if price.stale %} <span class="badge muted">too old</span>{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No prices yet. Import an EFS transaction report or a price list.</p>{% endif %}
+</section>
+{% endblock %}

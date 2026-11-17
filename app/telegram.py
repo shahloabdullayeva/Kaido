@@ -1,3 +1,5 @@
+import json
+
 import requests
 
 from .config import config
@@ -59,3 +61,44 @@ def get_updates(offset=None):
     if not data.get("ok"):
         raise TelegramDown(data.get("description") or f"HTTP {response.status_code}")
     return data.get("result", [])
+
+
+def call(method, payload=None, files=None):
+    if not enabled():
+        print(f"[telegram:disabled] {method}")
+        return {"ok": False, "reason": "no_token"}
+    try:
+        url = f"{API}/bot{config.TELEGRAM_BOT_TOKEN}/{method}"
+        if files:
+            data = {k: (v if isinstance(v, (str, int, float)) else json.dumps(v)) for k, v in (payload or {}).items()}
+            response = requests.post(url, data=data, files=files, timeout=30)
+        else:
+            response = requests.post(url, json=payload or {}, timeout=10)
+        data = response.json()
+        if not data.get("ok"):
+            log.warning("%s failed: %s", method, data.get("description"))
+        result = data.get("result")
+        return {"ok": bool(data.get("ok")), "reason": data.get("description"),
+                "message_id": result.get("message_id") if isinstance(result, dict) else None}
+    except (requests.RequestException, ValueError) as err:
+        reason = redact(str(err))
+        log.warning("%s failed: %s", method, reason)
+        return {"ok": False, "reason": reason}
+
+
+def send_photo(chat_id, png, caption=None, **extra):
+    if not chat_id:
+        return {"ok": False, "reason": "no_chat_id"}
+    payload = {"chat_id": chat_id, "parse_mode": "HTML", **extra}
+    if caption:
+        payload["caption"] = caption[:1024]
+    return call("sendPhoto", payload, files={"photo": ("report.png", png, "image/png")})
+
+
+def edit(chat_id, message_id, text, **extra):
+    return call("editMessageText", {"chat_id": chat_id, "message_id": message_id, "text": text,
+                                    "parse_mode": "HTML", "disable_web_page_preview": True, **extra})
+
+
+def answer(callback_id, text=None):
+    return call("answerCallbackQuery", {"callback_query_id": callback_id, **({"text": text[:190]} if text else {})})

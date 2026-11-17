@@ -1,6 +1,7 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
 from .. import forms, hos, pm_list, pti, pti_driver, sheets
+from .. import fuel as fuel_engine
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -29,6 +30,7 @@ def form_values(source):
         "odometer": forms.integer(source.get("odometer")) or 0,
         "driver_id": forms.integer(source.get("driver_id")),
         "fuel_card_last4": forms.text(source.get("fuel_card_last4"), 4),
+        "tank_gallons": min(600, max(50, forms.integer(source.get("tank_gallons")) or 200)),
         "oil_interval_miles": forms.integer(source.get("oil_interval_miles")) or 25000,
         "registration_expires": forms.day(source.get("registration_expires")),
         "annual_inspection_on": forms.day(source.get("annual_inspection_on")),
@@ -303,7 +305,7 @@ def save_services(truck_id):
 def new():
     return render_template(
         "trucks/form.html", title="Add truck", active="/trucks",
-        truck={"status": "active", "duty_cycle": "standard", "oil_interval_miles": 25000, "odometer": 0},
+        truck={"status": "active", "duty_cycle": "standard", "oil_interval_miles": 25000, "odometer": 0, "tank_gallons": 200},
         drivers=active_drivers(), statuses=STATUSES, duty=DUTY, mode="new",
     )
 
@@ -325,10 +327,10 @@ def create():
         return redirect("/trucks/new")
     truck = insert(
         """insert into trucks (company_id, unit_number, vin, engine, engine_source, make, model, year, plate, plate_state, status,
-             duty_cycle, odometer, odometer_at, driver_id, fuel_card_last4, oil_interval_miles,
+             duty_cycle, odometer, odometer_at, driver_id, fuel_card_last4, tank_gallons, oil_interval_miles,
              registration_expires, annual_inspection_on, insurance_expires, notes)
            values (%(company_id)s, %(unit_number)s, %(vin)s, %(engine)s, case when %(engine)s::text is null then null else 'manual' end, %(make)s, %(model)s, %(year)s, %(plate)s, %(plate_state)s,
-             %(status)s, %(duty_cycle)s, %(odometer)s, now(), %(driver_id)s, %(fuel_card_last4)s, %(oil_interval_miles)s,
+             %(status)s, %(duty_cycle)s, %(odometer)s, now(), %(driver_id)s, %(fuel_card_last4)s, %(tank_gallons)s, %(oil_interval_miles)s,
              %(registration_expires)s, %(annual_inspection_on)s, %(insurance_expires)s, %(notes)s)
            returning *""",
         {**values, "company_id": g.company["id"]},
@@ -371,6 +373,18 @@ def detail(truck_id):
     enriched["last_oil_odometer"] = last_oil["odometer"] if last_oil else None
     attach_last_services([enriched], g.company["id"])
     fuel = rows("select * from fuel_transactions where truck_id = %s order by purchased_at desc limit 10", (truck_id,))
+    mpg = fuel_engine.truck_mpg(truck_id)
+    tank = None
+    if truck["fuel_percent"] is not None:
+        setup = one("select fuel_reserve_percent, fuel_default_mpg from companies where id = %s", (g.company["id"],))
+        usable = max(0.0, float(truck["fuel_percent"]) - float(setup["fuel_reserve_percent"])) / 100
+        tank = {"range": int(usable * float(truck["tank_gallons"] or 200) * (mpg or float(setup["fuel_default_mpg"]))),
+                "gallons": float(truck["fuel_percent"]) / 100 * float(truck["tank_gallons"] or 200)}
+    fuel_offers = rows(
+        """select o.*, s.name as chosen_name from fuel_offers o left join fuel_stations s on s.id = o.chosen_station_id
+           where o.truck_id = %s and o.company_id = %s order by o.created_at desc limit 5""",
+        (truck_id, g.company["id"]),
+    )
     faults = rows("select * from fault_events where truck_id = %s order by last_seen_at desc limit 10", (truck_id,))
     breakdowns = rows("select * from breakdowns where truck_id = %s order by occurred_at desc limit 10", (truck_id,))
     link = one("select * from vehicle_links where truck_id = %s", (truck_id,))
@@ -383,7 +397,7 @@ def detail(truck_id):
         faults=faults, breakdowns=breakdowns, economy=fuel_economy(truck_id), link=link,
         last_oil=last_oil, inspections=inspections, pti_link=pti_link, pti_kinds=pti.KINDS,
         group_code=group_code, group_truck=pti_driver.one_truck(g.company["id"], truck_id),
-        hours=hours, links=links,
+        hours=hours, links=links, mpg=mpg, tank=tank, fuel_offers=fuel_offers,
         readings=rows(
             """select r.*, u.name as by_name from odometer_readings r left join users u on u.id = r.created_by
                where r.truck_id = %s order by r.read_at desc, r.id desc limit 8""",
@@ -425,7 +439,7 @@ def update(truck_id):
              driver_from_name = (driver_from_name and driver_id is not distinct from %(driver_id)s),
              driver_source = case when driver_id is not distinct from %(driver_id)s then driver_source
                                   when %(driver_id)s is null then null else 'manual' end,
-             driver_id = %(driver_id)s, fuel_card_last4 = %(fuel_card_last4)s,
+             driver_id = %(driver_id)s, fuel_card_last4 = %(fuel_card_last4)s, tank_gallons = %(tank_gallons)s,
              oil_interval_miles = %(oil_interval_miles)s, registration_expires = %(registration_expires)s,
              annual_inspection_on = %(annual_inspection_on)s, insurance_expires = %(insurance_expires)s,
              notes = %(notes)s, updated_at = now()

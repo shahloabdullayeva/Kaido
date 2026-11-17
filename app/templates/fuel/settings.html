@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Fuel assistant</h1><p>Kaido watches each truck's tank and sends the driver the best stops ahead, then checks the receipt.</p></div>
+</div>
+{% set tab = 'settings' %}{% include "fuel/_tabs.html" %}
+<div class="grid-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Settings</h2><span class="badge {{ 'ok' if company.fuel_assistant_enabled else 'muted' }}">{{ 'On' if company.fuel_assistant_enabled else 'Off' }}</span></div>
+    <form method="post" action="/fuel/settings">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <div class="form-grid">
+        <label class="field full fuel-toggle"><input type="checkbox" name="fuel_assistant_enabled" {% if company.fuel_assistant_enabled %}checked{% endif %}>
+          <span>Send fuel suggestions and weekly reports to drivers</span></label>
+        {{ field('Suggest fuel at (% tank)', 'fuel_alert_percent', company.fuel_alert_percent, type='number', attrs='min="5" max="80"', hint='Drivers can set their own level with /fuelprefs.') }}
+        {{ field('Search up to (miles)', 'fuel_search_miles', company.fuel_search_miles, type='number', attrs='min="20" max="400"') }}
+        {{ field('Keep in reserve (% tank)', 'fuel_reserve_percent', company.fuel_reserve_percent, type='number', attrs='min="0" max="40"', hint='Never send a truck to a stop it would reach below this.') }}
+        {{ field('Default mpg', 'fuel_default_mpg', company.fuel_default_mpg, type='number', attrs='min="3" max="12" step="0.1"', hint='Used until a truck has enough fills to work out its own.') }}
+        <label class="field"><span>Weekly report day</span>
+          <select name="fuel_report_weekday">
+            {% for number, name in weekdays %}<option value="{{ number }}" {% if company.fuel_report_weekday == number %}selected{% endif %}>{{ name }}</option>{% endfor %}
+          </select></label>
+        {{ field('Weekly report hour', 'fuel_report_hour', company.fuel_report_hour, type='number', attrs='min="0" max="23"', hint='Company time zone, ' ~ (company.timezone or 'default') ~ '.') }}
+      </div>
+      <div class="form-actions"><button class="btn" type="submit">Save</button></div>
+    </form>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>How drivers use it</h2><span class="subtle">{{ connected }} truck{{ '' if connected == 1 else 's' }} connected</span></div>
+    <ol class="fuel-steps">
+      <li>Make a Telegram group for the truck, add the Kaido bot, and send <code>/truck</code> with the code from the truck's page.</li>
+      <li>The driver sends <code>/unit</code> once so Kaido knows who they are.</li>
+      <li>When the tank gets low, Kaido posts the best 3 stops ahead: price after discount, pump price, savings, parking, showers, map link. The driver taps <strong>✅</strong> to take one or <strong>Skip</strong> with a reason.</li>
+      <li>Kaido matches the EFS receipt and learns: skipped brands stop showing up, favourite brands go first.</li>
+    </ol>
+    <p class="subtle">Commands in the group: <code>/fuel</code> best stops now · <code>/fuelprefs</code> reminder level, must-haves, brands · <code>/fuelweek</code> last week's report card.</p>
+  </section>
+</div>
+<section class="panel">
+  <div class="panel-head"><h2>Driver preferences</h2><span class="subtle">set by drivers with /fuelprefs or learned from their answers</span></div>
+  {% if prefs %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Driver</th><th class="right">Remind at</th><th>Must have</th><th>Favourite</th><th>Never suggest</th><th>Learned</th><th>Updated</th></tr></thead>
+    <tbody>
+      {% for pref in prefs %}
+      <tr><td><a href="/drivers/{{ pref.driver_id }}">{{ pref.driver_name }}</a></td>
+        <td class="right">{{ (pref.alert_percent ~ '%') if pref.alert_percent else 'company' }}</td>
+        <td>{% for need in pref.needs %}{{ needs.get(need, need) }}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</td>
+        <td>{{ pref.brands_liked|join(', ') or '—' }}</td>
+        <td>{{ pref.brands_avoided|join(', ') or '—' }}</td>
+        <td class="subtle">{% set learned = pref.learned or {} %}{% for brand, n in (learned.get('accepted') or {}).items() %}took {{ brand }} ×{{ n }}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</td>
+        <td>{{ pref.updated_at|ago }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No driver has set preferences yet.</p>{% endif %}
+</section>
+{% endblock %}

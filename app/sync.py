@@ -288,12 +288,34 @@ def record_position(truck, gps):
     if latitude is None or longitude is None:
         return 0
     reverse = gps.get("reverseGeo") or {}
+    heading = gps.get("headingDegrees")
+    speed = gps.get("speedMilesPerHour")
     execute(
-        """update trucks set latitude = %s, longitude = %s, location = %s,
+        """update trucks set latitude = %s, longitude = %s, location = %s, heading = %s, speed_mph = %s,
              located_at = coalesce(%s, now()), location_source = 'samsara', updated_at = now() where id = %s""",
-        (latitude, longitude, reverse.get("formattedLocation"), gps.get("time"), truck["id"]),
+        (latitude, longitude, reverse.get("formattedLocation"),
+         int(heading) if heading is not None else None, speed, gps.get("time"), truck["id"]),
     )
     return 1
+
+
+def record_fuel(truck, block):
+    if not isinstance(block, dict) or block.get("value") is None:
+        return 0
+    execute("update trucks set fuel_percent = %s, fuel_percent_at = coalesce(%s, now()) where id = %s",
+            (block["value"], block.get("time"), truck["id"]))
+    return 1
+
+
+def record_track(company_id, truck_id):
+    execute(
+        """insert into truck_positions (company_id, truck_id, latitude, longitude, heading, speed_mph, odometer,
+             fuel_percent, recorded_at)
+           select company_id, id, latitude, longitude, heading, speed_mph, odometer, fuel_percent, located_at
+           from trucks where id = %s and latitude is not null and located_at is not null
+           on conflict (truck_id, recorded_at) do nothing""",
+        (truck_id,),
+    )
 
 
 def sync_faults(company_id, truck, faults):
@@ -418,6 +440,8 @@ def sync_company(company_id):
             miles = meters_to_miles(odometer_block.get("value"))
             counters["odometer"] += record_odometer(company_id, truck, miles, odometer_block.get("time"))
             counters["positions"] += record_position(truck, stat.get("gps"))
+            counters["fuel"] = counters.get("fuel", 0) + record_fuel(truck, stat.get("fuelPercent") or stat.get("fuelPercents"))
+            record_track(company_id, truck["id"])
             faults = parse_fault_codes(stat.get("faultCodes"))
             opened, cleared = sync_faults(company_id, truck, faults)
             counters["faults_opened"] += opened

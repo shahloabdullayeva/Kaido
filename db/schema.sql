@@ -926,3 +926,139 @@ create table if not exists contact_requests (
   created_at timestamptz not null default now()
 );
 
+
+alter table trucks add column if not exists fuel_percent numeric(5,1);
+alter table trucks add column if not exists fuel_percent_at timestamptz;
+alter table trucks add column if not exists tank_gallons int not null default 200;
+alter table trucks add column if not exists heading int;
+alter table trucks add column if not exists speed_mph numeric(5,1);
+
+alter table companies add column if not exists fuel_assistant_enabled boolean not null default false;
+alter table companies add column if not exists fuel_alert_percent int not null default 35;
+alter table companies add column if not exists fuel_search_miles int not null default 150;
+alter table companies add column if not exists fuel_reserve_percent int not null default 10;
+alter table companies add column if not exists fuel_report_weekday int not null default 1;
+alter table companies add column if not exists fuel_report_hour int not null default 8;
+alter table companies add column if not exists fuel_default_mpg numeric(4,2) not null default 6.5;
+
+create table if not exists truck_positions (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  latitude numeric(9,6) not null,
+  longitude numeric(9,6) not null,
+  heading int,
+  speed_mph numeric(5,1),
+  odometer int,
+  fuel_percent numeric(5,1),
+  recorded_at timestamptz not null,
+  unique (truck_id, recorded_at)
+);
+create index if not exists truck_positions_truck_idx on truck_positions (truck_id, recorded_at desc);
+
+create table if not exists fuel_stations (
+  id serial primary key,
+  key text not null unique,
+  osm_id text,
+  name text not null,
+  brand text,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  address text,
+  city text,
+  state text,
+  amenities jsonb not null default '{}',
+  located_by text,
+  source text not null default 'osm' check (source in ('osm', 'transaction', 'manual')),
+  updated_at timestamptz not null default now()
+);
+create index if not exists fuel_stations_geo_idx on fuel_stations (latitude, longitude);
+
+create table if not exists fuel_prices (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  station_id int not null references fuel_stations(id) on delete cascade,
+  fuel_type text not null default 'diesel',
+  retail_ppu numeric(8,4),
+  net_ppu numeric(8,4) not null,
+  observed_at timestamptz not null,
+  source text not null default 'transaction' check (source in ('transaction', 'price_file', 'manual')),
+  transaction_id bigint references fuel_transactions(id) on delete cascade,
+  unique (company_id, station_id, fuel_type, observed_at, source)
+);
+create index if not exists fuel_prices_lookup_idx on fuel_prices (company_id, station_id, fuel_type, observed_at desc);
+
+alter table fuel_transactions add column if not exists station_id int references fuel_stations(id) on delete set null;
+alter table fuel_transactions add column if not exists retail_ppu numeric(8,4);
+alter table fuel_transactions add column if not exists net_ppu numeric(8,4);
+alter table fuel_transactions add column if not exists discount_ppu numeric(8,4);
+alter table fuel_transactions add column if not exists best_station_id int references fuel_stations(id) on delete set null;
+alter table fuel_transactions add column if not exists best_net_ppu numeric(8,4);
+alter table fuel_transactions add column if not exists best_miles numeric(6,1);
+alter table fuel_transactions add column if not exists missed_usd numeric(10,2);
+alter table fuel_transactions add column if not exists checked_at timestamptz;
+alter table fuel_transactions add column if not exists offer_id bigint;
+
+create table if not exists fuel_offers (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  driver_id int references drivers(id) on delete set null,
+  chat_id bigint,
+  message_id bigint,
+  reason text not null default 'low' check (reason in ('low', 'asked', 'test')),
+  fuel_percent numeric(5,1),
+  range_miles int,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  options jsonb not null default '[]',
+  status text not null default 'sent' check (status in ('sent', 'accepted', 'skipped', 'expired', 'fueled', 'failed')),
+  chosen_station_id int references fuel_stations(id) on delete set null,
+  skip_reason text,
+  answered_by bigint,
+  answered_at timestamptz,
+  transaction_id bigint references fuel_transactions(id) on delete set null,
+  followed boolean,
+  saved_usd numeric(10,2),
+  created_at timestamptz not null default now()
+);
+create index if not exists fuel_offers_truck_idx on fuel_offers (truck_id, created_at desc);
+
+create table if not exists driver_fuel_prefs (
+  driver_id int primary key references drivers(id) on delete cascade,
+  company_id int not null references companies(id) on delete cascade,
+  brands_liked text[] not null default '{}',
+  brands_avoided text[] not null default '{}',
+  stations_avoided int[] not null default '{}',
+  needs text[] not null default '{}',
+  alert_percent int,
+  learned jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists fuel_reports (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  kind text not null check (kind in ('driver', 'fleet')),
+  target_id int not null default 0,
+  week_start date not null,
+  ok boolean not null default false,
+  sent_at timestamptz not null default now(),
+  unique (company_id, kind, target_id, week_start)
+);
+
+do $$
+declare
+  tenant text;
+begin
+  foreach tenant in array array['truck_positions', 'fuel_prices', 'fuel_offers', 'driver_fuel_prefs', 'fuel_reports'] loop
+    execute format('alter table %I enable row level security', tenant);
+    execute format('alter table %I force row level security', tenant);
+    execute format('drop policy if exists company_lock on %I', tenant);
+    execute format(
+      'create policy company_lock on %I using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+      'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
+  end loop;
+end $$;

@@ -1,7 +1,6 @@
-from flask import Blueprint, g, render_template
+from flask import Blueprint, g, redirect, render_template
 
 from .. import hos
-from . import site
 from ..db import rows
 from ..filters import ago
 from ..queries import attention_score, company_summary, expiring_documents, service_status, trucks_with_service
@@ -42,7 +41,7 @@ def fleet_pins(fleet, hours=None):
 @bp.get("/")
 def index():
     if not getattr(g, "session", None):
-        return site.landing()
+        return redirect("/login")
     return home()
 
 

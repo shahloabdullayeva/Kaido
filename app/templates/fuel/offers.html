@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Driver fuel suggestions</h1><p>Every fuel card Kaido sent to a truck's Telegram group and what the driver did with it.</p></div>
+</div>
+{% set tab = 'offers' %}{% include "fuel/_tabs.html" %}
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/fuel/offers" class="filters" data-autosubmit>
+      <label class="field"><span>Truck</span>
+        <select name="truck_id">
+          <option value="">All trucks</option>
+          {% for truck in trucks %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+        </select>
+      </label>
+    </form>
+  </div>
+  {% if entries %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sent</th><th>Unit</th><th>Driver</th><th class="right">Tank</th><th>Stops offered</th><th>Answer</th><th>Fuelled</th><th class="right">Saved</th></tr></thead>
+    <tbody>
+      {% for entry in entries %}
+      <tr>
+        <td>{{ entry.created_at|ago }}<div class="subtle">{{ 'asked with /fuel' if entry.reason == 'asked' else 'low tank' if entry.reason == 'low' else entry.reason }}</div></td>
+        <td><a href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
+        <td>{{ entry.driver_name or '—' }}</td>
+        <td class="right">{% if entry.fuel_percent is not none %}{{ entry.fuel_percent|number }}%{% if entry.range_miles %}<div class="subtle">{{ entry.range_miles|number }} mi left</div>{% endif %}{% else %}—{% endif %}</td>
+        <td><ol class="fuel-options">
+          {% for option in (entry.options or [])[:3] %}
+          <li{% if option.station_id == entry.chosen_station_id %} class="chosen"{% endif %}>{{ option.name }} <span class="subtle">{{ option.miles }} mi</span>
+            {% if option.net is not none %}<strong>${{ '%.3f'|format(option.net) }}</strong>{% endif %}</li>
+          {% else %}<li class="subtle">no priced stops in range</li>{% endfor %}
+        </ol></td>
+        <td>
+          {% if entry.chosen_station_id %}<span class="badge ok">Took {{ entry.chosen_name }}</span>
+          {% elif entry.skip_reason %}<span class="badge warn">Skipped</span> <span class="subtle">{{ skip_labels.get(entry.skip_reason, entry.skip_reason) }}</span>
+          {% elif entry.status == 'expired' %}<span class="badge muted">No answer</span>
+          {% elif entry.status == 'failed' %}<span class="badge bad">Not delivered</span>
+          {% else %}<span class="badge info">Waiting</span>{% endif %}
+        </td>
+        <td>
+          {% if entry.followed is sameas true %}<span class="badge ok">Followed</span>
+          {% elif entry.followed is sameas false %}<span class="badge warn">Fuelled elsewhere</span>
+          {% else %}<span class="subtle">—</span>{% endif %}
+          {% if entry.paid_ppu %}<div class="subtle">{{ entry.paid_station or '' }} {{ entry.paid_ppu|money }}/gal</div>{% endif %}
+        </td>
+        <td class="right {{ 'fuel-good' if entry.saved_usd and entry.saved_usd > 0 else 'fuel-miss' if entry.saved_usd and entry.saved_usd < 0 else '' }}">{{ entry.saved_usd|money }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No fuel suggestions sent yet. Turn the fuel assistant on and connect trucks to Telegram groups{% if at_least(role, 'admin') %} on <a href="/fuel/settings">Fuel assistant</a>{% endif %}.</p>{% endif %}
+</section>
+{% endblock %}

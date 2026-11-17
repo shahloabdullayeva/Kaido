@@ -48,6 +48,7 @@ def create_app():
 
     @app.after_request
     def finish(response):
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
         if getattr(g, "google_map", False):
             # Google's documented allowlist for the Maps JavaScript API, on the work-order pages only.
             response.headers["Content-Security-Policy"] = (

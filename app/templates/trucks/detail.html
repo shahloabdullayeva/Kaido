@@ -37,6 +37,13 @@
     <div class="stat-hint">{% if item.due is not none %}{% if item.label == 'Oil service' %}due at {{ item.due|number }} mi{% else %}due {{ item.due|day }}{% endif %}{% else %}no baseline yet{% endif %}</div>
   </div>
   {% endfor %}
+  <div class="stat fuel-tank {{ 'warn' if truck.fuel_percent is not none and truck.fuel_percent <= 25 else '' }}"><div class="stat-label">Fuel tank</div>
+    {% if truck.fuel_percent is not none %}<div class="stat-value">{{ truck.fuel_percent|number }}%</div>
+    <div class="fuel-gauge" role="img" aria-label="Tank {{ truck.fuel_percent|number }} percent"><span style="width: {{ [[truck.fuel_percent, 0]|max, 100]|min }}%"></span></div>
+    <div class="stat-hint">~{{ tank.gallons|number }} of {{ truck.tank_gallons }} gal · ~{{ tank.range|number }} mi range · {{ truck.fuel_percent_at|ago }}</div>
+    {% else %}<div class="stat-value">—</div><div class="stat-hint">{{ truck.tank_gallons }} gal tank · level not reported by telematics</div>{% endif %}</div>
+  {% if mpg %}<div class="stat"><div class="stat-label">MPG from fill-ups</div><div class="stat-value">{{ mpg|number(1) }}</div>
+    <div class="stat-hint">last 60 days of diesel and odometer</div></div>{% endif %}
   {% if economy %}
   <div class="stat"><div class="stat-label">Fuel economy</div><div class="stat-value">{{ economy.latest|number(1) }}</div>
     <div class="stat-hint">recent MPG · {{ economy.average|number(1) }} average</div></div>
@@ -195,6 +202,21 @@
       </tbody>
     </table></div>
     {% else %}<p class="empty">No fuel logged for this truck.</p>{% endif %}
+    <div class="panel-head"><h2>Fuel suggestions</h2><a class="btn ghost small" href="/fuel/offers?truck_id={{ truck.id }}">All</a></div>
+    {% if fuel_offers %}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Sent</th><th class="right">Tank</th><th>Answer</th><th class="right">Saved</th></tr></thead>
+      <tbody>
+        {% for offer in fuel_offers %}
+        <tr><td>{{ offer.created_at|ago }}</td>
+          <td class="right">{{ offer.fuel_percent|number }}{% if offer.fuel_percent is not none %}%{% endif %}</td>
+          <td>{% if offer.chosen_name %}<span class="badge ok">Took {{ offer.chosen_name }}</span>{% elif offer.skip_reason %}<span class="badge warn">Skipped</span>{% elif offer.status == 'expired' %}<span class="badge muted">No answer</span>{% else %}<span class="badge info">{{ offer.status|label }}</span>{% endif %}
+            {% if offer.followed is sameas true %}<span class="badge ok">Followed</span>{% elif offer.followed is sameas false %}<span class="badge warn">Elsewhere</span>{% endif %}</td>
+          <td class="right">{{ offer.saved_usd|money }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+    {% else %}<p class="empty">No fuel suggestions sent to this truck yet.</p>{% endif %}
   </section>
 
   <section class="panel">

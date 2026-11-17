@@ -41,8 +41,11 @@ for any truck and any driver, including ones from outside the company.
   carrier's users only ever see their own company.
 - **Notification center**: a bell in the top bar shows notes and due reminders,
   with a history of the last 20.
-- **Public front page** at `/` for signed-out visitors, with a contact form that
-  reaches the platform owner on Telegram.
+- **Private platform only**: `/` sends anyone not signed in to the sign-in page. There is
+  no public front page and no contact form, and every response carries `X-Robots-Tag: noindex`.
+- **Fuel desk**: tank-level fuel stop suggestions in each truck's Telegram group with
+  Accept / Skip buttons, driver preferences that Kaido learns, missed-savings analysis on
+  every EFS purchase, and weekly picture reports for drivers and the office.
 - **Dark mode**, chosen per user on the Settings page (auto, light or dark).
 - **Pages update themselves** after a deploy. No hard refresh is ever needed.
 - **Twice-weekly summary** to each company's admins, and nightly backups.
@@ -88,7 +91,7 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
       logs.py         error log with secrets stripped
       views/          one blueprint per section
       templates/      Jinja templates
-      static/         app.css, modern.css, landing.css, app.js, cat.js, fleet.js, shops.js, favicon, og.png, vendor/leaflet
+      static/         app.css, modern.css, app.js, cat.js, fleet.js, shops.js, favicon, vendor/leaflet
     bin/              run, serve, sync, followup, backup, golive
     db/schema.sql     the whole schema
     manage.py         CLI
@@ -212,6 +215,13 @@ off the fleet map and the totals.
     manage.py demo --company              sample trucks, fuel and a breakdown
     manage.py ai-spend                    what the AI notes have cost so far
     manage.py google-usage                Google Maps calls today and this month
+    manage.py fuel-directory [--states NV,AZ]
+                                          load truck stops from OpenStreetMap
+    manage.py fuel-prepare [--company] [--recheck]
+                                          match purchases to stations, find missed savings
+    manage.py fuel [--force]              send fuel stop suggestions, match refuels
+    manage.py fuel-report [--company] [--dry-run] [--force]
+                                          weekly fuel reports to drivers and admins
 
 ## The fleet map
 
@@ -339,14 +349,90 @@ and the driver sends `/unit` once. A group only ever hears about its own truck:
 pre-trip and post-trip reminders on the company's chosen days (Monday and Thursday
 by default), and a nudge any day the truck drives without one.
 
-## Front page
+## Signed-out visitors
 
-Signed-out visitors to `/` get `templates/landing.html` (styled by `static/landing.css`,
-light and dark). No price is shown; the page says "contact us". The form posts to
-`/contact`: the request is saved in `contact_requests` and sent to every platform owner's
-Telegram. A hidden field catches bots and one address can send three an hour.
-`/robots.txt` lets search engines index the front page only. `static/og.png` is the
-picture shown when the link is pasted into Telegram.
+`/` redirects to `/login` for anyone not signed in. The public front page and its contact
+form were taken down on 17 Nov 2026 (they drew spam from "SEO" sellers); the old
+`contact_requests` rows are still in the database. `/robots.txt` disallows everything and
+every response carries `X-Robots-Tag: noindex, nofollow`. The favicon is a plain navy
+rounded square with a white K (`static/favicon.svg`, `static/favicon.png` for `/favicon.ico`).
+
+## Fuel
+
+Everything fuel lives in three modules: `app/fuel.py` (stations, prices, MPG, missed
+savings), `app/fuel_bot.py` (the driver-chat cards and buttons) and `app/fuel_report.py`
+(the weekly picture reports). No AI is used anywhere in it, so it costs nothing to run.
+
+**Where the data comes from.**
+- *Tank level, heading and speed* come from Samsara's `fuelPercents` and `gps` stats on
+  every 15-minute sync and are kept on the truck. Each sync also appends a row to
+  `truck_positions`, the track used to see which stations a truck actually drove past.
+- *Truck stops* come from OpenStreetMap: `manage.py fuel-directory` loads every fuel
+  station that is a known truck-stop brand (Pilot, Flying J, Love's, TA, Petro, Maverik,
+  Sapp Bros, Road Ranger, Ambest…) or is tagged for trucks, state by state, into
+  `fuel_stations`. Amenities (parking, showers, scale, DEF, food, repair) come from the OSM tags,
+  and where a brand nearly always has one, from that brand's usual set; the brand-based ones
+  are listed under `amenities.typical`.
+- *Prices and discounts* come from the company's own fuel card purchases. The EFS Transaction
+  Report carries the pump price (`unit price`), the discounted price (`disc ppu`) and the amount
+  already net of the discount, so every import becomes a real net price at that station
+  (`fuel_prices`, source `transaction`). A daily price or discount list from the fuel program
+  can be uploaded on Fuel → Prices (source `price_file`). It needs a station-name column and either a
+  net price or pump price + discount.
+- *Matching purchases to stations*: the EFS location name + city + state is geocoded at the
+  city level (Nominatim, cached 90 days) and matched to the nearest OSM station of the same
+  brand within 20 miles. Unbranded stops are geocoded by name. A station still placed only
+  at the city centre is tried again once a day as more of the directory loads.
+
+**Missed savings.** For each diesel fill Kaido looks for stations with a price the company
+paid within 3 days either side. When the truck's track for the 10 hours before the fill is
+known, it uses only stations within 3 miles of that route. Without a track, it uses stations
+within 30 miles. When the cheapest of them was at least 3¢/gal lower, the difference × gallons
+is stored on the purchase as `missed_usd`, with the cheaper station and its distance.
+
+**Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
+companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a
+Telegram group and a tank reading under 90 minutes old):
+- A card is sent when the tank is at or below the alert level (company default 35%, or the
+  driver's own). It is not repeated for 4 hours, or for 90 minutes once the tank is under 15%.
+- Range = (tank % − reserve %) × tank gallons × the truck's MPG. MPG comes from its own fills
+  and odometer over 60 days, or the company default.
+- Candidates are stations within range (capped at the company's search miles) and, when the
+  truck is moving, within 70° of its heading. Stations the driver avoids, or that lack
+  something the driver needs, are dropped. Stations are then ranked by net price, with a
+  small penalty per mile, a bonus for the driver's favourite and usual brands, and a penalty
+  for unknown amenities the driver needs.
+- The card shows up to three stops (with "More stops" for three more): net price, pump price
+  and discount, how old the price is, estimated savings against the nearest priced stop on a
+  full fill, amenities and a Google Maps link.
+- Buttons: **✅ Accept** a stop, which edits the card and sends the stop as a location pin to
+  navigate to. **⏭ Skip** asks why: already fueling, off my route, no parking, don't like this
+  brand, found cheaper, or remind me later (asks again in 90 minutes).
+- When the tank jumps 15 points or more, the suggestion is marked fueled and Kaido checks
+  whether it happened within 2 miles of the chosen stop. When the EFS purchase arrives it is
+  linked to the suggestion from the 18 hours before, with `followed` and `saved_usd` against
+  the nearest priced option.
+
+**Driver preferences** (`driver_fuel_prefs`, per driver): alert %, must-haves, favourite and
+never-suggest brands. Drivers set them with `/fuelprefs` in the truck group. Kaido also
+learns: skipping a brand twice for "don't like this brand" adds it to never-suggest, and
+brands with 30%+ of a driver's fills in 90 days count as favourites.
+
+**Truck group commands:** `/fuel` (best stops from here, now), `/fuelprefs`, `/fuelweek`
+(last week's report now).
+
+**Weekly reports** (`fuel_report.run`, on the company's report weekday and hour, default
+Monday 08:00 local, once per week per target, logged in `fuel_reports`). The report covers
+the previous Monday–Sunday:
+- *Driver card* to each truck group: a PNG with diesel spend, gallons, price per gallon against
+  the fleet, mpg, discounts captured, missed savings, a 6-week price trend against the fleet
+  average, suggestions taken, and one tip from the week's data.
+- *Fleet card* to each company admin's Telegram: spend with week-on-week change, gallons,
+  average price against pump, discounts, missed savings, mpg, suggestions taken, 8-week spend,
+  drivers ranked by missed savings, and the three biggest missed opportunities.
+
+`manage.py fuel-report --company NAME --dry-run --force` writes the fleet card to `logs/`
+without sending anything.
 
 ## Notification center
 

@@ -1,0 +1,31 @@
+{% macro chart(data, title, note='') %}
+<figure class="fuel-chart">
+  <figcaption><span class="fuel-chart-title">{{ title }}</span>{% if note %}<span class="subtle">{{ note }}</span>{% endif %}</figcaption>
+  {% if data %}
+  {% if data.legend %}<div class="fuel-legend">{% for item in data.legend %}<span><i class="fuel-key {{ item.cls }}"></i>{{ item.name }}</span>{% endfor %}</div>{% endif %}
+  <div class="fuel-svg"><svg viewBox="0 0 {{ data.w }} {{ data.h }}" role="img" aria-label="{{ title }}" preserveAspectRatio="xMidYMid meet">
+    {% for tick in data.ticks %}
+    <line class="fuel-grid" x1="{{ data.pad_l }}" x2="{{ data.w - data.pad_r }}" y1="{{ tick.y }}" y2="{{ tick.y }}"></line>
+    <text class="fuel-axis" x="{{ data.pad_l - 8 }}" y="{{ tick.y + 4 }}" text-anchor="end">{{ tick.label }}</text>
+    {% endfor %}
+    <line class="fuel-baseline" x1="{{ data.pad_l }}" x2="{{ data.w - data.pad_r }}" y1="{{ data.base }}" y2="{{ data.base }}"></line>
+    {% for label in data.labels %}{% if data.labels|length <= 8 or loop.index0 % 2 == 0 or loop.last %}
+    <text class="fuel-axis" x="{{ label.x }}" y="{{ data.h - 10 }}" text-anchor="middle">{{ label.text }}</text>
+    {% endif %}{% endfor %}
+    {% for bar in data.bars %}
+    <g class="fuel-hit"><title>{{ bar.title }}</title>
+      <rect class="fuel-hitbox" x="{{ bar.hit[0] }}" y="{{ bar.hit[1] }}" width="{{ bar.hit[2] }}" height="{{ bar.hit[3] }}"></rect>
+      <path class="fuel-bar {{ bar.cls }}" d="{{ bar.path }}"></path></g>
+    {% endfor %}
+    {% for line in data.lines %}
+    <path class="fuel-line {{ line.cls }}" d="{{ line.path }}"></path>
+    {% for point in line.points %}
+    <g class="fuel-hit"><title>{{ point[3] }} · {{ line.name }}: {{ data.fmt(point[2]) }}</title>
+      <circle class="fuel-hitbox" cx="{{ point[0] }}" cy="{{ point[1] }}" r="12"></circle>
+      <circle class="fuel-dot {{ line.cls }}" cx="{{ point[0] }}" cy="{{ point[1] }}" r="4.5"></circle></g>
+    {% endfor %}
+    {% endfor %}
+  </svg></div>
+  {% else %}<p class="empty">No fuel data in this period yet.</p>{% endif %}
+</figure>
+{% endmacro %}
