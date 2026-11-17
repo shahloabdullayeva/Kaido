@@ -14,7 +14,7 @@
   </form>
 </section>
 <section class="panel">
-  <div class="panel-head"><h2>Latest known prices</h2><span class="subtle">{{ prices|length }} stations · cheapest first · prices older than 30 days are not used for suggestions</span></div>
+  <div class="panel-head"><h2>Latest known prices</h2><span class="subtle">{{ prices|length }} stations · cheapest first · prices older than 90 days are not used for suggestions</span></div>
   {% if prices %}
   <div class="table-wrap"><table>
     <thead><tr><th>Station</th><th>City</th><th class="right">Your price</th><th class="right">Pump</th><th class="right">Discount</th><th>Source</th><th>Seen</th></tr></thead>

@@ -402,6 +402,7 @@ Telegram group and a tank reading under 90 minutes old):
   something the driver needs, are dropped. Stations are then ranked by net price, with a
   small penalty per mile, a bonus for the driver's favourite and usual brands, and a penalty
   for unknown amenities the driver needs.
+- Prices count for 90 days; the card always says how old each one is ("paid 12d ago").
 - The card shows up to three stops (with "More stops" for three more): net price, pump price
   and discount, how old the price is, estimated savings against the nearest priced stop on a
   full fill, amenities and a Google Maps link.

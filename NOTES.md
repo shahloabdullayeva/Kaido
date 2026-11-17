@@ -227,5 +227,5 @@ rather than an empty map.
   - **Fuel stop cards in the truck groups** with Accept / Skip (and a reason), driver preferences (`/fuelprefs`), `/fuel` on demand, `/fuelweek`, and weekly picture reports to drivers and admins.
   - Web: Fuel → Insights / Purchases / Driver suggestions / Prices / Fuel assistant. The truck page shows tank %, range, MPG and recent suggestions. Tank size is on the truck form (default 200 gal).
 - **It is switched off for every company.** Turn it on in Fuel → Fuel assistant. Drivers only get cards in truck groups that are connected (`/truck` code, then `/unit`), and **no truck group is connected yet**.
-- No live daily prices yet: suggestions use the prices the company paid in the last 30 days, plus any price list uploaded on Fuel → Prices. BOOKIT's last EFS import is 13 Oct, so until a new one arrives, cards show stops with "price not known yet". Importing the latest EFS report brings the prices back.
+- No live daily prices yet: suggestions use the prices the company paid in the last 90 days (age shown on the card), plus any price list uploaded on Fuel → Prices. BOOKIT's last EFS import is 13 Oct, so cards show October prices marked with their age until a new EFS report or price list is imported.
 - The old-job shift bots (pfp-swap) were taken off cron the same night; nothing in Kaido depended on them.
