@@ -657,18 +657,21 @@ def send_to_driver(trip_id):
     truck = load_truck(trip["truck_id"])
     if not truck or not truck["telegram_chat_id"]:
         return {"ok": False, "reason": "This truck has no Telegram group connected."}
-    result = send(truck["telegram_chat_id"], message(trip, truck), reply_markup=keyboard(trip_id))
-    if result.get("ok"):
-        execute("""update trips set status = 'sent', chat_id = %s, message_id = %s, sent_at = now(), updated_at = now()
-                   where id = %s""", (truck["telegram_chat_id"], result.get("message_id"), trip_id))
-        stops = one("select plan from trips where id = %s", (trip_id,))["plan"]["fuel_stops"]
-        if stops:
-            first = stops[0]
-            call("sendVenue", {"chat_id": truck["telegram_chat_id"], "latitude": first["latitude"], "longitude": first["longitude"],
-                               "title": f"Fuel stop 1: {first['name']}"[:60],
-                               "address": f"Mile {first['mile']:,.0f}, buy {first['gallons']:.0f} gal",
-                               "reply_to_message_id": result.get("message_id")})
-    return result
+    execute("update trips set status = 'sent', chat_id = %s, sent_at = now(), updated_at = now() where id = %s",
+            (truck["telegram_chat_id"], trip_id))
+    trip = one("select * from trips where id = %s", (trip_id,))
+    summary = trip["plan"]["summary"]
+    if summary.get("restart_needed") or summary.get("late"):
+        notify_office(trip, truck, "needs a 34 h restart and will be late" if summary.get("restart_needed") else "will be late")
+    if not trip["plan"]["fuel_stops"]:
+        return send(truck["telegram_chat_id"], f"Unit {escape(fuel.unit_label(truck['unit_number']))}: no fuel stop needed on this load.")
+    points, miles = route_of(trip)
+    mile = locate(points, miles, float(truck["latitude"]), float(truck["longitude"]))[0] if truck["latitude"] is not None else 0.0
+    ok = send_next(trip, truck, mile)
+    sent = live_state(trip)["sent"].get("0") or {}
+    if ok and sent.get("message_id"):
+        execute("update trips set message_id = %s where id = %s", (sent["message_id"], trip_id))
+    return {"ok": ok}
 
 
 def handle_callback(query):

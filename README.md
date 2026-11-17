@@ -393,14 +393,13 @@ number of stops), pick a truck, and Kaido plans the whole trip:
   of arriving empty. When a stop fills the tank because diesel ahead is at least $0.25/gal dearer,
   the stop says so ("Fill the tank here: diesel ahead in CA averages $7.35, $1.48/gal more").
   Each purchase is at least 50 gallons, or a fill if the tank needs less.
-- **To the driver, one stop at a time, short.** Drivers do not read long messages, so every
-  driver message is a few lines. "Send to driver" posts: load and unit, from/to cities and miles,
-  pickup and delivery ETA (with "late N h"), tank % and drive/cycle hours left, one warning
-  line when a restart is needed or it will be late, and the **first** fuel stop (name, city,
-  gallons, price, Map). Buttons: **Accept plan** or **Problem with plan** (different route,
-  not enough hours, tank info is wrong, other). The answer is saved on the trip and goes to the
-  company admins on Telegram. The full plan (every stop, rests, timeline, map) is on the trip's
-  page in Kaido.
+- **To the driver: fuel only, one stop at a time, short.** Dispatch already posts the load (pickup,
+  delivery, times) in the truck group, so Kaido does not repeat it. "Send to driver" posts only the
+  first fuel stop: name and city, miles ahead, gallons, price and Map, a fill-up note when fuel ahead
+  costs more, and tank % with drive and shift hours left, plus a location pin. Buttons: **Fuel there**
+  or **Skip this stop**. When the plan needs a 34-hour restart or will be late, that goes to the
+  company admins on Telegram, not to the driver. The full plan (pickup and delivery ETAs, every stop,
+  rests, timeline, map) is on the trip's page in Kaido.
 - **Live follow-up** (`trips.follow`, every 5 minutes from `bin/followup.sh`, for sent and accepted
   trips up to 8 days old, while the truck's position is under an hour old and within 15 miles of the
   route):
