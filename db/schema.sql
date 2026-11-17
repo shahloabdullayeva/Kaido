@@ -1183,3 +1183,6 @@ create policy company_lock on fuel_alerts
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
   with check (coalesce(current_setting('kaido.company_id', true), '') = ''
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+alter table fuel_transactions drop constraint if exists fuel_transactions_source_check;
+alter table fuel_transactions add constraint fuel_transactions_source_check check (source in ('manual', 'import', 'api', 'demo'));

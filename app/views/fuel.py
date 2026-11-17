@@ -266,7 +266,8 @@ def insights():
                    sum(retail_ppu * gallons) / nullif(sum(gallons) filter (where retail_ppu is not null), 0) as avg_pump,
                    coalesce(sum(discount_ppu * gallons), 0) as discount, coalesce(sum(missed_usd), 0) as missed,
                    count(*) filter (where net_ppu is not null and coalesce(discount_ppu, 0) < 0.01) as no_discount,
-                   count(*) filter (where checked_at is not null) as checked
+                   count(*) filter (where checked_at is not null) as checked,
+                   count(*) filter (where source = 'demo') as demo
             from fuel_transactions where company_id = %s and fuel_type = 'diesel' and purchased_at >= {since}""",
         (company_id,),
     )

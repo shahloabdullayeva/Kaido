@@ -5,7 +5,7 @@
 <script src="/static/fuel.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Fuel insights</h1><p>Diesel only · last {{ days }} days</p></div>
+  <div><h1>Fuel insights</h1><p>Diesel only · last {{ days }} days{% if kpi.demo %} · <span class="badge warn">{{ kpi.demo }} demo purchases</span>{% endif %}</p></div>
   <div class="actions-row">
     <div class="fuel-range" role="group" aria-label="Period">
       {% for value in ranges %}<a class="btn {{ '' if value == days else 'ghost' }} small" href="/fuel/insights?days={{ value }}">{{ value }} days</a>{% endfor %}

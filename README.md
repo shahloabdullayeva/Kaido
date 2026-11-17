@@ -224,6 +224,8 @@ off the fleet map and the totals.
     manage.py trip --company --truck UNIT [--file load.txt] [--send]
                                           plan a load: route, fuel stops, hours, ETAs
     manage.py fuel [--force]              send fuel stop suggestions, match refuels
+    manage.py fuel-demo --company [--days 28] [--remove]
+                                          placeholder fuel purchases marked demo
     manage.py fuel-report [--company] [--dry-run] [--force]
                                           weekly fuel reports to drivers and admins
 
@@ -546,6 +548,15 @@ and how old it is, where, the fuel stop last sent and whether the driver fueled:
 % before and after, gallons, station, planned or not), and the drivers' preferences. Fuel → Prices
 lists the company's own prices and today's Love's / TA / Petro website prices (with the estimated
 price after the usual discount at that brand), about 1,100 stations.
+
+**Demo purchases** (`app/fuel_demo.py`, `manage.py fuel-demo --company NAME [--days 28]`, undo with
+`--remove`). Placeholder fuel purchases, `source = 'demo'`, for showing the fuel pages when no recent
+EFS report is available. For each active truck with a driver, the tank is drawn down by its real
+Samsara miles at 6.5 mpg; days with no readings use the truck's average day. When the tank would be
+under 35% it fills at a Love's, TA or Petro within 250 miles of the truck with today's website price,
+a few cents of drift, and the company's usual discount at that brand. About 1 in 5 fills is at a
+pricier stop and 1 in 20 has no discount, so missed savings show up, and about 1 in 6 also buys DEF.
+Demo rows are badged "demo" on Purchases, counted on Insights, and skipped by the fuel checks.
 
 **Weekly reports** (`fuel_report.run`, on the company's report weekday and hour, default
 Monday 08:00 local, once per week per target, logged in `fuel_reports`). The report covers

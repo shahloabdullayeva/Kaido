@@ -468,6 +468,23 @@ def cmd_trip(args):
     return 0
 
 
+def cmd_fuel_demo(args):
+    from app import fuel, fuel_demo
+    company = one("select * from companies where lower(name) = lower(%s)", (args.company,))
+    if not company:
+        print(f"No company named {args.company}")
+        return 1
+    if args.remove:
+        print(f"removed {fuel_demo.remove(company['id'])} demo purchases")
+        return 0
+    if fuel_demo.count(company["id"]):
+        print("This company already has demo purchases. Remove them first with --remove.")
+        return 1
+    print(f"added {fuel_demo.generate(company['id'], args.days)} demo purchases")
+    print(f"checked for cheaper stops: {fuel.analyse(company['id'])}")
+    return 0
+
+
 def cmd_cat(args):
     from app import cat
     user = one("select id, name from users where lower(email) = lower(%s) or lower(name) = lower(%s)", (args.to, args.to))
@@ -656,6 +673,11 @@ def main():
     trip.add_argument("--file", help="the load text (default: read from stdin)")
     trip.add_argument("--send", action="store_true", help="send the plan to the truck's Telegram group")
     trip.set_defaults(func=cmd_trip)
+    fdemo = sub.add_parser("fuel-demo", help="placeholder fuel purchases marked demo, or --remove them")
+    fdemo.add_argument("--company", required=True)
+    fdemo.add_argument("--days", type=int, default=28)
+    fdemo.add_argument("--remove", action="store_true")
+    fdemo.set_defaults(func=cmd_fuel_demo)
     frep = sub.add_parser("fuel-report", help="weekly fuel reports for drivers and the office")
     frep.add_argument("--company")
     frep.add_argument("--dry-run", dest="dry_run", action="store_true")

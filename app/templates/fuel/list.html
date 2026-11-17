@@ -29,7 +29,7 @@
         <td><a class="rowlink" href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
         <td>{{ entry.driver_name or '—' }}</td>
         <td>{{ entry.location or '—' }}{% if entry.state %} <span class="subtle">{{ entry.state }}</span>{% endif %}</td>
-        <td><span class="badge muted">{{ entry.fuel_type }}</span></td>
+        <td><span class="badge muted">{{ entry.fuel_type }}</span>{% if entry.source == 'demo' %} <span class="badge warn">demo</span>{% endif %}</td>
         <td class="right">{{ entry.gallons|number(1) }}</td>
         <td class="right">{{ entry.price_per_gallon|money }}</td>
         <td class="right">{{ entry.total|money }}</td>
