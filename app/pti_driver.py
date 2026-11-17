@@ -222,7 +222,7 @@ def run(now=None):
             for kind, hour in (("morning", company["pti_morning_hour"]), ("evening", company["pti_evening_hour"])):
                 if scheduled_day and hour <= local.hour < hour + WINDOW_HOURS and not already(company["id"], day, kind, truck["id"]):
                     sent.append((truck["unit_number"], kind, deliver(truck, kind, day)))
-            if truck["id"] in missing and not already(company["id"], day, "nudge", truck["id"]):
+            if scheduled_day and truck["id"] in missing and not already(company["id"], day, "nudge", truck["id"]):
                 sent.append((truck["unit_number"], "nudge", deliver(truck, "nudge", day)))
     return sent
 

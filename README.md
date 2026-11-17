@@ -351,7 +351,7 @@ the next driver has to confirm they read it. The PTI page lists trucks that drov
 office. Add @kaidofleet_bot, send `/truck <code>` (the code is on the truck page),
 and the driver sends `/unit` once. A group only ever hears about its own truck:
 pre-trip and post-trip reminders on the company's chosen days (Monday and Thursday
-by default), and a nudge any day the truck drives without one. When the group is
+by default), and a nudge on those same days when the truck drives without one. When the group is
 connected Kaido renames it to the unit ("Unit 5831"); the bot needs to be a group admin
 with "Change group info" for that. `/rename` in the group does it again later.
 
