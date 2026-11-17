@@ -363,7 +363,91 @@ def run(force=False):
                and created_at < now() - make_interval(hours => %s)""", (EXPIRE_HOURS,))
     fuel.enrich()
     fuel.analyse()
-    return {"offers": sent, "refuels": match_refuels(), "receipts": match_transactions()}
+    return {"offers": sent, "refuels": match_refuels(), "receipts": match_transactions(), "fueled": refuel_notices()}
+
+
+REFUEL_RISE = 15
+REFUEL_LOOKBACK_HOURS = 3
+STATION_NEAR_MILES = 1.0
+
+
+def active_trip(truck_id):
+    return one(
+        """select * from trips where truck_id = %s and status in ('sent', 'accepted') and chat_id is not null
+             and created_at > now() - interval '8 days' order by id desc limit 1""",
+        (truck_id,),
+    )
+
+
+def refuel_notices():
+    sent = []
+    trucks = rows(
+        TRUCK_SQL + """ where t.telegram_chat_id is not null and t.fuel_percent is not null
+                         and t.fuel_percent_at > now() - interval '1 hour' and c.status = 'active'"""
+    )
+    for truck in trucks:
+        trip = active_trip(truck["id"])
+        if not truck["fuel_assistant_enabled"] and not trip:
+            continue
+        track = rows(
+            """select fuel_percent, latitude, longitude, speed_mph, recorded_at from truck_positions
+               where truck_id = %s and fuel_percent is not null and recorded_at > now() - make_interval(hours => %s)
+               order by recorded_at""",
+            (truck["id"], REFUEL_LOOKBACK_HOURS),
+        )
+        if len(track) < 2:
+            continue
+        low_index = min(range(len(track)), key=lambda i: float(track[i]["fuel_percent"]))
+        low, last = track[low_index], track[-1]
+        rise = float(last["fuel_percent"]) - float(low["fuel_percent"])
+        if rise < REFUEL_RISE or low_index == len(track) - 1:
+            continue
+        settled = float(last["speed_mph"] or 0) > 5 or abs(float(last["fuel_percent"]) - float(track[-2]["fuel_percent"])) < 3
+        if not settled:
+            continue
+        if one("select id from fuel_refuels where truck_id = %s and started_at > %s - interval '2 hours'",
+               (truck["id"], low["recorded_at"])):
+            continue
+        after = [p for p in track[low_index + 1:] if float(p["fuel_percent"]) - float(low["fuel_percent"]) >= 5]
+        spot = after[0] if after else last
+        near = fuel.nearby_stations(spot["latitude"], spot["longitude"], STATION_NEAR_MILES)
+        station = near[0] if near else None
+        gallons = round(rise / 100 * float(truck["tank_gallons"] or 200))
+        planned = None
+        planned_stop = None
+        if trip:
+            state = (trip["plan"] or {}).get("live") or {}
+            stops = trip["plan"]["fuel_stops"]
+            current = state.get("current", 0)
+            if current < len(stops):
+                planned_stop = stops[current]
+                planned = fuel.haversine(spot["latitude"], spot["longitude"], planned_stop["latitude"], planned_stop["longitude"]) <= 2
+        lines = [f"<b>Fueled</b> · Unit {escape(fuel.unit_label(truck['unit_number']))}"]
+        if station:
+            where = ", ".join(p for p in [station["city"], station["state"]] if p)
+            lines.append(escape(station["name"]) + (f", {escape(where)}" if where else ""))
+        lines.append(f"{float(low['fuel_percent']):.0f}% to {float(last['fuel_percent']):.0f}% · about {gallons} gal")
+        if station:
+            price = (brand_prices.website_prices(truck["company_id"], [station["id"]]).get(station["id"])
+                     or fuel.latest_prices(truck["company_id"], [station["id"]]).get(station["id"]))
+            if price:
+                lines[-1] += f" · about ${gallons * float(price['net_ppu']):,.0f}"
+        if planned is True:
+            lines.append("Planned stop. Good.")
+        elif planned is False and planned_stop:
+            lines.append(f"Not the planned stop ({escape(planned_stop['name'])}).")
+        result = send(truck["telegram_chat_id"], "\n".join(lines))
+        insert(
+            """insert into fuel_refuels (company_id, truck_id, started_at, from_percent, to_percent, gallons, latitude, longitude,
+                 station_id, trip_id, planned, message_id)
+               values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+               on conflict (truck_id, started_at) do nothing returning id""",
+            (truck["company_id"], truck["id"], low["recorded_at"], low["fuel_percent"], last["fuel_percent"], gallons,
+             spot["latitude"], spot["longitude"], station["id"] if station else None, trip["id"] if trip else None,
+             planned, result.get("message_id")),
+        )
+        sent.append((truck["unit_number"], gallons, bool(result.get("ok"))))
+    return sent
 
 
 def load_offer(offer_id):

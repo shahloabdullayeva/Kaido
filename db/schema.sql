@@ -1125,3 +1125,29 @@ create policy company_lock on trips
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
   with check (coalesce(current_setting('kaido.company_id', true), '') = ''
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+create table if not exists fuel_refuels (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  started_at timestamptz not null,
+  detected_at timestamptz not null default now(),
+  from_percent numeric(5,1),
+  to_percent numeric(5,1),
+  gallons numeric(7,1),
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  station_id int references fuel_stations(id) on delete set null,
+  trip_id bigint references trips(id) on delete set null,
+  planned boolean,
+  message_id bigint,
+  unique (truck_id, started_at)
+);
+alter table fuel_refuels enable row level security;
+alter table fuel_refuels force row level security;
+drop policy if exists company_lock on fuel_refuels;
+create policy company_lock on fuel_refuels
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);

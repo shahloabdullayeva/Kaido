@@ -234,8 +234,8 @@ def cmd_followup(args):
         get("fuel").exception("fuel run failed")
     if reminded or alerted or sent or drivers:
         print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}, driver PTI messages {drivers}")
-    if fueled["offers"] or fueled["refuels"] or fueled["receipts"] or reports:
-        print(f"fuel offers {fueled['offers']}, refuels matched {fueled['refuels']}, receipts matched {fueled['receipts']}, reports {reports}")
+    if fueled["offers"] or fueled["refuels"] or fueled["receipts"] or fueled.get("fueled") or reports:
+        print(f"fuel offers {fueled['offers']}, fueled notes {fueled.get('fueled')}, refuels matched {fueled['refuels']}, receipts matched {fueled['receipts']}, reports {reports}")
     return 0
 
 
