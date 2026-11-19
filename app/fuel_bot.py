@@ -369,6 +369,39 @@ def run(force=False):
 REFUEL_RISE = 15
 REFUEL_LOOKBACK_HOURS = 3
 STATION_NEAR_MILES = 1.0
+PLAN_MATCH_MILES = 2
+OFF_TRIP_MILES = 15
+
+
+def best_station(near):
+    if not near:
+        return None
+    close = [s for s in near if s["miles"] <= near[0]["miles"] + 0.3]
+    return sorted(close, key=lambda s: ("#" not in (s["name"] or ""), s["source"] != "brand", s["miles"]))[0]
+
+
+def fill_place(points):
+    for point in points:
+        station = best_station(fuel.nearby_stations(point["latitude"], point["longitude"], STATION_NEAR_MILES))
+        if station:
+            return point, station
+    return points[0], None
+
+
+def check_plan(trip, spot, station):
+    from . import trips as trip_plans
+    points, miles = trip_plans.route_of(trip)
+    _, off = trip_plans.locate(points, miles, float(spot["latitude"]), float(spot["longitude"]))
+    if off > OFF_TRIP_MILES:
+        return None, None
+    stops = trip["plan"]["fuel_stops"]
+    for stop in stops:
+        if station and stop.get("station_id") == station["id"]:
+            return True, stop
+        if fuel.haversine(spot["latitude"], spot["longitude"], stop["latitude"], stop["longitude"]) <= PLAN_MATCH_MILES:
+            return True, stop
+    current = ((trip["plan"] or {}).get("live") or {}).get("current", 0)
+    return False, stops[current] if current < len(stops) else None
 
 
 def active_trip(truck_id):
@@ -409,19 +442,15 @@ def refuel_notices():
                (truck["id"], low["recorded_at"])):
             continue
         after = [p for p in track[low_index + 1:] if float(p["fuel_percent"]) - float(low["fuel_percent"]) >= 5]
-        spot = after[0] if after else last
-        near = fuel.nearby_stations(spot["latitude"], spot["longitude"], STATION_NEAR_MILES)
-        station = near[0] if near else None
+        rise_point = after[0] if after else last
+        window = track[max(0, low_index - 1):track.index(rise_point) + 1]
+        stopped = [p for p in window if float(p["speed_mph"] or 0) <= 5]
+        spot, station = fill_place(stopped + [low, rise_point])
         gallons = round(rise / 100 * float(truck["tank_gallons"] or 200))
         planned = None
         planned_stop = None
         if trip:
-            state = (trip["plan"] or {}).get("live") or {}
-            stops = trip["plan"]["fuel_stops"]
-            current = state.get("current", 0)
-            if current < len(stops):
-                planned_stop = stops[current]
-                planned = fuel.haversine(spot["latitude"], spot["longitude"], planned_stop["latitude"], planned_stop["longitude"]) <= 2
+            planned, planned_stop = check_plan(trip, spot, station)
         lines = [f"<b>Fueled</b> · Unit {escape(fuel.unit_label(truck['unit_number']))}"]
         if station:
             where = ", ".join(p for p in [station["city"], station["state"]] if p)
@@ -435,7 +464,8 @@ def refuel_notices():
         if planned is True:
             lines.append("Planned stop. Good.")
         elif planned is False and planned_stop:
-            lines.append(f"Not the planned stop ({escape(planned_stop['name'])}).")
+            where = ", ".join(p for p in [planned_stop.get("city"), planned_stop.get("state")] if p)
+            lines.append(f"Not the planned stop. Plan was {escape(planned_stop['name'])}" + (f", {escape(where)}." if where else "."))
         result = send(truck["telegram_chat_id"], "\n".join(lines))
         insert(
             """insert into fuel_refuels (company_id, truck_id, started_at, from_percent, to_percent, gallons, latitude, longitude,

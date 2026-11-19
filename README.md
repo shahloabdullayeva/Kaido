@@ -435,8 +435,10 @@ number of stops), pick a truck, and Kaido plans the whole trip:
     pin follows. Buttons: **Fuel there** or **Skip this stop**.
   - A tank jump of 15 points marks the stop done; the next one comes when it is close.
   - **Fueled note.** After the Samsara sync that shows the fill (`fuel_bot.refuel_notices`, every 5
-    minutes), the group gets a short note: where (the station within 1 mile), tank before and after,
-    about how many gallons and dollars, and "Planned stop" or "Not the planned stop (name)". It waits
+    minutes), the group gets a short note: where (the station within 1 mile of where the truck stood
+    still during the fill, not where it was after), tank before and after, about how many gallons and
+    dollars, and "Planned stop" (any stop on the plan) or "Not the planned stop. Plan was name, city".
+    The planned line is left out when the truck is more than 15 miles off the trip's route. It waits
     until the reading has settled or the truck is moving again, so a half-done fill is not reported.
     It runs for trucks with a group when the fuel assistant is on, or when the truck has an active
     trip. Each fill is logged once in `fuel_refuels`.
