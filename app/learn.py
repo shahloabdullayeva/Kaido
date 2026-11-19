@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent / "learn"
 IMAGE = re.compile(r"^!\[(.+?)\]\((.+?)\)$")
-GROUPS = {"s": "Start: study plan", "": "Basics", "m": "Fleet From Scratch", "p": "Parts A to Z"}
+GROUPS = {"s": "Start: study plan", "": "Topics", "p": "Parts A to Z"}
 VIDEO = re.compile(r"^@video (.+?) \| (.+)$")
 
 

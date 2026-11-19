@@ -5,6 +5,7 @@ Every word you will hear in a fleet department, A to Z.
 | Term | Meaning |
 |---|---|
 | 5th wheel | The coupling plate on the tractor that locks onto the trailer kingpin |
+| 6x4 | Six wheel ends, four driven: the standard highway tractor |
 | 7-way | The electrical cord between tractor and trailer |
 | ABS | Anti-lock brake system |
 | Air dryer | Removes water and oil from the compressed air |
@@ -12,9 +13,10 @@ Every word you will hear in a fleet department, A to Z.
 | AMT | Automated manual transmission |
 | Annual (DOT annual) | The yearly federal inspection required for every truck and trailer |
 | APU | Auxiliary power unit; runs cab heat and AC without the main engine |
+| BASIC | A category of CSA score, such as Vehicle Maintenance |
+| BASICs | The seven CSA safety score categories |
 | Book time | Standard labor hours for a repair from a labor guide |
 | Breakdown / road call | A truck that fails on the road and needs help |
-| BASIC | A category of CSA score, such as Vehicle Maintenance |
 | CAC | Charge air cooler |
 | Casing | The body of a used tire that can be recapped |
 | CDL | Commercial driver's license |
@@ -22,6 +24,7 @@ Every word you will hear in a fleet department, A to Z.
 | Class 8 | Heavy trucks over 33,000 lb GVWR |
 | Complaint, cause, correction | The three lines a good repair order explains |
 | Core | The old part returned for credit when buying a rebuilt part |
+| CPM | Cost per mile |
 | CSA | FMCSA's safety scoring system |
 | CVSA | Group that sets roadside inspection and out-of-service rules |
 | DataQs | FMCSA's system to challenge an inspection result |
@@ -38,6 +41,7 @@ Every word you will hear in a fleet department, A to Z.
 | DVIR | Driver vehicle inspection report |
 | ECM | Engine control module, the engine computer |
 | EGR | Exhaust gas recirculation |
+| ELC | Extended life coolant |
 | ELD | Electronic logging device; records driving hours |
 | Estimate | The shop's expected cost before the work, to approve |
 | FMCSA | Federal Motor Carrier Safety Administration |
@@ -46,18 +50,22 @@ Every word you will hear in a fleet department, A to Z.
 | Governor | Controls the air compressor's cut-in and cut-out pressure |
 | GVWR | Gross vehicle weight rating |
 | HEST | High exhaust system temperature lamp |
+| HOS | Hours of service |
 | Hours of service (HOS) | Rules limiting how long a driver may drive and work |
 | Hub | The wheel end that holds the bearings and wheel |
 | IFTA | Fuel tax agreement; quarterly fuel tax by state |
 | In-frame overhaul | Engine rebuild done without removing the engine |
 | IRP | Apportioned registration for trucks running in several states |
+| J1939 | The standard for heavy truck computer communication and fault codes |
 | Jake brake | Engine brake that helps slow the truck |
 | Kingpin (steering) | The pivot a front wheel turns on |
 | Kingpin (trailer) | The pin under the trailer the fifth wheel locks onto |
 | Landing gear | Legs that hold up the front of an unhooked trailer |
 | Lease (trailer) | A trailer the fleet rents; repairs need the owner's approval |
+| LF / RF / RRO | Tire positions: left front, right front, right rear outer |
 | Load range | A tire's strength rating |
 | Mobile mechanic | A mechanic who comes to the truck |
+| NOx | Nitrogen oxides, the pollutant EGR and SCR reduce |
 | NOx sensor | Measures nitrogen oxides in the exhaust |
 | OEM | Original equipment manufacturer; the maker or its original parts |
 | Oil analysis | Lab test of an oil sample to spot wear and leaks |
@@ -66,9 +74,11 @@ Every word you will hear in a fleet department, A to Z.
 | Owner-operator | A driver who owns their truck and leases onto a carrier |
 | Parked regen | A regeneration started by the driver while parked |
 | PM | Preventive maintenance |
+| PMS / CBB / ABC | Pre-trip codes: properly mounted and secure / cracked, bent, broken / abrasions, bulges, cuts |
 | PO | Purchase order; the approval number for a repair |
 | Power only | A carrier pulling someone else's trailer |
 | Power swap | Moving a trailer to another tractor to keep a load moving |
+| psi | Pounds per square inch (air and tire pressure) |
 | PTI | Pre-trip inspection |
 | Recap / retread | A used casing with new tread |
 | Reefer | Refrigerated trailer, or its refrigeration unit |

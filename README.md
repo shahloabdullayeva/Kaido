@@ -686,7 +686,7 @@ token, and Love's.
 
 ## Learn
 
-`/learn` (any signed-in user, Learn in the menu): 67 topics in four groups. The file prefix sets the group: `s` study plan, none = Basics (20 topics written for Kaido), `m` Fleet From Scratch and `p` Parts A to Z (both converted from her Claude Docs manual of the same name, 26 and 20 topics). The Basics are for someone new to fleet maintenance, from what a
+`/learn` (any signed-in user, Learn in the menu): 49 topics in three groups. The file prefix sets the group: `s` study plan, none = Topics (28 pages, each one subject, merging what was written for Kaido with her Claude Docs manual "Fleet From Scratch"; the manual's part of a page starts at "More detail" or headings marked "(in depth)"), and `p` Parts A to Z (20 pages from the same manual). The Topics are for someone new to fleet maintenance, from what a
 truck is made of to breakdown calls, DOT, invoices and a glossary. Each topic is a Markdown-like file in
 `app/learn/NN-name.md` (first line title, second line summary), rendered by `app/learn.py`: `## ` headings,
 `|` tables, `- ` and `1. ` lists, `**bold**`, images as `![caption](file)` from `app/static/learn/`, and
