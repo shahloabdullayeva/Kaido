@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" font-family="Helvetica, Arial, sans-serif" font-size="14">
 <rect width="960" height="330" fill="#ffffff"/>
-<text x="20" y="28" font-size="13" fill="#5b6070">Seen from above, front of the truck on the left. Left = driver side.</text>
+<text x="20" y="28" font-size="13" fill="#5b6070">Seen from above, front of the truck on the left. Right (passenger side) is on top, left (driver side) at the bottom.</text>
 <rect x="40" y="110" width="330" height="110" rx="14" fill="#fde9ef" stroke="#c2185b" stroke-width="2"/>
 <rect x="400" y="95" width="530" height="140" rx="6" fill="#eeeeee" stroke="#5b6070" stroke-width="2"/>
 <g fill="#1a1d24">
@@ -24,7 +24,7 @@
 <text x="355" y="72">outer</text><text x="355" y="94">inner</text>
 <text x="355" y="246">inner</text><text x="355" y="268">outer</text>
 </g>
-<text x="20" y="80" font-size="12" fill="#c2185b" font-weight="bold">LEFT</text>
-<text x="20" y="262" font-size="12" fill="#c2185b" font-weight="bold">RIGHT</text>
+<text x="20" y="80" font-size="12" fill="#c2185b" font-weight="bold">RIGHT</text>
+<text x="20" y="262" font-size="12" fill="#c2185b" font-weight="bold">LEFT</text>
 <text x="20" y="315" font-size="13" fill="#5b6070">Example: "right rear drive, inside" is the inner tire on the passenger side of the last drive axle.</text>
 </svg>

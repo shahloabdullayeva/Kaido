@@ -2,6 +2,9 @@
 Each part: where it is, what it does, how it fails, and a rough installed price.
 
 ## Parts
+
+![Where the main parts sit on a tractor](fs-parts-side-view.png)
+
 | Part | Where / what it does | Signs of trouble | Installed (approx) |
 |---|---|---|---|
 | Engine block | The main metal body holding the cylinders | Cracks, coolant or oil leaks | Replacement engine $25,000 to $40,000+ |

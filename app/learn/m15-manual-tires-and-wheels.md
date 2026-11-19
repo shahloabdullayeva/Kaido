@@ -2,6 +2,9 @@
 Tires are usually a fleet's biggest maintenance cost after fuel, and one of the most common road service calls (blowouts, flats) and DOT violations.
 
 ## Overview
+
+![Read the tread: steer and trailer have ribs, drive has blocks](fs-tread.png)
+
 Tires are usually a fleet's biggest maintenance cost after fuel, and one of the most common road service calls (blowouts, flats) and DOT violations.
 
 ## Reading a tire size: 295/75R22.5

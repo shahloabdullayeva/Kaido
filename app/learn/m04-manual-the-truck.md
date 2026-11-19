@@ -2,6 +2,11 @@
 A semi (also called a tractor trailer or an 18 wheeler) is two vehicles hooked together: the **tractor**, which has the engine and cab, and the **trailer**, whi
 
 ## Overview
+
+![Where the main parts sit on a tractor (side view, front on the left)](fs-parts-side-view.png)
+
+![18 wheels: 2 steer, 8 drive, 8 trailer, seen from above](fs-18-wheels.png)
+
 A semi (also called a tractor trailer or an 18 wheeler) is two vehicles hooked together: the **tractor**, which has the engine and cab, and the **trailer**, which carries the freight. They connect through the **fifth wheel**, a greasy horseshoe shaped plate on the back of the tractor, which locks onto a pin under the trailer called the **kingpin**. Fleets track tractors and trailers as separate units with separate repairs.
 
 ## Brands and models

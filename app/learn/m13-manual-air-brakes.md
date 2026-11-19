@@ -2,6 +2,9 @@
 Trucks stop with **compressed air**, not brake fluid like a car.
 
 ## Overview
+
+![Air flows from the compressor to every brake chamber](fs-air-flow.png)
+
 Trucks stop with **compressed air**, not brake fluid like a car. Brakes are the single biggest safety item and the biggest focus of DOT inspections, so this is the system to know best.
 
 The compressor fills the tanks, the driver presses the pedal, air rushes into the brake chambers, and the chambers push the brakes on. The same air goes back through the gladhands to brake the trailer too.
