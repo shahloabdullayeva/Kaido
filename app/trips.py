@@ -34,6 +34,7 @@ BREAK_HOURS = 0.5
 REST_HOURS = 10.0
 RESTART_HOURS = 34.0
 CYCLE_LIMIT = 70.0
+CYCLE_DAYS = 8
 HOS_FRESH_HOURS = 12
 AGE_PENALTY_PER_DAY = 0.004
 FRESH_COMPANY_DAYS = 7
@@ -341,6 +342,7 @@ class Clock:
         self.shift = hos.get("shift", SHIFT_LIMIT)
         self.since_break = BREAK_AFTER - hos.get("break", BREAK_AFTER)
         self.cycle = hos.get("cycle", CYCLE_LIMIT)
+        self.recap = max(0.0, CYCLE_LIMIT - self.cycle) / CYCLE_DAYS
         self.rests = []
 
     def rest(self, kind, hours, mile):
@@ -352,8 +354,10 @@ class Clock:
             self.since_break = 0.0
         elif kind == "rest":
             self.drive, self.shift, self.since_break = DRIVE_LIMIT, SHIFT_LIMIT, 0.0
+            self.cycle = min(CYCLE_LIMIT, self.cycle + self.recap)
         else:
             self.drive, self.shift, self.since_break, self.cycle = DRIVE_LIMIT, SHIFT_LIMIT, 0.0, CYCLE_LIMIT
+            self.recap = 0.0
 
     def drive_to(self, miles, speed, mile_at):
         left = miles

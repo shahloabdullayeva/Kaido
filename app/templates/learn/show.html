@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>{{ item.title }}</h1><p>{{ item.summary }}</p></div>
+  <a class="btn ghost" href="/learn">All topics</a>
+</div>
+<div class="learn-page">
+  <aside class="learn-side">
+    {% if item.toc %}<div class="learn-toc"><strong>On this page</strong>
+      {% for anchor, text in item.toc %}<a href="#{{ anchor }}">{{ text }}</a>{% endfor %}</div>{% endif %}
+    <div class="learn-toc"><strong>Topics</strong>
+      {% for other in topics %}<a href="/learn/{{ other.slug }}" {% if other.slug == item.slug %}class="on"{% endif %}>{{ other.number }}. {{ other.title }}</a>{% endfor %}</div>
+  </aside>
+  <article class="panel learn-body">
+    {{ item.html|safe }}
+    <div class="learn-next">
+      {% if previous %}<a class="btn ghost" href="/learn/{{ previous.slug }}">{{ previous.title }}</a>{% else %}<span></span>{% endif %}
+      {% if following %}<a class="btn" href="/learn/{{ following.slug }}">{{ following.title }}</a>{% endif %}
+    </div>
+  </article>
+</div>
+{% endblock %}

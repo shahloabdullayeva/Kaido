@@ -25,13 +25,14 @@ def index():
         (company_id,),
     )
     runs = rows("select * from sync_runs where company_id = %s order by started_at desc limit 8", (company_id,))
+    samsara = [link for link in links if link["provider"] == "samsara"]
     counts = {
-        "linked": sum(1 for link in links if link["truck_id"]),
-        "unlinked": sum(1 for link in links if not link["truck_id"]),
+        "linked": len({link["truck_id"] for link in samsara if link["truck_id"]}),
+        "unlinked": sum(1 for link in samsara if not link["truck_id"]),
         "trucks": one("select count(*) as n from trucks where company_id = %s and status <> 'sold'", (company_id,))["n"],
     }
     return render_template("integrations/index.html", title="Integrations", active="/integrations",
-                           integration=integration, links=links, runs=runs, counts=counts,
+                           integration=integration, links=samsara, runs=runs, counts=counts,
                            trucks=active_trucks())
 
 

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 380" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<rect width="900" height="380" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#a35a00"/></marker></defs>
+<text x="20" y="28" font-size="13" fill="#5b6070">Pedal sends air to the chamber, the rod turns the slack adjuster, the S-cam spreads the shoes against the drum.</text>
+<text x="20" y="48" font-size="13" fill="#5b6070">Too much rod travel = brake out of adjustment, the top DOT violation.</text>
+<rect x="20" y="150" width="170" height="100" rx="20" fill="#fdf3e6" stroke="#a35a00" stroke-width="2"/>
+<text x="105" y="195" text-anchor="middle" font-weight="bold">Brake chamber</text><text x="105" y="216" text-anchor="middle" font-size="12">air in, rod out</text>
+<line x1="190" y1="200" x2="330" y2="200" stroke="#1a1d24" stroke-width="6"/>
+<text x="260" y="186" text-anchor="middle" font-size="12">pushrod</text>
+<line x1="200" y1="225" x2="320" y2="225" stroke="#a35a00" stroke-width="2" marker-end="url(#a)"/>
+<text x="20" y="275" font-size="12" fill="#a35a00">stroke = how far the rod travels</text>
+<rect x="330" y="120" width="40" height="160" rx="10" fill="#e9ecf2" stroke="#1a1d24" stroke-width="2"/>
+<text x="350" y="305" text-anchor="middle" font-weight="bold">Slack adjuster</text>
+<line x1="370" y1="140" x2="470" y2="140" stroke="#1a1d24" stroke-width="10"/>
+<line x1="470" y1="140" x2="470" y2="200" stroke="#1a1d24" stroke-width="10"/>
+<line x1="470" y1="200" x2="598" y2="200" stroke="#1a1d24" stroke-width="10"/>
+<text x="500" y="128" font-size="12">camshaft</text>
+<circle cx="700" cy="205" r="140" fill="none" stroke="#1a1d24" stroke-width="10"/>
+<path d="M612,175 A100,100 0 0,1 760,110" fill="none" stroke="#17703a" stroke-width="18"/>
+<path d="M612,235 A100,100 0 0,0 760,300" fill="none" stroke="#17703a" stroke-width="18"/>
+<path d="M596,200 l16,-18 l16,18 l-16,18 z" fill="#a35a00"/>
+<text x="520" y="232" text-anchor="middle" font-size="12" fill="#a35a00" font-weight="bold">S-cam</text>
+<text x="720" y="200" text-anchor="middle" font-weight="bold" fill="#17703a">shoes</text>
+<text x="720" y="218" text-anchor="middle" font-size="12" fill="#17703a">with linings</text>
+<text x="700" y="372" text-anchor="middle" font-weight="bold">Drum</text>
+</svg>

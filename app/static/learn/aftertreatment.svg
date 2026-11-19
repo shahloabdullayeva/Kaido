@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<rect width="960" height="320" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b6070"/></marker></defs>
+<rect x="10" y="110" width="120" height="90" rx="10" fill="#e9ecf2" stroke="#1a1d24" stroke-width="2"/>
+<text x="70" y="160" text-anchor="middle" font-weight="bold">Engine</text>
+<rect x="130" y="140" width="800" height="30" fill="#f1f1f1" stroke="#9a9ca4"/>
+<g stroke-width="2"><rect x="170" y="115" width="120" height="80" rx="10" fill="#fff4d6" stroke="#b88a00"/>
+<rect x="330" y="115" width="140" height="80" rx="10" fill="#e9e9e9" stroke="#1a1d24"/>
+<rect x="610" y="115" width="140" height="80" rx="10" fill="#e3f4ea" stroke="#17703a"/></g>
+<text x="230" y="150" text-anchor="middle" font-weight="bold">DOC</text><text x="230" y="172" text-anchor="middle" font-size="12">heats exhaust</text>
+<text x="400" y="150" text-anchor="middle" font-weight="bold">DPF</text><text x="400" y="172" text-anchor="middle" font-size="12">traps soot</text>
+<text x="680" y="150" text-anchor="middle" font-weight="bold">SCR</text><text x="680" y="172" text-anchor="middle" font-size="12">NOx to N2 + water</text>
+<rect x="505" y="20" width="110" height="50" rx="8" fill="#e5efff" stroke="#2a78d6" stroke-width="2"/>
+<text x="560" y="50" text-anchor="middle" font-weight="bold" fill="#2a78d6">DEF tank</text>
+<path d="M560,70 L560,135" stroke="#2a78d6" stroke-width="3" marker-end="url(#a)"/>
+<text x="572" y="105" font-size="12" fill="#2a78d6">doser</text>
+<circle cx="150" cy="155" r="9" fill="#c2185b"/><text x="150" y="230" text-anchor="middle" font-size="12" fill="#c2185b">NOx sensor in</text>
+<circle cx="790" cy="155" r="9" fill="#c2185b"/><text x="790" y="230" text-anchor="middle" font-size="12" fill="#c2185b">NOx sensor out</text>
+<path d="M340,205 L340,250 L460,250 L460,205" fill="none" stroke="#a35a00" stroke-width="2"/>
+<text x="400" y="272" text-anchor="middle" font-size="12" fill="#a35a00">differential pressure sensor (how full)</text>
+<path d="M930,155 L955,155" stroke="#5b6070" stroke-width="3" marker-end="url(#a)"/>
+<text x="880" y="125" text-anchor="middle" font-size="12">tailpipe</text>
+<text x="10" y="305" font-size="13" fill="#5b6070">Regen burns soot out of the DPF. Ash stays and needs a cleaning. Bad DEF or a failed NOx sensor leads to a derate.</text>
+</svg>

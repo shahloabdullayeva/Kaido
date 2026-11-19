@@ -683,3 +683,14 @@ Service schedule, the daily follow-up and the fleet status report.
 
 The EFS automatic feed (the report import works today), DVIR scope on the Samsara
 token, and Love's.
+
+## Learn
+
+`/learn` (any signed-in user, Learn in the menu): 20 topics for someone new to fleet maintenance, from what a
+truck is made of to breakdown calls, DOT, invoices and a glossary. Each topic is a Markdown-like file in
+`app/learn/NN-name.md` (first line title, second line summary), rendered by `app/learn.py`: `## ` headings,
+`|` tables, `- ` and `1. ` lists, `**bold**`, images as `![caption](file)` from `app/static/learn/`, and
+`@video Title | search words` lines, which become YouTube search links. Photos come from Wikimedia
+Commons under their free licenses; author and license are in `app/learn/credits.json` and show under each
+photo. The diagrams (`*.svg`) were drawn for Kaido. Search on `/learn?q=` matches every word across topics.
+Edit a file and restart `kaido.service` to see the change (topics are cached in memory).

@@ -129,6 +129,7 @@ def create_app():
     from .views.faults import bp as faults_bp
     from .views.fuel import bp as fuel_bp
     from .views.trips import bp as trips_bp
+    from .views.learn import bp as learn_bp
     from .views.integrations import bp as integrations_bp
     from .views.maintenance import bp as maintenance_bp
     from .views.platform import bp as platform_bp
@@ -142,7 +143,7 @@ def create_app():
     from .views.billing import bp as billing_bp
     from .views.site import bp as site_bp
 
-    for blueprint in (auth_bp, dashboard_bp, trucks_bp, drivers_bp, fuel_bp, trips_bp,
+    for blueprint in (auth_bp, dashboard_bp, trucks_bp, drivers_bp, fuel_bp, trips_bp, learn_bp,
                       maintenance_bp, breakdowns_bp, faults_bp, integrations_bp,
                       company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp, cat_bp, billing_bp, site_bp):
         app.register_blueprint(blueprint)

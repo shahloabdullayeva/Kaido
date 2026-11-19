@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<rect width="960" height="330" fill="#ffffff"/>
+<text x="20" y="28" font-size="13" fill="#5b6070">Seen from above, front of the truck on the left. Left = driver side.</text>
+<rect x="40" y="110" width="330" height="110" rx="14" fill="#fde9ef" stroke="#c2185b" stroke-width="2"/>
+<rect x="400" y="95" width="530" height="140" rx="6" fill="#eeeeee" stroke="#5b6070" stroke-width="2"/>
+<g fill="#1a1d24">
+<rect x="70" y="70" width="60" height="22" rx="8"/><rect x="70" y="238" width="60" height="22" rx="8"/>
+<rect x="225" y="58" width="56" height="18" rx="7"/><rect x="225" y="80" width="56" height="18" rx="7"/>
+<rect x="225" y="232" width="56" height="18" rx="7"/><rect x="225" y="254" width="56" height="18" rx="7"/>
+<rect x="295" y="58" width="56" height="18" rx="7"/><rect x="295" y="80" width="56" height="18" rx="7"/>
+<rect x="295" y="232" width="56" height="18" rx="7"/><rect x="295" y="254" width="56" height="18" rx="7"/>
+<rect x="760" y="58" width="56" height="18" rx="7"/><rect x="760" y="80" width="56" height="18" rx="7"/>
+<rect x="760" y="232" width="56" height="18" rx="7"/><rect x="760" y="254" width="56" height="18" rx="7"/>
+<rect x="830" y="58" width="56" height="18" rx="7"/><rect x="830" y="80" width="56" height="18" rx="7"/>
+<rect x="830" y="232" width="56" height="18" rx="7"/><rect x="830" y="254" width="56" height="18" rx="7"/>
+</g>
+<g font-weight="bold" text-anchor="middle">
+<text x="100" y="168">STEER</text><text x="100" y="188" font-size="12" font-weight="normal">2 tires, 4/32" min</text>
+<text x="288" y="168">DRIVE</text><text x="288" y="188" font-size="12" font-weight="normal">8 tires, 2/32" min</text>
+<text x="823" y="168">TRAILER</text><text x="823" y="188" font-size="12" font-weight="normal">8 tires, 2/32" min</text>
+</g>
+<g font-size="11" fill="#5b6070">
+<text x="225" y="52">front drive</text><text x="300" y="52">rear drive</text>
+<text x="355" y="72">outer</text><text x="355" y="94">inner</text>
+<text x="355" y="246">inner</text><text x="355" y="268">outer</text>
+</g>
+<text x="20" y="80" font-size="12" fill="#c2185b" font-weight="bold">LEFT</text>
+<text x="20" y="262" font-size="12" fill="#c2185b" font-weight="bold">RIGHT</text>
+<text x="20" y="315" font-size="13" fill="#5b6070">Example: "right rear drive, inside" is the inner tire on the passenger side of the last drive axle.</text>
+</svg>

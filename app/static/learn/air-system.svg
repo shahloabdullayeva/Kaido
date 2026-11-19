@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 380" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<rect width="900" height="380" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2a78d6"/></marker></defs>
+<g fill="#eef4fc" stroke="#2a78d6" stroke-width="2">
+<rect x="20" y="40" width="130" height="60" rx="8"/><rect x="190" y="40" width="130" height="60" rx="8"/>
+<rect x="360" y="40" width="130" height="60" rx="8"/><rect x="530" y="10" width="150" height="50" rx="25"/>
+<rect x="530" y="80" width="150" height="50" rx="25"/><rect x="360" y="190" width="130" height="60" rx="8"/>
+<rect x="560" y="190" width="150" height="60" rx="8"/><rect x="560" y="290" width="150" height="60" rx="8"/>
+<rect x="740" y="240" width="140" height="60" rx="8"/>
+</g>
+<g fill="#1a1d24" text-anchor="middle">
+<text x="85" y="66" font-weight="bold">Compressor</text><text x="85" y="86" font-size="12">engine driven</text>
+<text x="255" y="66" font-weight="bold">Air dryer</text><text x="255" y="86" font-size="12">removes water, oil</text>
+<text x="425" y="66" font-weight="bold">Wet tank</text><text x="425" y="86" font-size="12">supply reservoir</text>
+<text x="605" y="40" font-weight="bold">Primary tank</text><text x="605" y="110" font-weight="bold">Secondary tank</text>
+<text x="425" y="216" font-weight="bold">Foot valve</text><text x="425" y="236" font-size="12">brake pedal</text>
+<text x="635" y="216" font-weight="bold">Rear chambers</text><text x="635" y="236" font-size="12">drive axles</text>
+<text x="635" y="316" font-weight="bold">Front chambers</text><text x="635" y="336" font-size="12">steer axle</text>
+<text x="810" y="266" font-weight="bold">Trailer</text><text x="810" y="286" font-size="12">via gladhands</text>
+</g>
+<g stroke="#2a78d6" stroke-width="2.5" fill="none" marker-end="url(#a)">
+<path d="M150,70 L188,70"/><path d="M320,70 L358,70"/><path d="M490,60 L528,40"/><path d="M490,80 L528,100"/>
+<path d="M605,132 L605,160 L425,160 L425,188"/><path d="M490,210 L558,210"/><path d="M490,235 L530,235 L530,320 L558,320"/><path d="M710,225 L738,260"/>
+</g>
+<text x="20" y="150" font-size="13" fill="#5b6070">Governor keeps 100 to 125 psi.</text>
+<text x="20" y="170" font-size="13" fill="#5b6070">Low air warning at 60 psi.</text>
+<text x="20" y="300" font-size="13" fill="#5b6070">No air = spring brakes apply.</text>
+<text x="20" y="320" font-size="13" fill="#5b6070">Yellow knob: tractor park brake.</text>
+<text x="20" y="340" font-size="13" fill="#5b6070">Red knob: trailer air supply.</text>
+</svg>

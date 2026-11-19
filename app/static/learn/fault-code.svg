@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 250" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<rect width="900" height="250" fill="#ffffff"/>
+<rect x="150" y="30" width="600" height="70" rx="10" fill="#1a1d24"/>
+<text x="450" y="76" text-anchor="middle" font-size="30" fill="#ffb84d" font-family="monospace">MID 128  SPN 3226  FMI 4  x7</text>
+<g stroke="#5b6070" stroke-width="2"><line x1="235" y1="100" x2="150" y2="150"/><line x1="410" y1="100" x2="380" y2="150"/>
+<line x1="565" y1="100" x2="600" y2="150"/><line x1="690" y1="100" x2="800" y2="150"/></g>
+<g font-weight="bold"><text x="60" y="172">Who reported it</text><text x="300" y="172">What part</text><text x="540" y="172">How it failed</text><text x="740" y="172">How often</text></g>
+<g font-size="12" fill="#5b6070">
+<text x="60" y="192">128 = engine ECM</text><text x="300" y="192">3226 = outlet NOx sensor</text><text x="540" y="192">4 = voltage low / short</text><text x="740" y="192">occurrence count</text>
+<text x="540" y="210">= wiring or the sensor itself</text>
+</g>
+<text x="60" y="240" font-size="13" fill="#5b6070">FMI 3, 4 and 5 point at wiring or the sensor, not the system it measures.</text>
+</svg>

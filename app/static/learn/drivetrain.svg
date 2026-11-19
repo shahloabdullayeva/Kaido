@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 230" font-family="Helvetica, Arial, sans-serif" font-size="14">
+<rect width="960" height="230" fill="#ffffff"/>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#5b6070"/></marker></defs>
+<g fill="#eef4fc" stroke="#2a78d6" stroke-width="2">
+<rect x="10" y="70" width="120" height="70" rx="8"/><rect x="160" y="80" width="90" height="50" rx="8"/>
+<rect x="280" y="70" width="140" height="70" rx="8"/><rect x="560" y="70" width="130" height="70" rx="8"/>
+<rect x="800" y="70" width="140" height="70" rx="8"/></g>
+<g text-anchor="middle" font-weight="bold"><text x="70" y="110">Engine</text><text x="205" y="110">Clutch</text>
+<text x="350" y="102">Transmission</text><text x="625" y="100">Front drive</text><text x="870" y="100">Rear drive</text></g>
+<g text-anchor="middle" font-size="12"><text x="350" y="122">AMT or manual</text><text x="625" y="120">diff + interaxle</text><text x="870" y="120">diff</text></g>
+<g stroke="#5b6070" stroke-width="3" marker-end="url(#a)" fill="none">
+<path d="M130,105 L158,105"/><path d="M250,105 L278,105"/><path d="M420,105 L558,105"/><path d="M690,105 L798,105"/></g>
+<g fill="#a35a00"><circle cx="440" cy="105" r="7"/><circle cx="540" cy="105" r="7"/><circle cx="710" cy="105" r="7"/><circle cx="780" cy="105" r="7"/></g>
+<text x="490" y="90" text-anchor="middle" font-size="12">driveshaft</text>
+<text x="745" y="90" text-anchor="middle" font-size="12">interaxle shaft</text>
+<text x="490" y="170" text-anchor="middle" font-size="12" fill="#a35a00">orange dots = U-joints (grease at every PM)</text>
+<text x="10" y="215" font-size="13" fill="#5b6070">Power path: engine, clutch, transmission, driveshaft, power divider, both drive axles, wheels.</text>
+</svg>
