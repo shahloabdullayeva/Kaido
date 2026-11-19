@@ -2,10 +2,13 @@
 {% block body %}
 <div class="page-head">
   <div><h1>Learn</h1><p>{{ topics|length }} topics</p></div>
+  <div class="actions-row">
   <form method="get" action="/learn" class="learn-search">
     <input type="search" name="q" value="{{ query }}" placeholder="Search: DPF, slack adjuster, FMI 4..." maxlength="100">
     <button class="btn" type="submit">Search</button>
   </form>
+  {% if has_manual %}<a class="btn ghost" href="/learn/fleet-from-scratch.pdf">Fleet From Scratch PDF</a>{% endif %}
+  </div>
 </div>
 {% if hits is not none %}
 <section class="panel">

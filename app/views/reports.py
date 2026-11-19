@@ -170,7 +170,7 @@ def breakdown_pdf(breakdown_id):
         ("Towing", cell(item["towing_cost"], "money")), ("Repair", cell(item["repair_cost"], "money")),
     ]
     timeline = "\n".join(f"{u['created_at']:%d %b %Y %H:%M} · {u['author'] or 'system'}: {u['note']}" for u in updates)
-    body = reports.record_pdf(f"Breakdown #{breakdown_id}", g.company["name"], fields, [
+    body = reports.record_pdf(f"Case #{breakdown_id}", g.company["name"], fields, [
         ("What happened", item["description"]), ("Cause", item["cause"]),
         ("What fixed it", item["resolution"]), ("Timeline", timeline)])
     audit("report.downloaded", "breakdown", breakdown_id, {"format": "pdf"})

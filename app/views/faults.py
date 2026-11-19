@@ -30,7 +30,7 @@ def index():
     integration = one(
         "select * from integrations where company_id = %s and provider = 'samsara'", (g.company["id"],)
     )
-    return render_template("faults/list.html", title="Faults", active="/faults", items=items,
+    return render_template("faults/list.html", title="Faults", active="/trucks", items=items,
                            scope=scope, integration=integration)
 
 
@@ -80,6 +80,6 @@ def detail(fault_id):
         (fault["truck_id"], fault["code_key"]),
     )
     guide = advisor.fault_guide(fault, truck)
-    return render_template("faults/detail.html", title="Fault", active="/faults", fault=fault, truck=truck,
+    return render_template("faults/detail.html", title="Fault", active="/trucks", fault=fault, truck=truck,
                            history=history, guide=guide, urgency_labels=advisor.URGENCY_LABELS,
                            ai_on=advisor.available(), ai_paused=advisor.over_budget())

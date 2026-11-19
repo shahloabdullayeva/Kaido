@@ -1,8 +1,9 @@
 {% extends "layout.html" %}
 {% block body %}
+{% set fleet_tab = 'faults' %}{% include "_fleet_tabs.html" %}
 <div class="page-head">
   <div><h1>Fault codes</h1>
-    <p>Click a code for a plain-English explanation. {% if integration and integration.status == 'connected' %}Samsara connected · last sync {{ integration.last_sync_at|ago }}{% else %}Samsara is not connected — nothing will appear here until it is.{% endif %}</p>
+    <p>{% if integration and integration.status == 'connected' %}Samsara connected · last sync {{ integration.last_sync_at|ago }}{% else %}Samsara not connected{% endif %}</p>
   </div>
   {% if at_least(role, 'admin') %}<a class="btn ghost" href="/integrations">Integrations</a>{% endif %}
 </div>

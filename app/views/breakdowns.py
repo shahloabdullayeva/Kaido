@@ -32,7 +32,7 @@ def index():
             order by b.occurred_at desc limit 200""",
         tuple(params),
     )
-    return render_template("breakdowns/list.html", title="Breakdowns", active="/breakdowns",
+    return render_template("breakdowns/list.html", title="Cases", active="/breakdowns",
                            items=items, status=status, statuses=STATUSES)
 
 
@@ -40,7 +40,7 @@ def index():
 @login_required
 @role_required("admin")
 def new():
-    return render_template("breakdowns/form.html", title="Report breakdown", active="/breakdowns",
+    return render_template("breakdowns/form.html", title="Open a case", active="/breakdowns",
                            trucks=active_trucks(), drivers=active_drivers(), severities=SEVERITIES,
                            truck_id=forms.integer(request.args.get("truck_id")))
 
@@ -73,7 +73,7 @@ def create():
     if forms.checkbox(request.form.get("take_out_of_service")):
         execute("update trucks set status = 'out_of_service', updated_at = now() where id = %s", (truck_id,))
     audit("breakdown.created", "breakdown", item["id"], {"unit": truck["unit_number"], "severity": item["severity"]})
-    flash(f"Breakdown logged for unit {truck['unit_number']}.", "ok")
+    flash(f"Case opened for unit {truck['unit_number']}.", "ok")
     return redirect(f"/breakdowns/{item['id']}")
 
 
@@ -96,7 +96,7 @@ def detail(breakdown_id):
            where u.breakdown_id = %s order by u.created_at desc""",
         (breakdown_id,),
     )
-    return render_template("breakdowns/detail.html", title=f"Breakdown #{item['id']}", active="/breakdowns",
+    return render_template("breakdowns/detail.html", title=f"Case #{item['id']}", active="/breakdowns",
                            item=item, updates=updates, statuses=STATUSES)
 
 
@@ -159,5 +159,5 @@ def resolve(breakdown_id):
             ),
         )
     audit("breakdown.resolved", "breakdown", breakdown_id, None)
-    flash("Breakdown resolved.", "ok")
+    flash("Case resolved.", "ok")
     return redirect(f"/breakdowns/{breakdown_id}")

@@ -18,7 +18,7 @@
     <a class="btn ghost" href="/fuel/new?truck_id={{ truck.id }}">Log fuel</a>
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;find=1#shop-panel">Nearby shops (map)</a>
-    <a class="btn ghost" href="/breakdowns/new?truck_id={{ truck.id }}">Breakdown</a>
+    <a class="btn ghost" href="/breakdowns/new?truck_id={{ truck.id }}">Open a case</a>
     {% endif %}
     {% if at_least(role, 'admin') %}<a class="btn" href="/trucks/{{ truck.id }}/edit">Edit</a>{% endif %}
   </div>
@@ -220,7 +220,7 @@
   </section>
 
   <section class="panel">
-    <div class="panel-head"><h2>Breakdowns</h2></div>
+    <div class="panel-head"><h2>Cases</h2></div>
     {% if breakdowns %}
     <div class="table-wrap"><table>
       <thead><tr><th>When</th><th>What</th><th>Status</th><th class="right">Cost</th></tr></thead>
@@ -233,7 +233,7 @@
         {% endfor %}
       </tbody>
     </table></div>
-    {% else %}<p class="empty">No breakdowns recorded. Good.</p>{% endif %}
+    {% else %}<p class="empty">No cases.</p>{% endif %}
   </section>
 </div>
 

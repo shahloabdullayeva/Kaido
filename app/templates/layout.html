@@ -5,14 +5,16 @@
   ('/trips', 'Trips', none),
   ('/maintenance', 'Maintenance', none),
   ('/pti', 'PTI', none),
-  ('/breakdowns', 'Breakdowns', none),
-  ('/drivers', 'Drivers', none),
-  ('/faults', 'Faults', none),
+  ('/breakdowns', 'Cases', none),
+  ('/learn', 'Learn', none)
+] %}
+{% set menu_items = [
+  ('/account', 'Account', none),
+  ('/settings', 'Settings', none),
   ('/reminders', 'Reminders', none),
   ('/reports', 'Reports', none),
-  ('/learn', 'Learn', none),
-  ('/integrations', 'Integrations', 'admin'),
-  ('/company', 'Company', 'admin')
+  ('/company', 'Company', 'admin'),
+  ('/integrations', 'Integrations', 'admin')
 ] %}
 <!doctype html>
 <html lang="en" data-style="modern"{% if session and session.theme in ('light', 'dark') %} data-theme="{{ session.theme }}"{% endif %}>
@@ -48,15 +50,15 @@
       <a href="{{ href }}" {% if href == active %}class="on"{% endif %}>{{ text }}</a>
       {% endif %}
     {% endfor %}
-    {% if is_platform %}<a href="/platform" {% if active == '/platform' %}class="on"{% endif %}>Platform</a>{% endif %}
   </nav>
   <div class="who">
     {% include "_cat.html" %}
     <details class="who-menu">
       <summary>{{ session.name }}<span class="role">{{ 'platform ' + session.platform_role if session.platform_role else (role or '') }}</span></summary>
       <div class="who-panel">
-        <a href="/account" {% if active == '/account' %}class="on"{% endif %}>Account</a>
-        <a href="/settings" {% if active == '/settings' %}class="on"{% endif %}>Settings</a>
+        {% for href, text, minimum in menu_items %}{% if not minimum or at_least(role, minimum) %}
+        <a href="{{ href }}" {% if href == active %}class="on"{% endif %}>{{ text }}</a>{% endif %}{% endfor %}
+        {% if is_platform %}<a href="/platform" {% if active == '/platform' %}class="on"{% endif %}>Platform</a>{% endif %}
         {% if is_platform %}<a href="/platform/billing" {% if active == '/billing' %}class="on"{% endif %}>Billing</a>
         {% elif at_least(role, 'admin') %}<a href="/billing" {% if active == '/billing' %}class="on"{% endif %}>Billing</a>{% endif %}
         <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="link">Sign out</button></form>

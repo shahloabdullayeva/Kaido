@@ -14,7 +14,7 @@
 |---|---|
 | App | `kaido.service` — gunicorn, 3 workers, 127.0.0.1:8790, behind Caddy |
 | Telegram linking | `kaido-bot.service` — listens for `/link CODE` |
-| Samsara sync | cron, every 15 minutes, `bin/sync.sh` → `sync.log` |
+| Samsara sync | cron, every 15 minutes, `bin/sync.sh` → `logs/sync.log` |
 
 All enabled at boot. `systemctl status kaido` / `journalctl -u kaido -f` to look.
 
@@ -262,3 +262,5 @@ rather than an empty map.
 - 20 Nov: Integrations said "66 of 41 trucks linked": it counted Samsara and Horizon links together. Now Samsara only, one per truck (BOOKIT 30 of 41, LLAP 35 of 35); the mapping table lists only Samsara vehicles.
 - 20 Nov: "why do trips all show late": all five trips are the sample load whose pickup was 17 Nov, planned for drivers with about 18.5 h left on the 70-hour clock, so they needed a 34 h restart. The planner now also gives back hours each night as old days drop off the 8-day window (estimated as hours used / 8 per day, since Horizon gives no daily history).
 - 20 Nov: her Claude Docs manual "Fleet From Scratch" (main tab, Parts A to Z, Study schedule) was converted into Learn as 47 more topics. Personal references (John's notes, Octane) were made general because every signed-in user sees Learn. The doc itself was not changed.
+- 20 Nov: menu cut down at her request: Dashboard, Trucks (Drivers and Faults are tabs inside it), Fuel, Trips, Maintenance, PTI, Cases, Learn. Breakdowns are called **Cases** everywhere (URLs still `/breakdowns`). Reminders, Reports, Company, Integrations and Platform moved into the profile menu with Account, Settings and Billing.
+- 20 Nov: all logs now live in `logs/` (sync, followup, backup, brand-prices, errors). `bin/*.sh`, the crontab backup line and `/etc/logrotate.d/kaido` point there. The Fleet From Scratch PDF is in `uploads/learn/` (not in git; it has personal names) and downloads from Learn for signed-in users only.

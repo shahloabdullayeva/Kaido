@@ -39,7 +39,7 @@ def index():
            from drivers d where d.company_id = %s order by d.status, lower(d.name)""",
         (g.company["id"],),
     )
-    return render_template("drivers/list.html", title="Drivers", active="/drivers", drivers=drivers,
+    return render_template("drivers/list.html", title="Drivers", active="/trucks", drivers=drivers,
                            hours=hos.for_drivers(g.company["id"]))
 
 
@@ -47,7 +47,7 @@ def index():
 @login_required
 @role_required("admin")
 def new():
-    return render_template("drivers/form.html", title="Add driver", active="/drivers",
+    return render_template("drivers/form.html", title="Add driver", active="/trucks",
                            driver={"status": "active"}, statuses=STATUSES, mode="new")
 
 
@@ -81,7 +81,7 @@ def detail(driver_id):
         return render_template("errors/404.html"), 404
     trucks = rows("select id, unit_number, driver_source from trucks where driver_id = %s order by unit_number", (driver_id,))
     in_horizon = one("select 1 as yes from driver_links where driver_id = %s and provider = 'horizoneld'", (driver_id,))
-    return render_template("drivers/form.html", title=driver["name"], active="/drivers",
+    return render_template("drivers/form.html", title=driver["name"], active="/trucks",
                            driver=driver, statuses=STATUSES, mode="edit", trucks=trucks, in_horizon=bool(in_horizon),
                            hours=hos.for_drivers(g.company["id"], [driver_id]).get(driver_id))
 

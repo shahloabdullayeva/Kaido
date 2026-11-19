@@ -1,5 +1,6 @@
 {% extends "layout.html" %}
 {% block body %}
+{% set fleet_tab = 'trucks' %}{% include "_fleet_tabs.html" %}
 <div class="page-head">
   <div><h1>Trucks</h1><p>{{ fleet|length }} shown</p></div>
   <div class="actions-row">

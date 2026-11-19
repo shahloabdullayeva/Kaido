@@ -693,4 +693,4 @@ truck is made of to breakdown calls, DOT, invoices and a glossary. Each topic is
 `@video Title | search words` lines, which become YouTube search links, and `[text](https://...)` links. Photos come from Wikimedia
 Commons under their free licenses; author and license are in `app/learn/credits.json` and show under each
 photo. The diagrams (`*.svg`) were drawn for Kaido. Search on `/learn?q=` matches every word across topics.
-Edit a file and restart `kaido.service` to see the change (topics are cached in memory).
+The manual PDF is served from `uploads/learn/Fleet_From_Scratch.pdf` at `/learn/fleet-from-scratch.pdf` (sign-in required; the file is not in git). Edit a file and restart `kaido.service` to see the change (topics are cached in memory).
