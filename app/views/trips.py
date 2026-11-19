@@ -129,6 +129,8 @@ def timeline(trip):
         price = f"${stop['price']:.3f}"
         if stop["source"] == "website":
             price += " est."
+        elif stop["source"] == "regional":
+            price += " region avg"
         elif stop.get("age_days"):
             price += f" paid {stop['age_days']}d ago"
         entries.append({"mile": stop["mile"], "kind": "fuel", "number": index, "title": trips.place_name(stop),
@@ -175,7 +177,7 @@ def map_data(trip, live_url=""):
                    "address": s.get("address") or "", "when": short_time(s.get("eta"), s["longitude"]),
                    "late": s.get("late_hours") or 0} for s in trip["stops"] or []],
         "fuel": [{"lat": s["latitude"], "lon": s["longitude"], "name": trips.place_name(s), "gallons": s["gallons"],
-                  "price": s["price"], "estimated": s["source"] == "website", "mile": s["mile"],
+                  "price": s["price"], "estimated": s["source"] in ("website", "regional"), "mile": s["mile"],
                   "when": short_time(s.get("eta"), s["longitude"])}
                  for s in plan.get("fuel_stops") or []],
         "rests": [{"lat": r["latitude"], "lon": r["longitude"], "kind": REST_LABELS.get(r["kind"], r["kind"]),

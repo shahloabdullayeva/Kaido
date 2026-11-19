@@ -441,6 +441,12 @@ def cmd_fuel_report(args):
     return 0
 
 
+def cmd_eia_prices(args):
+    from app import eia
+    print(eia.run())
+    return 0
+
+
 def cmd_brand_prices(args):
     from app import brand_prices
     only = [s.strip().upper() for s in args.states.split(",")] if args.states else None
@@ -670,6 +676,7 @@ def main():
     frun = sub.add_parser("fuel", help="send fuel stop suggestions to low trucks and match refuels")
     frun.add_argument("--force", action="store_true")
     frun.set_defaults(func=cmd_fuel)
+    sub.add_parser("eia-prices", help="weekly regional diesel averages from the EIA").set_defaults(func=cmd_eia_prices)
     fbrand = sub.add_parser("brand-prices", help="today's pump prices from truck-stop brand websites")
     fbrand.add_argument("--brand", action="append", help="loves (default: every brand)")
     fbrand.add_argument("--states", help="comma-separated, e.g. TX,OK")

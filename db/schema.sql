@@ -1191,3 +1191,11 @@ alter table trips add column if not exists share_token text;
 create unique index if not exists trips_share_token_idx on trips (share_token);
 alter table trips add column if not exists source text not null default 'web';
 alter table companies add column if not exists trips_from_group boolean not null default false;
+
+create table if not exists regional_diesel_prices (
+  region text not null,
+  week date not null,
+  price numeric(6,3) not null,
+  fetched_at timestamptz not null default now(),
+  primary key (region, week)
+);

@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 import requests
 
-from . import brand_prices, fuel, shops
+from . import brand_prices, eia, fuel, shops
 from .config import config
 from .db import execute, insert, one, rows
 from .logs import get
@@ -210,12 +210,32 @@ def corridor(points, miles, width=CORRIDOR_MILES):
     return sorted(found, key=lambda s: s["mile"])
 
 
+def regional_fallback(station_ids):
+    if not station_ids:
+        return {}
+    table = eia.latest()
+    if not table:
+        return {}
+    found = {}
+    for station in rows("select id, state from fuel_stations where id = any(%s)", (list(station_ids),)):
+        regional = eia.price_for_state(station["state"], table)
+        if not regional:
+            continue
+        found[station["id"]] = {
+            "net": regional["price"], "retail": regional["price"], "source": "regional",
+            "region": regional["name"], "age_days": regional["age_days"], "estimated_discount": None,
+            "effective": regional["price"] + eia.REGION_PENALTY,
+        }
+    return found
+
+
 def planning_prices(company_id, station_ids):
     if not station_ids:
         return {}
     now = datetime.now(timezone.utc)
     company = fuel.latest_prices(company_id, station_ids)
     website = brand_prices.website_prices(company_id, station_ids)
+    regional_prices = regional_fallback([sid for sid in station_ids if sid not in company and sid not in website])
     chosen = {}
     for station_id in station_ids:
         own = company.get(station_id)
@@ -228,6 +248,9 @@ def planning_prices(company_id, station_ids):
         elif own:
             pick, age = own, own_age
         else:
+            regional = regional_prices.get(station_id)
+            if regional:
+                chosen[station_id] = regional
             continue
         net = float(pick["net_ppu"])
         chosen[station_id] = {
@@ -875,7 +898,7 @@ def next_stop_message(trip, truck, stop, mile, hos, why):
     if spaces:
         facts.append(f"{spaces} truck spots")
     lines.append(" · ".join(facts))
-    lines.append(f"Buy {stop['gallons']:.0f} gal at ${stop['price']:.2f}")
+    lines.append(f"Buy {stop['gallons']:.0f} gal at ${stop['price']:.2f}" + (" (region avg)" if stop.get("source") == "regional" else ""))
     if stop.get("fill_reason"):
         lines.append("Fill the tank, fuel ahead costs more.")
     status = []
