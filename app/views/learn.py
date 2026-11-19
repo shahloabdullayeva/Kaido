@@ -10,7 +10,7 @@ bp = Blueprint("learn", __name__)
 @login_required
 def index():
     query = (request.args.get("q") or "").strip()[:100]
-    return render_template("learn/index.html", title="Learn", active="/learn", topics=learn.topics(), query=query,
+    return render_template("learn/index.html", title="Learn", active="/learn", topics=learn.topics(), groups=learn.grouped(), query=query,
                            hits=learn.search(query) if query else None)
 
 

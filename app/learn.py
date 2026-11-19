@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent / "learn"
 IMAGE = re.compile(r"^!\[(.+?)\]\((.+?)\)$")
+GROUPS = {"s": "Start: study plan", "": "Basics", "m": "Fleet From Scratch", "p": "Parts A to Z"}
 VIDEO = re.compile(r"^@video (.+?) \| (.+)$")
 
 
@@ -36,6 +37,7 @@ def inline(text):
     text = escape(text, quote=False)
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
+    text = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", r'<a href="\2" target="_blank" rel="noopener">\1</a>', text)
     return text
 
 
@@ -104,9 +106,20 @@ def topics():
         summary = lines[1].strip() if len(lines) > 1 else ""
         body, toc = render(lines[2:])
         text = re.sub(r"<[^>]+>", " ", body)
-        found.append({"slug": path.stem.split("-", 1)[1], "number": int(path.stem.split("-")[0]), "title": title,
+        code = path.stem.split("-", 1)[0]
+        group = code.rstrip("0123456789")
+        found.append({"slug": path.stem.split("-", 1)[1], "number": int(code[len(group):]), "group": GROUPS.get(group, group),
+                      "order": (list(GROUPS).index(group) if group in GROUPS else 9, int(code[len(group):])), "title": title,
                       "summary": summary, "html": body, "toc": toc, "text": " ".join(text.split()).lower()})
+    found.sort(key=lambda item: item["order"])
     return found
+
+
+def grouped():
+    groups = {}
+    for item in topics():
+        groups.setdefault(item["group"], []).append(item)
+    return list(groups.items())
 
 
 def topic(name):

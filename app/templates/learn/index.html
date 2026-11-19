@@ -15,8 +15,10 @@
   {% else %}<p class="empty">Nothing found.</p>{% endfor %}
 </section>
 {% endif %}
+{% for name, items in groups %}
+<h2 class="learn-group">{{ name }}<span>{{ items|length }}</span></h2>
 <div class="learn-grid">
-  {% for item in topics %}
+  {% for item in items %}
   <a class="learn-card" href="/learn/{{ item.slug }}">
     <span class="learn-num">{{ item.number }}</span>
     <strong>{{ item.title }}</strong>
@@ -24,4 +26,5 @@
   </a>
   {% endfor %}
 </div>
+{% endfor %}
 {% endblock %}

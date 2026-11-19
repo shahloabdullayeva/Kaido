@@ -686,11 +686,11 @@ token, and Love's.
 
 ## Learn
 
-`/learn` (any signed-in user, Learn in the menu): 20 topics for someone new to fleet maintenance, from what a
+`/learn` (any signed-in user, Learn in the menu): 67 topics in four groups. The file prefix sets the group: `s` study plan, none = Basics (20 topics written for Kaido), `m` Fleet From Scratch and `p` Parts A to Z (both converted from her Claude Docs manual of the same name, 26 and 20 topics). The Basics are for someone new to fleet maintenance, from what a
 truck is made of to breakdown calls, DOT, invoices and a glossary. Each topic is a Markdown-like file in
 `app/learn/NN-name.md` (first line title, second line summary), rendered by `app/learn.py`: `## ` headings,
 `|` tables, `- ` and `1. ` lists, `**bold**`, images as `![caption](file)` from `app/static/learn/`, and
-`@video Title | search words` lines, which become YouTube search links. Photos come from Wikimedia
+`@video Title | search words` lines, which become YouTube search links, and `[text](https://...)` links. Photos come from Wikimedia
 Commons under their free licenses; author and license are in `app/learn/credits.json` and show under each
 photo. The diagrams (`*.svg`) were drawn for Kaido. Search on `/learn?q=` matches every word across topics.
 Edit a file and restart `kaido.service` to see the change (topics are cached in memory).
