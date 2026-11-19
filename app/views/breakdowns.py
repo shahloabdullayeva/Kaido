@@ -16,7 +16,7 @@ SEVERITIES = ["low", "medium", "high"]
 @login_required
 @company_required
 def index():
-    status = forms.pick(request.args.get("status"), STATUSES + ["all", "open_all"], "open_all")
+    status = forms.pick(request.args.get("status"), STATUSES + ["all", "open_all"], "all")
     params = [g.company["id"]]
     clause = ""
     if status == "open_all":

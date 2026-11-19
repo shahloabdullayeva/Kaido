@@ -146,7 +146,7 @@ def import_file():
                            report=report, filename=upload.filename)
 
 
-RANGES = [7, 30, 90]
+RANGES = [7, 30, 90, 3650]
 WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 SKIP_LABELS = {"busy": "Already fueling", "far": "Off route", "park": "No parking", "brand": "Doesn't like the brand",
                "price": "Found cheaper", "later": "Remind later"}
@@ -244,13 +244,7 @@ def per_gallon(value):
 
 def days_arg():
     days = forms.integer(request.args.get("days"))
-    if days in RANGES:
-        return days
-    for days in RANGES[1:]:
-        if one(f"""select 1 from fuel_transactions where company_id = %s and fuel_type = 'diesel'
-                   and purchased_at >= now() - interval '{days} days' limit 1""", (g.company["id"],)):
-            return days
-    return 30
+    return days if days in RANGES else max(RANGES)
 
 
 @bp.get("/fuel/insights")
@@ -407,7 +401,7 @@ def offers_log():
 @login_required
 @company_required
 def alerts():
-    show = request.args.get("show") if request.args.get("show") in ("open", "all") else "open"
+    show = request.args.get("show") if request.args.get("show") in ("open", "all") else "all"
     entries = rows(
         f"""select a.*, t.unit_number, d.name as driver_name, u.name as reviewer
             from fuel_alerts a left join trucks t on t.id = a.truck_id left join drivers d on d.id = a.driver_id

@@ -120,7 +120,7 @@ def store_extras(order_id, parts, form):
 @login_required
 @company_required
 def index():
-    status = forms.pick(request.args.get("status"), STATUSES + ["all", "open"], "open")
+    status = forms.pick(request.args.get("status"), STATUSES + ["all", "open"], "all")
     group = forms.pick(request.args.get("group"), list(GROUP_LABELS), "")
     params = [g.company["id"]]
     clause = ""

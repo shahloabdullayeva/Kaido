@@ -13,7 +13,7 @@ bp = Blueprint("faults", __name__)
 @login_required
 @company_required
 def index():
-    scope = forms.pick(request.args.get("scope"), ["active", "all", "cleared"], "active")
+    scope = forms.pick(request.args.get("scope"), ["active", "all", "cleared"], "all")
     clause = ""
     if scope == "active":
         clause = " and f.cleared_at is null"
