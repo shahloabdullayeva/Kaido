@@ -708,3 +708,10 @@ body.trip-live { margin: 0; background: var(--bg, #f5f6f8); display: flex; flex-
 .learn-group { display: flex; align-items: baseline; gap: 8px; margin: 22px 0 10px; font-size: 17px; }
 .learn-group span { font-size: 12px; color: var(--muted); font-weight: 500; }
 .learn-body a { color: var(--info, #2a78d6); }
+.fuel-up { color: #b42318; font-weight: 600; }
+.fuel-down { color: #17703a; font-weight: 600; }
+.market-total td { font-weight: 600; }
+.market-stats { margin: 0 18px 8px; }
+@media (prefers-color-scheme: dark) { .fuel-up { color: #f97066; } .fuel-down { color: #4ade80; } }
+[data-theme="dark"] .fuel-up { color: #f97066; } [data-theme="dark"] .fuel-down { color: #4ade80; }
+[data-theme="light"] .fuel-up { color: #b42318; } [data-theme="light"] .fuel-down { color: #17703a; }

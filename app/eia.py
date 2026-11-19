@@ -48,7 +48,7 @@ def region_for(series_name):
     return None
 
 
-def fetch(weeks=8):
+def fetch(weeks=60):
     response = requests.get(URL, headers={"User-Agent": USER_AGENT}, timeout=60)
     response.raise_for_status()
     book = xlrd.open_workbook(file_contents=response.content)
@@ -94,6 +94,82 @@ def price_for_state(state, table=None):
         return None
     return {"region": found["region"], "name": NAMES.get(found["region"], found["region"]), "price": float(found["price"]),
             "week": found["week"], "age_days": (date.today() - found["week"]).days}
+
+
+def history(region="US", weeks=12):
+    return rows(
+        "select week, price from regional_diesel_prices where region = %s order by week desc limit %s",
+        (region, weeks),
+    )[::-1]
+
+
+def changes():
+    table = rows(
+        """select region, week, price, row_number() over (partition by region order by week desc) as n
+           from regional_diesel_prices"""
+    )
+    by_region = {}
+    for row in table:
+        by_region.setdefault(row["region"], {})[row["n"]] = row
+    out = []
+    order = ["US", "1A", "1B", "1C", "2", "3", "4", "5", "CA"]
+    for region in order:
+        weeks = by_region.get(region)
+        if not weeks or 1 not in weeks:
+            continue
+        now = float(weeks[1]["price"])
+        def delta(n):
+            return round(now - float(weeks[n]["price"]), 3) if n in weeks else None
+        out.append({"region": region, "name": NAMES[region], "states": STATES.get(region, "").replace(" ", ", "),
+                    "week": weeks[1]["week"], "price": now, "week_change": delta(2), "month_change": delta(5),
+                    "year_change": delta(53)})
+    return out
+
+
+def snapshot_states(day=None):
+    found = rows(
+        """select s.state, r.retail_ppu, r.station_id from station_retail_prices r join fuel_stations s on s.id = r.station_id
+           where r.fuel_type = 'diesel' and r.fetched_at > now() - interval '30 hours' and s.state is not null"""
+    )
+    by_state = {}
+    for row in found:
+        by_state.setdefault(row["state"].upper(), []).append(row)
+    day = day or date.today()
+    for state, items in by_state.items():
+        prices = [float(i["retail_ppu"]) for i in items]
+        cheapest = min(items, key=lambda i: float(i["retail_ppu"]))
+        execute(
+            """insert into state_diesel_daily (day, state, stations, avg_price, min_price, max_price, cheapest_station_id)
+               values (%s, %s, %s, %s, %s, %s, %s)
+               on conflict (day, state) do update set stations = excluded.stations, avg_price = excluded.avg_price,
+                 min_price = excluded.min_price, max_price = excluded.max_price, cheapest_station_id = excluded.cheapest_station_id""",
+            (day, state, len(prices), round(sum(prices) / len(prices), 3), min(prices), max(prices), cheapest["station_id"]),
+        )
+    return len(by_state)
+
+
+def states_table():
+    latest_day = one("select max(day) as day from state_diesel_daily")
+    if not latest_day or not latest_day["day"]:
+        return None, []
+    day = latest_day["day"]
+    found = rows(
+        """select d.*, s.name as cheapest_name, s.city as cheapest_city,
+                  (select avg_price from state_diesel_daily p where p.state = d.state and p.day = d.day - 1) as yesterday,
+                  (select avg_price from state_diesel_daily p where p.state = d.state and p.day <= d.day - 7
+                    order by p.day desc limit 1) as week_ago
+           from state_diesel_daily d left join fuel_stations s on s.id = d.cheapest_station_id
+           where d.day = %s order by d.avg_price""",
+        (day,),
+    )
+    regions = latest()
+    for row in found:
+        regional = price_for_state(row["state"], regions)
+        row["region_name"] = regional["name"] if regional else None
+        row["region_price"] = regional["price"] if regional else None
+        row["day_change"] = round(float(row["avg_price"]) - float(row["yesterday"]), 3) if row["yesterday"] else None
+        row["week_change"] = round(float(row["avg_price"]) - float(row["week_ago"]), 3) if row["week_ago"] else None
+    return day, found
 
 
 def run():

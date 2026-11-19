@@ -1199,3 +1199,14 @@ create table if not exists regional_diesel_prices (
   fetched_at timestamptz not null default now(),
   primary key (region, week)
 );
+
+create table if not exists state_diesel_daily (
+  day date not null,
+  state text not null,
+  stations int not null,
+  avg_price numeric(6,3) not null,
+  min_price numeric(6,3) not null,
+  max_price numeric(6,3) not null,
+  cheapest_station_id int references fuel_stations(id) on delete set null,
+  primary key (day, state)
+);

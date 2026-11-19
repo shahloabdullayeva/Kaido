@@ -444,6 +444,7 @@ def cmd_fuel_report(args):
 def cmd_eia_prices(args):
     from app import eia
     print(eia.run())
+    print({"states_saved": eia.snapshot_states()})
     return 0
 
 

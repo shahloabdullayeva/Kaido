@@ -1,0 +1,48 @@
+{% macro change(value) %}{% if value is none %}<span class="subtle">—</span>{% elif value > 0.0005 %}<span class="fuel-up">+${{ '%.3f'|format(value) }}</span>{% elif value < -0.0005 %}<span class="fuel-down">−${{ '%.3f'|format(-value) }}</span>{% else %}<span class="subtle">no change</span>{% endif %}{% endmacro %}
+{% if market %}
+{% set us = market[0] %}
+<section class="panel">
+  <div class="panel-head"><h2>Diesel market</h2><span class="subtle">EIA week of {{ us.week.strftime('%d %b %Y') }}{% if state_day %} · truck stops {{ state_day.strftime('%d %b') }}{% endif %}</span></div>
+  <div class="stats fuel-stats market-stats">
+    <div class="stat"><div class="stat-label">U.S. average (EIA)</div><div class="stat-value">${{ '%.3f'|format(us.price) }}</div>
+      <div class="stat-hint">week {{ change(us.week_change) }} · month {{ change(us.month_change) }}</div></div>
+    <div class="stat"><div class="stat-label">vs a year ago</div><div class="stat-value">{{ change(us.year_change) }}</div>
+      <div class="stat-hint">U.S. average, same week last year</div></div>
+    {% if stop_avg %}
+    <div class="stat"><div class="stat-label">Love's / TA pump today</div><div class="stat-value">${{ '%.3f'|format(stop_avg.price) }}</div>
+      <div class="stat-hint">{{ stop_avg.stations }} stops in {{ stop_avg.states }} states</div></div>
+    {% endif %}
+    {% set cheap = market[1:]|sort(attribute='price')|first %}{% set dear = market[1:]|sort(attribute='price')|last %}
+    <div class="stat"><div class="stat-label">Cheapest / dearest region</div><div class="stat-value">${{ '%.2f'|format(cheap.price) }} / ${{ '%.2f'|format(dear.price) }}</div>
+      <div class="stat-hint">{{ cheap.name }} / {{ dear.name }}</div></div>
+  </div>
+  {% if market_chart %}<div class="pad">{{ chart(market_chart, 'Diesel price by week', 'EIA retail average, last 12 weeks') }}</div>{% endif %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Region (EIA)</th><th>States</th><th class="right">This week</th><th class="right">vs last week</th><th class="right">vs 4 weeks</th><th class="right">vs a year</th></tr></thead>
+    <tbody>
+      {% for r in market %}
+      <tr{% if r.region == 'US' %} class="market-total"{% endif %}><td>{{ r.name }}</td><td class="subtle">{{ r.states or 'all' }}</td>
+        <td class="right">${{ '%.3f'|format(r.price) }}</td><td class="right">{{ change(r.week_change) }}</td>
+        <td class="right">{{ change(r.month_change) }}</td><td class="right">{{ change(r.year_change) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% if state_rows %}
+<section class="panel">
+  <div class="panel-head"><h2>Pump price by state</h2><span class="subtle">Love's and TA/Petro, {{ state_day.strftime('%d %b') }}</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>State</th><th class="right">Stops</th><th class="right">Average</th><th class="right">vs yesterday</th><th class="right">vs last week</th><th>Cheapest</th><th class="right">vs EIA region</th></tr></thead>
+    <tbody>
+      {% for r in state_rows %}
+      <tr><td><strong>{{ r.state }}</strong></td><td class="right">{{ r.stations }}</td>
+        <td class="right">${{ '%.3f'|format(r.avg_price|float) }}</td>
+        <td class="right">{{ change(r.day_change) }}</td><td class="right">{{ change(r.week_change) }}</td>
+        <td>${{ '%.3f'|format(r.min_price|float) }} <span class="subtle">{{ r.cheapest_name or '' }}{% if r.cheapest_city %}, {{ r.cheapest_city }}{% endif %}</span></td>
+        <td class="right">{% if r.region_price %}{{ change(r.avg_price|float - r.region_price) }}{% else %}—{% endif %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endif %}

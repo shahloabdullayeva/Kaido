@@ -29,6 +29,8 @@
     <div class="stat-hint">{% if offers.saved > 0 %}saved {{ offers.saved|money }}{% else %}from the Telegram fuel cards{% endif %}</div></div>
 </div>
 
+{% include "fuel/_market.html" %}
+
 <div class="fuel-charts">
   <section class="panel">{{ chart(price_chart, 'Price per gallon by week', 'what you paid vs the pump') }}</section>
   <section class="panel">{{ chart(spend_chart, 'Diesel spend by week') }}</section>

@@ -600,6 +600,11 @@ Lower Atlantic, Midwest, Gulf Coast, Rocky Mountain, West Coast and California, 
 its region. Trip planning uses it only for a stop with no company or website price, plus a $0.10 penalty so stops with a real price
 win; the trip page shows it as "region avg" and the driver message says "(region avg)". It is a weekly average, not a pump price.
 It runs after the brand prices in `bin/brand-prices.sh`, from cron every day at 7:00 US Eastern.
+Fuel → Insights opens with **Diesel market**: the EIA U.S. average with its change vs last week, 4 weeks and a year
+(`eia.changes()`, 60 weeks kept), a 12-week chart (U.S., California, Gulf Coast), the region table, and **Pump price by
+state**: the Love's/TA prices averaged per state each morning into `state_diesel_daily` (`eia.snapshot_states()`), with
+the change vs yesterday and last week, the cheapest stop, and the difference from the EIA region average. The state
+history starts 20 Nov 2026, so day and week changes appear as the days build up.
 
 ## Notification center
 

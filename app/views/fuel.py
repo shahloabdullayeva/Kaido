@@ -6,7 +6,7 @@ import io
 
 from flask import Blueprint, Response, flash, g, redirect, render_template, request
 
-from .. import brand_prices, forms, fuel, fuel_guard, fuel_import
+from .. import brand_prices, forms, fuel, fuel_guard, fuel_import, eia
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -355,7 +355,25 @@ def insights():
              "where": ", ".join(p for p in [s["city"], s["state"]] if p), "avg": round(float(s["avg"]), 3) if s["avg"] else None,
              "fills": s["fills"], "gallons": round(float(s["gallons"]))}
             for s in stations if s["latitude"] is not None]
+    market = eia.changes()
+    trend_regions = [("US", "U.S. average", "s1"), ("CA", "California", "s2"), ("3", "Gulf Coast", "s3")]
+    trend = {code: eia.history(code, 12) for code, _, _ in trend_regions}
+    trend_labels = [w["week"].strftime("%d %b") for w in trend["US"]]
+    market_chart = line_chart(trend_labels, [
+        {"name": name, "cls": cls, "values": [float(w["price"]) for w in trend[code]][-len(trend_labels):]}
+        for code, name, cls in trend_regions if trend[code]
+    ], per_gallon) if trend_labels else None
+    if market_chart:
+        market_chart["legend"] = [{"name": name, "cls": cls} for _, name, cls in trend_regions]
+    state_day, state_rows = eia.states_table()
+    stop_avg = None
+    if state_rows:
+        total = sum(r["stations"] for r in state_rows)
+        stop_avg = {"price": sum(float(r["avg_price"]) * r["stations"] for r in state_rows) / total, "stations": total,
+                    "states": len(state_rows)}
     return render_template("fuel/insights.html", title="Fuel insights", active="/fuel", days=days, ranges=RANGES,
+                           market=market, market_chart=market_chart, state_day=state_day, state_rows=state_rows,
+                           stop_avg=stop_avg,
                            kpi=kpi, offers=offers, fleet_mpg=fleet_mpg, price_chart=price_chart,
                            spend_chart=spend_chart, saving_chart=saving_chart, drivers=drivers, misses=misses,
                            stations=stations[:12], pins=pins)
