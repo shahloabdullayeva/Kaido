@@ -384,13 +384,6 @@ double-fill checks. Only findings from the last 3 days are sent to Telegram, so 
 does not flood anyone. Admins mark each one "Looks OK" or "Confirmed problem", with a note.
 
 
-**Regional averages (EIA).** `manage.py eia-prices` (`app/eia.py`) reads the US Energy Information Administration's free weekly
-diesel table (`PET_PRI_GND_A_EPD2D_PTE_DPGAL_W.xls`, no key needed) into `regional_diesel_prices`: New England, Central Atlantic,
-Lower Atlantic, Midwest, Gulf Coast, Rocky Mountain, West Coast and California, plus the US average. Each station's state maps to
-its region. Trip planning uses it only for a stop with no company or website price, plus a $0.10 penalty so stops with a real price
-win; the trip page shows it as "region avg" and the driver message says "(region avg)". It is a weekly average, not a pump price.
-It runs after the brand prices in `bin/brand-prices.sh`, from cron every day at 7:00 US Eastern.
-
 ## Trip planning
 
 `app/trips.py`, the Trips page and `manage.py trip`. Paste a load as the load board or broker
@@ -599,6 +592,14 @@ the previous Monday–Sunday:
 
 `manage.py fuel-report --company NAME --dry-run --force` writes the fleet card to `logs/`
 without sending anything.
+
+
+**Regional averages (EIA).** `manage.py eia-prices` (`app/eia.py`) reads the US Energy Information Administration's free weekly
+diesel table (`PET_PRI_GND_A_EPD2D_PTE_DPGAL_W.xls`, no key needed) into `regional_diesel_prices`: New England, Central Atlantic,
+Lower Atlantic, Midwest, Gulf Coast, Rocky Mountain, West Coast and California, plus the US average. Each station's state maps to
+its region. Trip planning uses it only for a stop with no company or website price, plus a $0.10 penalty so stops with a real price
+win; the trip page shows it as "region avg" and the driver message says "(region avg)". It is a weekly average, not a pump price.
+It runs after the brand prices in `bin/brand-prices.sh`, from cron every day at 7:00 US Eastern.
 
 ## Notification center
 
