@@ -280,6 +280,14 @@ def handle_group_update(update, send):
             get("telegram-bot").exception("fuel command %s failed", command)
             send(chat["id"], "Something went wrong with that. The office has been told.")
         return True
+    if not command.startswith("/"):
+        from app import trips
+        try:
+            trips.from_group_post(chat["id"], message)
+        except Exception:
+            from app.logs import get
+            get("telegram-bot").exception("load post in %s failed", chat["id"])
+        return True
     if command not in ("/truck", "/drivers"):
         return True
     if len(parts) < 2:

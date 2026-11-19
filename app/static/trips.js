@@ -47,29 +47,59 @@ if (tripNode && typeof L !== 'undefined') {
     bounds.push(...line.getLatLngs().map((p) => [p.lat, p.lng]));
   }
   if (trip.start) {
-    L.marker(trip.start, { icon: label('T', 'start') }).addTo(map)
-      .bindPopup(popup('Truck now', ['Where Samsara last saw it']));
+    L.marker(trip.start, { icon: label('S', 'start') }).addTo(map)
+      .bindPopup(popup('Start', []));
     bounds.push(trip.start);
   }
+  const words = { pickup: 'Pickup', delivery: 'Delivery', place: 'Arrive' };
+  const letters = { pickup: 'P', delivery: 'D', place: 'A' };
   (trip.stops || []).forEach((stop) => {
-    const word = stop.kind === 'pickup' ? 'Pickup' : 'Delivery';
-    L.marker([stop.lat, stop.lon], { icon: label(stop.kind === 'pickup' ? 'P' : 'D', 'stop') }).addTo(map)
-      .bindPopup(popup(word + ': ' + stop.name, [stop.address]));
+    const word = words[stop.kind] || 'Stop';
+    L.marker([stop.lat, stop.lon], { icon: label(letters[stop.kind] || 'A', 'stop') }).addTo(map)
+      .bindTooltip(word + (stop.when ? ' ' + stop.when : ''))
+      .bindPopup(popup(word + ': ' + stop.name, [stop.address, stop.when, stop.late ? 'Late ' + Math.round(stop.late) + ' h' : '']));
     bounds.push([stop.lat, stop.lon]);
   });
   (trip.fuel || []).forEach((stop, index) => {
     L.marker([stop.lat, stop.lon], { icon: label(String(index + 1), 'fuel') }).addTo(map)
-      .bindTooltip('Fuel ' + (index + 1) + ': ' + stop.name)
+      .bindTooltip('Fuel ' + (index + 1) + (stop.when ? ' · ' + stop.when : ''))
       .bindPopup(popup('Fuel ' + (index + 1) + ': ' + stop.name, [
-        'Mile ' + Math.round(stop.mile).toLocaleString(),
-        'Buy ' + Math.round(stop.gallons) + ' gal at $' + stop.price.toFixed(3) + (stop.estimated ? ' est.' : ''),
+        stop.when,
+        'Buy ' + Math.round(stop.gallons) + ' gal at $' + stop.price.toFixed(2) + (stop.estimated ? ' est.' : ''),
       ]));
   });
   (trip.rests || []).forEach((rest) => {
     L.marker([rest.lat, rest.lon], { icon: label('R', 'rest') }).addTo(map)
-      .bindTooltip(rest.kind + ' around mile ' + Math.round(rest.mile).toLocaleString())
-      .bindPopup(popup(rest.kind, ['Around mile ' + Math.round(rest.mile).toLocaleString(), rest.where]));
+      .bindTooltip(rest.kind + (rest.when ? ' · ' + rest.when : ''))
+      .bindPopup(popup(rest.kind, [rest.when, rest.where]));
   });
   if (bounds.length) map.fitBounds(bounds, { padding: [24, 24] });
   else map.setView([39.5, -98.35], 4);
+
+  let truck = null;
+  const nowBox = document.querySelector('[data-live-now]');
+  const refresh = () => {
+    if (!trip.live) return;
+    fetch(trip.live, { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((now) => {
+        if (!now || now.lat === undefined) return;
+        const lines = [now.ago, now.tank !== null ? 'Tank ' + Math.round(now.tank) + '%' : '',
+          now.off_route ? 'Off route' : now.left.toLocaleString() + ' mi to go'];
+        if (!truck) {
+          truck = L.marker([now.lat, now.lon], { icon: label('T', 'live'), zIndexOffset: 1000 }).addTo(map);
+        } else {
+          truck.setLatLng([now.lat, now.lon]);
+        }
+        truck.bindPopup(popup('Truck now', lines));
+        if (nowBox) nowBox.textContent = lines.filter(Boolean).join(' · ');
+        document.querySelectorAll('[data-fuel-row]').forEach((row) => {
+          row.classList.toggle('next', now.next_fuel !== null && Number(row.dataset.fuelRow) === now.next_fuel);
+          row.classList.toggle('done', now.next_fuel === null || Number(row.dataset.fuelRow) < now.next_fuel);
+        });
+      })
+      .catch(() => {});
+  };
+  refresh();
+  setInterval(refresh, 60000);
 }

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" data-style="modern">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{ title }} · Kaido</title>
+<link rel="stylesheet" href="/static/app.css?v={{ cat_version }}">
+<link rel="stylesheet" href="/static/modern.css?v={{ cat_version }}">
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">
+<link rel="icon" href="/static/favicon.svg?v=2">
+</head>
+<body class="trip-live">
+<header class="trip-live-head">
+  <div><strong>Unit {{ unit }}</strong>{% if trip.load_number %} · Load {{ trip.load_number }}{% endif %}</div>
+  <div class="subtle">{{ route_text }} · {{ trip.distance_miles|number }} mi</div>
+  <div class="trip-live-now" data-live-now></div>
+</header>
+<div id="trip-map" class="trip-live-map" data-trip='{{ map_json }}'></div>
+{% if fuel_rows %}
+<ol class="trip-live-fuel">
+  {% for row in fuel_rows %}
+  <li data-fuel-row="{{ loop.index0 }}"><a href="{{ row.link }}" target="_blank" rel="noopener">{{ row.name }}</a>
+    <span>{{ row.gallons|number }} gal{% if row.when %} · {{ row.when }}{% endif %}</span></li>
+  {% endfor %}
+</ol>
+{% endif %}
+<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/trips.js?v={{ cat_version }}"></script>
+</body>
+</html>

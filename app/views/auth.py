@@ -169,8 +169,8 @@ def verify():
     return render_template(
         "auth/verify.html",
         title="Enter code",
-        error="That code is not right. Check the newest message." if request.args.get("error") == "code" else None,
-        notice=None if challenge["telegram_chat_id"] else "Telegram is not linked for this account: the code is in the server log (development only).",
+        error="Wrong code." if request.args.get("error") == "code" else None,
+        notice=None if challenge["telegram_chat_id"] else "Telegram not linked. Code is in the server log.",
         destination=masked_telegram(challenge),
     )
 

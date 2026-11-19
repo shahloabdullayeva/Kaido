@@ -574,6 +574,7 @@ def connected_trucks():
 def save_settings():
     values = {
         "enabled": request.form.get("fuel_assistant_enabled") == "on",
+        "from_group": request.form.get("trips_from_group") == "on",
         "alert": min(80, max(5, forms.integer(request.form.get("fuel_alert_percent")) or 35)),
         "search": min(400, max(20, forms.integer(request.form.get("fuel_search_miles")) or 150)),
         "reserve": min(40, max(0, forms.integer(request.form.get("fuel_reserve_percent")) or 10)),
@@ -582,7 +583,7 @@ def save_settings():
         "hour": min(23, max(0, forms.integer(request.form.get("fuel_report_hour")) or 0)),
     }
     execute(
-        """update companies set fuel_assistant_enabled = %(enabled)s, fuel_alert_percent = %(alert)s,
+        """update companies set fuel_assistant_enabled = %(enabled)s, trips_from_group = %(from_group)s, fuel_alert_percent = %(alert)s,
              fuel_search_miles = %(search)s, fuel_reserve_percent = %(reserve)s, fuel_default_mpg = %(mpg)s,
              fuel_report_weekday = %(weekday)s, fuel_report_hour = %(hour)s, updated_at = now()
            where id = %(id)s""",

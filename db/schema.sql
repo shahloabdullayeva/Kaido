@@ -1186,3 +1186,8 @@ create policy company_lock on fuel_alerts
 
 alter table fuel_transactions drop constraint if exists fuel_transactions_source_check;
 alter table fuel_transactions add constraint fuel_transactions_source_check check (source in ('manual', 'import', 'api', 'demo'));
+
+alter table trips add column if not exists share_token text;
+create unique index if not exists trips_share_token_idx on trips (share_token);
+alter table trips add column if not exists source text not null default 'web';
+alter table companies add column if not exists trips_from_group boolean not null default false;

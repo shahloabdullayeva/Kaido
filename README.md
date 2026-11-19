@@ -385,6 +385,21 @@ does not flood anyone. Admins mark each one "Looks OK" or "Confirmed problem", w
 sends it (load ID, $rate, `PU1:` name / address / `FCFS:` or `APPT:` window, `DEL1:` ..., any
 number of stops), pick a truck, and Kaido plans the whole trip:
 
+- **Places instead of a load.** Without `PU`/`DEL` lines the box takes plain places: one per line or
+  "Dallas, TX to Phoenix, AZ". One place is a fuel-only run from the truck to there; two or more are
+  stops with no dock time or window ("Arrive" on the map and messages).
+- **From the truck group.** With "Plan trips from load posts in truck groups" on (Fuel → Fuel
+  assistant, off by default), a message in a group connected to one truck that has a pickup and a
+  delivery with addresses is planned in the background and sent like the Send button: the first fuel
+  stop with a Trip map link. Older open trips for that truck are cancelled; the same load number within
+  3 days is ignored. If it cannot be planned the admins are told. Telegram only shows a bot normal group
+  messages when the bot is a group admin, or when privacy mode is turned off in BotFather (`/setprivacy`),
+  which then needs the bot removed and added back to each group.
+- **Live map.** Every trip has a share link `/m/<token>` (no login, `trips.share_token`): route, start,
+  pickup/delivery with ETA, numbered fuel stops with ETA and gallons, 10 h rests and restarts with time
+  and place, and the truck's live position (refreshed every minute from `/m/<token>.json`). The link
+  stops working 2 days after the trip is done or cancelled. Driver fuel-stop messages carry it as
+  "Trip map"; the office trip page has a Live map button and its own map polls `/trips/<id>/live.json`.
 - **Truck.** Pick one, or let Kaido pick: "closest truck to the pickup that is live on Samsara now"
   (`--truck nearest`) or "any truck live on Samsara" at random (`--truck random`). Live means a
   driver is set and Samsara gave a position and a tank reading in the last hour.

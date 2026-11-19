@@ -13,15 +13,17 @@
       <div class="form-grid">
         <label class="field full fuel-toggle"><input type="checkbox" name="fuel_assistant_enabled" {% if company.fuel_assistant_enabled %}checked{% endif %}>
           <span>Send fuel suggestions and weekly reports to drivers</span></label>
-        {{ field('Suggest fuel at (% tank)', 'fuel_alert_percent', company.fuel_alert_percent, type='number', attrs='min="5" max="80"', hint='Drivers can set their own level with /fuelprefs.') }}
+        <label class="field full fuel-toggle"><input type="checkbox" name="trips_from_group" {% if company.trips_from_group %}checked{% endif %}>
+          <span>Plan trips from load posts in truck groups</span></label>
+        {{ field('Suggest fuel at (% tank)', 'fuel_alert_percent', company.fuel_alert_percent, type='number', attrs='min="5" max="80"') }}
         {{ field('Search up to (miles)', 'fuel_search_miles', company.fuel_search_miles, type='number', attrs='min="20" max="400"') }}
-        {{ field('Keep in reserve (% tank)', 'fuel_reserve_percent', company.fuel_reserve_percent, type='number', attrs='min="0" max="40"', hint='Never send a truck to a stop it would reach below this.') }}
-        {{ field('Default mpg', 'fuel_default_mpg', company.fuel_default_mpg, type='number', attrs='min="3" max="12" step="0.1"', hint='Used until a truck has enough fills to work out its own.') }}
+        {{ field('Keep in reserve (% tank)', 'fuel_reserve_percent', company.fuel_reserve_percent, type='number', attrs='min="0" max="40"') }}
+        {{ field('Default mpg', 'fuel_default_mpg', company.fuel_default_mpg, type='number', attrs='min="3" max="12" step="0.1"') }}
         <label class="field"><span>Weekly report day</span>
           <select name="fuel_report_weekday">
             {% for number, name in weekdays %}<option value="{{ number }}" {% if company.fuel_report_weekday == number %}selected{% endif %}>{{ name }}</option>{% endfor %}
           </select></label>
-        {{ field('Weekly report hour', 'fuel_report_hour', company.fuel_report_hour, type='number', attrs='min="0" max="23"', hint='Company time zone, ' ~ (company.timezone or 'default') ~ '.') }}
+        {{ field('Weekly report hour', 'fuel_report_hour', company.fuel_report_hour, type='number', attrs='min="0" max="23"') }}
       </div>
       <div class="form-actions"><button class="btn" type="submit">Save</button></div>
     </form>
@@ -56,7 +58,7 @@
   {% else %}<p class="empty">No truck has a Telegram group yet.</p>{% endif %}
 </section>
 <section class="panel">
-  <div class="panel-head"><h2>Driver preferences</h2><span class="subtle">set by drivers with /fuelprefs or learned from their answers</span></div>
+  <div class="panel-head"><h2>Driver preferences</h2></div>
   {% if prefs %}
   <div class="table-wrap"><table>
     <thead><tr><th>Driver</th><th class="right">Remind at</th><th>Must have</th><th>Favourite</th><th>Never suggest</th><th>Learned</th><th>Updated</th></tr></thead>

@@ -2,7 +2,7 @@
 {% from "_macros.html" import field %}
 {% block body %}
 <h1>Check Telegram</h1>
-<p class="auth-note" style="margin-top:0">We sent a 6-digit code to {{ destination }}. It expires in {{ app_config.CODE_TTL_MINUTES }} minutes.</p>
+<p class="auth-note" style="margin-top:0">Code sent to {{ destination }}.</p>
 <form method="post" action="/login/verify">
   <input type="hidden" name="csrf" value="{{ anon_csrf() }}">
   {{ field('Code', 'code', '', attrs='class="code-input" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6"', required=True) }}

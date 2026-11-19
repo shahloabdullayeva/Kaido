@@ -52,7 +52,7 @@
           </optgroup>{% endif %}
           {% if not editing %}<option value="outside">+ Outside truck, not in the list</option>{% endif %}
         </select>
-        <em id="truck-summary" class="subtle">Any truck, yours or not.</em>
+        <em id="truck-summary" class="subtle"></em>
       </label>
       <label class="field"><span>Driver name</span>
         <select name="driver_id">
@@ -66,7 +66,7 @@
           </optgroup>{% endif %}
           <option value="outside">+ Outside driver, not in the list</option>
         </select>
-        <em class="subtle">Filled in from the truck. Change it if someone else brought it in.</em>
+        
       </label>
       <fieldset class="outside full" id="outside-truck" hidden>
         <legend>Outside truck</legend>
@@ -181,7 +181,7 @@
   {% if editing %}{% for item in files %}<form method="post" action="/maintenance/{{ order.id }}/files/{{ item.id }}/delete" id="delete-file-{{ item.id }}" data-confirm="Remove {{ item.name }}?" hidden><input type="hidden" name="csrf" value="{{ session.csrf }}"></form>{% endfor %}{% endif %}
 </section>
 <section class="panel" id="oil-panel" hidden>
-  <div class="panel-head"><h2>Which oil</h2><span class="subtle">suggested by Claude from the make, model and engine</span></div>
+  <div class="panel-head"><h2>Which oil</h2></div>
   <div id="oil-body"></div>
 </section>
 <section class="panel" id="shop-panel" hidden{% if editing and order.status != 'done' and not order.vendor %} data-find{% endif %}{% if drive %} data-drive="{{ drive }}"{% endif %}>

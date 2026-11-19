@@ -13,6 +13,7 @@
   </div>
   <div class="actions-row">
     <a class="btn ghost" href="/trips">All trips</a>
+    <a class="btn ghost" href="{{ share_url }}" target="_blank" rel="noopener">Live map</a>
     <a class="btn ghost" href="{{ maps_url }}" target="_blank" rel="noopener">Open in Google Maps</a>
   </div>
 </div>
@@ -41,10 +42,11 @@
 
 <div class="trip-pair">
   <section class="panel">
-    <div class="panel-head"><h2>Map</h2><span class="subtle">Truck, pickup, delivery, fuel stops and rests</span></div>
+    <div class="panel-head"><h2>Map</h2></div>
     <div id="trip-map" data-trip='{{ map_json }}'></div>
     <div class="trip-legend subtle">
-      <span><i class="trip-dot trip-dot-start"></i>Truck now</span>
+      <span><i class="trip-dot trip-dot-live"></i>Truck now</span>
+      <span><i class="trip-dot trip-dot-start"></i>Start</span>
       <span><i class="trip-dot trip-dot-stop"></i>Pickup / delivery</span>
       <span><i class="trip-dot trip-dot-fuel"></i>Fuel stop</span>
       <span><i class="trip-dot trip-dot-rest"></i>Rest</span>

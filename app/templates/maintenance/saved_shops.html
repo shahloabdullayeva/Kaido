@@ -16,14 +16,14 @@
     <div class="form-grid">
       {{ field('Google Maps links', 'links', '', type='textarea', full=True,
                attrs='rows="5" placeholder="https://maps.app.goo.gl/…\nhttps://www.google.com/maps/place/…"',
-               hint='One per line — paste as many as you have. In Google Maps: open the shop, Share, Copy link.') }}
+               hint='') }}
       {{ field('Or a name', 'name', '', attrs='maxlength="160"', hint='For a shop without a link.') }}
       {{ field('and its address', 'address', '', attrs='maxlength="300"') }}
       {{ field('Phone', 'phone', '', type='tel', attrs='maxlength="40"', hint='Only for the name and address entry.') }}
       {{ field('Note', 'note', '', type='textarea', attrs='maxlength="600" rows="2"', hint='Applied to everything in this batch, e.g. "John: good with Cascadias".') }}
     </div>
     <div class="form-actions"><button class="btn" type="submit">Save</button>
-      <span class="muted">{% if google_on %}Reading a link is free — only the place id is asked of Google.{% else %}Links are read without Google; the address comes from OpenStreetMap.{% endif %}</span></div>
+      </div>
   </form>
 </section>
 {% endif %}

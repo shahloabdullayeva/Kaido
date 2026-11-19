@@ -2,6 +2,8 @@ import json
 import math
 import random
 import re
+import secrets
+import threading
 from datetime import datetime, timedelta, timezone
 from html import escape
 from urllib.parse import quote
@@ -9,6 +11,7 @@ from urllib.parse import quote
 import requests
 
 from . import brand_prices, fuel, shops
+from .config import config
 from .db import execute, insert, one, rows
 from .logs import get
 from .telegram import answer, call, edit, send
@@ -67,7 +70,16 @@ def parse_window(text):
     return start, end
 
 
-def parse_load(text):
+def parse_places(text):
+    lines = [line.strip(" -\t") for line in text.splitlines() if line.strip(" -\t")]
+    if len(lines) == 1 and re.search(r"\s+to\s+", lines[0], re.I):
+        lines = [part.strip() for part in re.split(r"\s+to\s+", lines[0], flags=re.I) if part.strip()]
+    lines = [line for line in lines if not re.match(r"^(load|\$)", line, re.I)][:6]
+    return [{"kind": "place", "name": line, "address": line, "window_type": None, "window_start": None, "window_end": None}
+            for line in lines]
+
+
+def parse_load(text, places=False):
     load = {"load_number": None, "rate": None, "stops": []}
     found = re.search(r"load\s*(?:id|#|number|no\.?)?\s*[:#]?\s*([A-Z0-9-]{4,})", text, re.I)
     if found:
@@ -97,7 +109,14 @@ def parse_load(text):
             continue
         if current["address"] is None and re.search(r"\b[A-Z]{2}\s*\d{5}\b|\d", line) and "http" not in line:
             current["address"] = line
+    if places and not load["stops"]:
+        load["stops"] = parse_places(text)
     return load
+
+
+def is_load_post(load):
+    kinds = {stop["kind"] for stop in load["stops"]}
+    return "pickup" in kinds and "delivery" in kinds and all(stop["address"] for stop in load["stops"])
 
 
 def geocode_address(address):
@@ -434,7 +453,7 @@ def rest_spot(stations, mile):
             "spaces": (spot["amenities"] or {}).get("spaces")}
 
 
-def build(company_id, truck, load, user_id=None, text=None):
+def build(company_id, truck, load, user_id=None, text=None, source="web"):
     company = one("select * from companies where id = %s", (company_id,))
     if truck["latitude"] is None:
         raise ValueError("Kaido has no position for this truck yet.")
@@ -490,7 +509,7 @@ def build(company_id, truck, load, user_id=None, text=None):
         stop["wait_hours"] = round(clock.wait_until(opens, position), 2) if opens else 0.0
         stop["arrive"] = clock.when.isoformat()
         stop["late_hours"] = round((clock.when - closes).total_seconds() / 3600, 1) if closes and clock.when > closes else 0.0
-        clock.work(DOCK_HOURS, position)
+        clock.work(DOCK_HOURS if stop["kind"] != "place" else 0, position)
         stop["depart"] = clock.when.isoformat()
     for rest in clock.rests:
         if rest["kind"] in ("rest", "restart"):
@@ -529,14 +548,29 @@ def build(company_id, truck, load, user_id=None, text=None):
              "miles": [round(m, 2) for m in miles[::every]], "leg_ends": [round(m, 1) for m in leg_ends]}
     trip = insert(
         """insert into trips (company_id, truck_id, driver_id, load_number, rate, source_text, stops, route, distance_miles,
-             empty_miles, drive_hours, start_latitude, start_longitude, start_fuel_percent, tank_gallons, mpg, plan, created_by)
-           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
+             empty_miles, drive_hours, start_latitude, start_longitude, start_fuel_percent, tank_gallons, mpg, plan, created_by,
+             share_token, source)
+           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
         (company_id, truck["id"], truck.get("driver_id"), load.get("load_number"), load.get("rate"), text,
          json.dumps(load["stops"]), json.dumps(route), summary["miles"], summary["empty_miles"], summary["drive_hours"],
          start[0], start[1], percent, tank, mpg,
-         json.dumps({"fuel_stops": fuel_stops, "rests": clock.rests, "summary": summary}), user_id),
+         json.dumps({"fuel_stops": fuel_stops, "rests": clock.rests, "summary": summary}), user_id,
+         secrets.token_urlsafe(9), source),
     )
     return trip
+
+
+def share_link(trip):
+    token = trip.get("share_token")
+    if not token:
+        token = secrets.token_urlsafe(9)
+        execute("update trips set share_token = %s where id = %s and share_token is null", (token, trip["id"]))
+        token = one("select share_token from trips where id = %s", (trip["id"],))["share_token"]
+        trip["share_token"] = token
+    return f"{config.APP_URL}/m/{token}"
+
+
+STOP_WORDS = {"pickup": "Pickup", "delivery": "Delivery", "place": "Arrive"}
 
 
 def place_name(item):
@@ -592,7 +626,7 @@ def message(trip, truck):
     lines = [f"{head} · Unit {escape(fuel.unit_label(truck['unit_number']))}",
              f"{escape(city_of(stops[0]))} to {escape(city_of(stops[-1]))} · {summary['miles']:,.0f} mi"]
     for stop in stops:
-        label = "Pickup" if stop["kind"] == "pickup" else "Delivery"
+        label = STOP_WORDS.get(stop["kind"], "Stop")
         late = f" (late {stop['late_hours']:.0f} h)" if stop.get("late_hours") else ""
         lines.append(f"{label} {short_when(stop.get('eta'), stop['longitude'])}{late}")
     percent = float(trip["start_fuel_percent"])
@@ -664,7 +698,8 @@ def send_to_driver(trip_id):
     if summary.get("restart_needed") or summary.get("late"):
         notify_office(trip, truck, "needs a 34 h restart and will be late" if summary.get("restart_needed") else "will be late")
     if not trip["plan"]["fuel_stops"]:
-        return send(truck["telegram_chat_id"], f"Unit {escape(fuel.unit_label(truck['unit_number']))}: no fuel stop needed on this load.")
+        return send(truck["telegram_chat_id"], f"Unit {escape(fuel.unit_label(truck['unit_number']))}: no fuel stop needed. "
+                                               f"<a href=\"{share_link(trip)}\">Trip map</a>")
     points, miles = route_of(trip)
     mile = locate(points, miles, float(truck["latitude"]), float(truck["longitude"]))[0] if truck["latitude"] is not None else 0.0
     ok = send_next(trip, truck, mile)
@@ -826,7 +861,8 @@ def next_stop_message(trip, truck, stop, mile, hos, why):
         lines.append(escape(why))
     lines.append(f"<b>{escape(stop['name'])}</b>")
     where = stop_address(stop)
-    lines.append((escape(where) + " · " if where else "") + f"<a href=\"{fuel.maps_link(stop)}\">Map</a>")
+    lines.append((escape(where) + " · " if where else "") + f"<a href=\"{fuel.maps_link(stop)}\">Map</a>"
+                 + f" · <a href=\"{share_link(trip)}\">Trip map</a>")
     facts = [f"{miles_to:,.0f} mi ahead"]
     if truck.get("fuel_percent") is not None:
         arrive = float(truck["fuel_percent"]) - miles_to / float(trip["mpg"]) / tank * 100
@@ -960,3 +996,50 @@ def stop_callback(query, parts, trip, truck, chat_id, message_id, who):
         send(chat_id, f"{who} skipped {escape(stop['name'])}. Kaido found no other priced stop in range, fuel at the next big truck stop.")
     notify_office(trip, truck, f"skipped fuel at {stop['name']}")
     return True
+
+
+GROUP_REPEAT_DAYS = 3
+
+
+def from_group_post(chat_id, message):
+    text = (message.get("text") or message.get("caption") or "").strip()
+    if len(text) < 20:
+        return None
+    load = parse_load(text[:8000])
+    if not is_load_post(load):
+        return None
+    from .pti_driver import group_trucks
+    linked = group_trucks(chat_id)
+    if len(linked) != 1:
+        return None
+    truck = load_truck(linked[0]["id"])
+    company = one("select trips_from_group from companies where id = %s", (truck["company_id"],))
+    if not company or not company["trips_from_group"] or truck["latitude"] is None:
+        return None
+    if load["load_number"] and one(
+        """select id from trips where truck_id = %s and load_number = %s and status <> 'cancelled'
+             and created_at > now() - make_interval(days => %s)""",
+        (truck["id"], load["load_number"], GROUP_REPEAT_DAYS),
+    ):
+        return None
+    threading.Thread(target=plan_from_group, args=(truck, load, text[:8000]), daemon=True).start()
+    return True
+
+
+def plan_from_group(truck, load, text):
+    try:
+        trip = build(truck["company_id"], truck, load, None, text, source="group")
+    except (ValueError, requests.RequestException) as err:
+        log.warning("group load for truck %s not planned: %s", truck["id"], err)
+        notify_office({"load_number": load.get("load_number"), "company_id": truck["company_id"]}, truck,
+                      f"load post could not be planned ({err})")
+        return
+    except Exception:
+        log.exception("group load for truck %s failed", truck["id"])
+        return
+    execute(
+        """update trips set status = 'cancelled', answer_note = %s, updated_at = now()
+           where truck_id = %s and id <> %s and status in ('draft', 'sent', 'accepted')""",
+        (f"Replaced by trip {trip['id']}", truck["id"], trip["id"]),
+    )
+    send_to_driver(trip["id"])

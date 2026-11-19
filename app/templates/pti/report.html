@@ -41,7 +41,6 @@
   {% if at_least(role, 'admin') %}
   <form method="post" action="/pti/report/{{ item.id }}/review">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
-    <p class="muted">{{ 'Change the decision if needed.' if item.review_status else 'Look at the photos and the AI check below, then approve it, or reject it and the driver is asked to do it again.' }}</p>
     <div class="form-grid"><label class="field full"><span>Note <span class="req">*</span> <em>needed to reject — the driver sees it</em></span><input name="review_note" maxlength="1000" placeholder="e.g. Photos show a keyboard, not the truck"></label></div>
     <div class="form-actions">
       <button class="btn" type="submit" name="decision" value="approved">Approve</button>
@@ -105,7 +104,6 @@
         <td>{{ finding.note }}</td></tr>
     {% endfor %}</tbody>
   </table></div>
-  <p class="subtle pad">AI can be wrong.</p>
   {% elif item.ai_status == 'over_budget' %}<p class="empty">Today's AI spending cap is used up. Try again tomorrow.</p>
   {% elif item.ai_status == 'failed' %}<p class="empty">The AI check could not run on these photos.</p>
   {% elif item.ai_status in ('no_photos', 'no_key') %}<p class="empty">No photos to check.</p>

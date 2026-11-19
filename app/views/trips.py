@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 
 import requests
-from flask import Blueprint, flash, g, redirect, render_template, request
+from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template, request
 
 from .. import forms, fuel, trips
 from ..audit import audit
@@ -49,10 +49,9 @@ def company_trip(trip_id):
 
 
 def plan_trip(truck, text):
-    load = trips.parse_load(text)
+    load = trips.parse_load(text, places=True)
     if not load["stops"]:
-        raise ValueError("Kaido could not find a pickup or delivery in that text. Each stop needs a line like "
-                         "\"PU1: name\" or \"DEL1: name\" followed by the address.")
+        raise ValueError("No load or place found.")
     return trips.build(g.company["id"], truck, load, g.session["user_id"], text)
 
 
@@ -92,7 +91,7 @@ def create():
     text = (request.form.get("load") or "").strip()
     if request.form.get("truck_id") in ("random", "nearest"):
         truck = trips.random_active_truck(g.company["id"]) if request.form.get("truck_id") == "random" \
-            else trips.nearest_active_truck(g.company["id"], trips.parse_load(text))
+            else trips.nearest_active_truck(g.company["id"], trips.parse_load(text, places=True))
         if not truck:
             flash("No truck with a driver is live on Samsara in the last hour.", "bad")
             return render_template("trips/new.html", title="Plan a trip", active="/trips", trucks=company_trucks(),
@@ -100,7 +99,7 @@ def create():
     else:
         truck = company_truck(forms.integer(request.form.get("truck_id")))
     if not text or not truck:
-        flash("Paste the load and pick a truck.", "bad")
+        flash("Pick a truck and enter a load or place.", "bad")
         return render_template("trips/new.html", title="Plan a trip", active="/trips", trucks=company_trucks(),
                                truck_id=truck["id"] if truck else None, text=text)
     try:
@@ -155,27 +154,55 @@ def timeline(trip):
         state = f"LATE by about {late:.0f} h" if late else "on time"
         extra = state + (f", wait {stop['wait_hours']:.1f} h for the window" if stop.get("wait_hours") else "")
         entries.append({"mile": leg_ends[index] if index < len(leg_ends) else None, "kind": stop["kind"],
-                        "title": ("Pickup: " if stop["kind"] == "pickup" else "Delivery: ") + (stop.get("name") or ""),
+                        "title": trips.STOP_WORDS.get(stop["kind"], "Stop") + ": " + (stop.get("name") or ""),
                         "detail": (stop.get("address") or "") + (f" · {window}" if window else ""), "extra": extra,
                         "when": trips.when_text(stop.get("eta"), stop["longitude"]), "tone": "bad" if late else "ok"})
-    entries.sort(key=lambda e: (e["mile"] if e["mile"] is not None else 1e9, e["kind"] in ("pickup", "delivery")))
+    entries.sort(key=lambda e: (e["mile"] if e["mile"] is not None else 1e9, e["kind"] in ("pickup", "delivery", "place")))
     return entries
 
 
-def map_data(trip):
+def short_time(iso, longitude):
+    return trips.short_when(iso, longitude) if iso else ""
+
+
+def map_data(trip, live_url=""):
     plan = trip["plan"] or {}
     return json.dumps({
         "route": (trip["route"] or {}).get("points") or [],
         "start": [float(trip["start_latitude"]), float(trip["start_longitude"])],
+        "live": live_url,
         "stops": [{"lat": s["latitude"], "lon": s["longitude"], "kind": s["kind"], "name": s.get("name") or "",
-                   "address": s.get("address") or ""} for s in trip["stops"] or []],
+                   "address": s.get("address") or "", "when": short_time(s.get("eta"), s["longitude"]),
+                   "late": s.get("late_hours") or 0} for s in trip["stops"] or []],
         "fuel": [{"lat": s["latitude"], "lon": s["longitude"], "name": trips.place_name(s), "gallons": s["gallons"],
-                  "price": s["price"], "estimated": s["source"] == "website", "mile": s["mile"]}
+                  "price": s["price"], "estimated": s["source"] == "website", "mile": s["mile"],
+                  "when": short_time(s.get("eta"), s["longitude"])}
                  for s in plan.get("fuel_stops") or []],
         "rests": [{"lat": r["latitude"], "lon": r["longitude"], "kind": REST_LABELS.get(r["kind"], r["kind"]),
-                   "mile": r["mile"], "where": trips.place_name(r["spot"]) if r.get("spot") else ""}
+                   "mile": r["mile"], "where": trips.place_name(r["spot"]) if r.get("spot") else "",
+                   "when": short_time(r.get("start"), r["longitude"])}
                   for r in plan.get("rests") or [] if r["kind"] in ("rest", "restart")],
     })
+
+
+def live_position(trip):
+    truck = one(TRUCK_SQL + " where t.id = %s", (trip["truck_id"],))
+    if not truck or truck["latitude"] is None:
+        return {}
+    state = ((trip["plan"] or {}).get("live") or {})
+    stops = (trip["plan"] or {}).get("fuel_stops") or []
+    current = state.get("current", 0)
+    points, miles = trips.route_of(trip)
+    mile, off = trips.locate(points, miles, float(truck["latitude"]), float(truck["longitude"]))
+    return {
+        "lat": float(truck["latitude"]), "lon": float(truck["longitude"]),
+        "at": truck["located_at"].isoformat() if truck["located_at"] else None,
+        "ago": trips.short_when(truck["located_at"].isoformat(), truck["longitude"]) if truck["located_at"] else "",
+        "tank": float(truck["fuel_percent"]) if truck.get("fuel_percent") is not None else None,
+        "mile": round(mile), "off_route": off > trips.OFF_ROUTE_MILES,
+        "left": max(0, round(float(trip["distance_miles"]) - mile)),
+        "next_fuel": current if current < len(stops) else None,
+    }
 
 
 @bp.get("/trips/<int:trip_id>")
@@ -193,11 +220,60 @@ def show(trip_id):
         per_mile = summary["burn_gallons"] * summary["average_price"] / summary["miles"]
     return render_template(
         "trips/show.html", title=f"Trip {trip['load_number'] or trip['id']}", active="/trips", trip=trip, truck=truck,
-        summary=summary, plan=trip["plan"] or {}, entries=timeline(trip), map_json=map_data(trip),
+        summary=summary, plan=trip["plan"] or {}, entries=timeline(trip),
+        map_json=map_data(trip, f"/trips/{trip_id}/live.json"), share_url=trips.share_link(trip),
         preview=trips.message(trip, truck), maps_url=trips.maps_route(trip), per_mile=per_mile,
         unit=fuel.unit_label(trip["unit_number"]), who=fuel.person(trip["driver_name"]) if trip["driver_name"] else None,
         tones=STATUS_TONES,
     )
+
+
+@bp.get("/trips/<int:trip_id>/live.json")
+@login_required
+@company_required
+def live(trip_id):
+    trip = company_trip(trip_id)
+    if not trip:
+        abort(404)
+    return jsonify(live_position(trip))
+
+
+def shared_trip(token):
+    if not token or len(token) > 40:
+        return None
+    trip = one(
+        """select tr.*, t.unit_number from trips tr join trucks t on t.id = tr.truck_id
+           where tr.share_token = %s and (tr.status in ('draft', 'sent', 'accepted')
+             or tr.updated_at > now() - interval '2 days')""",
+        (token,),
+    )
+    return trip
+
+
+@bp.get("/m/<token>")
+def public_map(token):
+    trip = shared_trip(token)
+    if not trip:
+        return render_template("trips/live_gone.html", title="Trip map"), 404
+    plan = trip["plan"] or {}
+    stops = trip["stops"] or []
+    fuel_rows = [{"number": i, "name": trips.place_name(s), "gallons": s["gallons"],
+                  "when": short_time(s.get("eta"), s["longitude"]), "link": fuel.maps_link(s)}
+                 for i, s in enumerate(plan.get("fuel_stops") or [], 1)]
+    return render_template(
+        "trips/live.html", title=f"Unit {fuel.unit_label(trip['unit_number'])}", trip=trip,
+        unit=fuel.unit_label(trip["unit_number"]), fuel_rows=fuel_rows,
+        route_text=f"{city_of(stops[0])} to {city_of(stops[-1])}" if stops else "",
+        map_json=map_data(trip, f"/m/{token}.json"),
+    )
+
+
+@bp.get("/m/<token>.json")
+def public_live(token):
+    trip = shared_trip(token)
+    if not trip:
+        abort(404)
+    return jsonify(live_position(trip))
 
 
 @bp.post("/trips/<int:trip_id>/send")
