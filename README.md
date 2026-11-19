@@ -371,7 +371,11 @@ and sent to the company admins on Telegram (never to the driver), with a link to
   just before (with 15% + 15 gal of slack).
 - **Two fills close together**: two diesel purchases for one truck under 2 hours apart.
 - **Tank dropped while parked**: Samsara's tank fell 12+ points (25+ gal) within an hour while the
-  truck stood still and did not come back up: a siphon or a leak.
+  truck stood still, and the fuel is still missing once the truck runs on. Kaido waits 45 minutes to
+  3 hours (or until the next fill), works out where the gauge should be after the miles driven
+  (truck mpg, 6.5 if unknown), and alerts only if 10+ points and 20+ gal are still missing. A gauge
+  that stays frozen over 50+ miles of driving is treated as a faulty sensor, not theft. Gauges often
+  read low after a cold start or a fill (the two tanks evening out through the crossover line).
 
 EFS times carry no time zone, so a purchase is matched to the truck's track across UTC, Central
 and the station's own zone, one hour either side. Tank and location checks need the truck's

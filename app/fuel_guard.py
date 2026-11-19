@@ -19,6 +19,16 @@ OVER_SPACE = 1.15
 DOUBLE_HOURS = 2
 DROP_POINTS = 12
 DROP_GALLONS = 25
+MISSING_POINTS = 10
+MISSING_GALLONS = 20
+CONFIRM_MINUTES = 45
+CONFIRM_READINGS = 3
+CONFIRM_WINDOW_MINUTES = 180
+FILL_JUMP = 10
+STUCK_MILES = 50
+STUCK_POINTS = 2
+ROAD_FACTOR = 1.15
+DEFAULT_MPG = 6.5
 DROP_GAP_MINUTES = 60
 PARKED_MPH = 3
 NOTIFY_DAYS = 3
@@ -125,14 +135,49 @@ def check_transaction(entry):
     return saved
 
 
+def driven_miles(points):
+    return sum(fuel.haversine(a["latitude"], a["longitude"], b["latitude"], b["longitude"])
+               for a, b in zip(points, points[1:])) * ROAD_FACTOR
+
+
+def drop_verdict(before, after, rest, tank, mpg):
+    following = [after]
+    filled = False
+    for point in rest:
+        if (point["recorded_at"] - after["recorded_at"]).total_seconds() / 60 > CONFIRM_WINDOW_MINUTES:
+            break
+        if float(point["fuel_percent"]) - float(following[-1]["fuel_percent"]) >= FILL_JUMP:
+            filled = True
+            break
+        following.append(point)
+    span = (following[-1]["recorded_at"] - after["recorded_at"]).total_seconds() / 60
+    window_over = rest and (rest[-1]["recorded_at"] - after["recorded_at"]).total_seconds() / 60 >= CONFIRM_WINDOW_MINUTES
+    if filled:
+        if len(following) < 2:
+            return None
+    elif len(following) < CONFIRM_READINGS or (span < CONFIRM_MINUTES and not window_over):
+        return None
+    miles = driven_miles([before] + following)
+    levels = [float(p["fuel_percent"]) for p in following]
+    if miles >= STUCK_MILES and max(levels) - min(levels) <= STUCK_POINTS:
+        return {"verdict": "sensor", "miles": round(miles)}
+    expected = float(before["fuel_percent"]) - miles / mpg / tank * 100
+    observed = sorted(levels[-3:])[len(levels[-3:]) // 2]
+    missing = expected - observed
+    return {"verdict": "missing" if missing >= MISSING_POINTS and missing / 100 * tank >= MISSING_GALLONS else "recovered",
+            "missing": round(missing, 1), "gallons": round(missing / 100 * tank), "miles": round(miles),
+            "expected": round(expected, 1), "observed": observed}
+
+
 def check_drops():
     saved = []
     trucks = rows("""select id, company_id, driver_id, tank_gallons from trucks
                      where fuel_percent_at > now() - interval '3 hours'""")
     for truck in trucks:
         now = datetime.now(timezone.utc)
-        points = [p for p in track(truck["id"], now - timedelta(hours=6), now) if p["fuel_percent"] is not None]
+        points = [p for p in track(truck["id"], now - timedelta(hours=8), now) if p["fuel_percent"] is not None]
         tank = float(truck["tank_gallons"] or 200)
+        mpg = fuel.truck_mpg(truck["id"]) or DEFAULT_MPG
         for index in range(1, len(points)):
             before, after = points[index - 1], points[index]
             gap = (after["recorded_at"] - before["recorded_at"]).total_seconds() / 60
@@ -141,15 +186,15 @@ def check_drops():
             moved = fuel.haversine(before["latitude"], before["longitude"], after["latitude"], after["longitude"])
             if gap > DROP_GAP_MINUTES or not parked or moved > 0.5 or drop < DROP_POINTS or drop / 100 * tank < DROP_GALLONS:
                 continue
-            later = points[index + 1] if index + 1 < len(points) else None
-            if later and float(later["fuel_percent"]) >= float(before["fuel_percent"]) - 3:
+            verdict = drop_verdict(before, after, points[index + 1:], tank, mpg)
+            if not verdict or verdict["verdict"] != "missing":
                 continue
-            gallons = drop / 100 * tank
             alert = record({"company_id": truck["company_id"], "truck_id": truck["id"], "driver_id": truck["driver_id"]},
                            "tank_drop", after["recorded_at"],
-                           f"Tank fell {before['fuel_percent']:.0f}% to {after['fuel_percent']:.0f}% (about {gallons:.0f} gal) "
-                           f"in {gap:.0f} min while parked",
-                           {"from": float(before["fuel_percent"]), "to": float(after["fuel_percent"]), "gallons": round(gallons),
+                           f"Tank fell {before['fuel_percent']:.0f}% to {after['fuel_percent']:.0f}% in {gap:.0f} min while parked; "
+                           f"about {verdict['gallons']} gal still missing after {verdict['miles']} mi",
+                           {"from": float(before["fuel_percent"]), "to": float(after["fuel_percent"]), "gallons": verdict["gallons"],
+                            "missing_points": verdict["missing"], "miles_after": verdict["miles"],
                             "latitude": float(after["latitude"]), "longitude": float(after["longitude"])}, "high")
             if alert:
                 saved.append(alert)
