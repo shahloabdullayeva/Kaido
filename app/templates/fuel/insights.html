@@ -104,7 +104,7 @@
   <section class="panel">
     <div class="panel-head"><h2>Where the fleet fuels</h2></div>
     {% if pins %}<div id="fuel-map" data-stations='{{ pins|json_attr }}'></div>
-    {% else %}<p class="empty">Stations appear here once purchases are matched to a location.</p>{% endif %}
+    {% else %}<p class="empty">No stations yet.</p>{% endif %}
   </section>
 </div>
 {% endblock %}

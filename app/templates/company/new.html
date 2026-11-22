@@ -17,8 +17,7 @@
       {{ field('Contact phone', 'contact_phone', '', type='tel', attrs='maxlength="40"') }}
       {{ field('Contact email', 'contact_email', '', type='email', attrs='maxlength="200"') }}
       <label class="field"><span>Timezone</span>
-        <select name="timezone">{% for value, label in timezones %}<option value="{{ value }}" {% if value == 'America/Chicago' %}selected{% endif %}>{{ label }} ({{ value }})</option>{% endfor %}</select>
-        <em>The daily follow-up and reminders use this time.</em></label>
+        <select name="timezone">{% for value, label in timezones %}<option value="{{ value }}" {% if value == 'America/Chicago' %}selected{% endif %}>{{ label }} ({{ value }})</option>{% endfor %}</select></label>
     </div>
     <div class="form-actions"><button class="btn" type="submit">Add company</button></div>
   </form>

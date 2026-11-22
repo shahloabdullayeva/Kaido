@@ -4,16 +4,16 @@
   <button type="button" class="btn" data-shop-search>Look here</button>
   {% if origin and origin.source != 'samsara' and truck.latitude is not none %}<button type="button" class="btn ghost" data-shop-samsara>Back to where Samsara has {{ truck.unit_number }}</button>{% endif %}
 </div>
-{% if drive %}<p class="shop-drive">{% if drive == 'no' %}<strong>Truck cannot drive</strong> — towing and road service first, then shops to tow it to.{% else %}<strong>Truck can drive</strong> — repair shops only, towing hidden.{% endif %}
+{% if drive %}<p class="shop-drive">{% if drive == 'no' %}<strong>Truck cannot drive</strong>{% else %}<strong>Truck can drive</strong>{% endif %}
   <button type="button" class="btn ghost small" data-shop-drive="{{ 'yes' if drive == 'no' else 'no' }}">{{ 'It can drive after all' if drive == 'no' else 'It cannot drive — show towing' }}</button></p>{% endif %}
 <p class="subtle shop-origin">
   {%- if origin and origin.source == 'samsara' %}
   <strong>{{ truck.unit_number }}</strong> is at {{ origin.label }}{% if origin.at %}, reported {{ origin.at|ago }}{% endif %}.
-  Local time there is about {{ meta.local_time.strftime('%H:%M') if meta else '—' }}. Type an address above to look somewhere else.
+  Local time there is about {{ meta.local_time.strftime('%H:%M') if meta else '—' }}.
   {%- elif origin and origin.source == 'typed' %}
-  Looking around <strong>{{ origin.label }}</strong>. Click the map to move the search. Saving the work order remembers this place.
+  Looking around <strong>{{ origin.label }}</strong>.
   {%- elif origin %}
-  Looking around the spot you picked on the map. Saving the work order remembers this place.
+  Looking around the spot you picked on the map.
   {%- elif problem %}
   Type an address, a city and state, a truck stop, or paste a Google Maps link.
   {%- else %}
@@ -69,7 +69,7 @@
   {% endfor %}
 </ol>
 <p class="subtle" id="shop-foot" data-ai="{{ 'paused' if ai_paused else ('on' if ai_on else 'off') }}">Shops from {{ 'Google Maps' if meta and meta.source == 'google' else 'OpenStreetMap' }}{% if meta and meta.cached %}, cached{% endif %}.
-  {% if saved_count %}<a href="/maintenance/saved-shops">{{ saved_count }} saved shop{{ 's' if saved_count != 1 }}</a> come first when nearby.{% else %}<a href="/maintenance/saved-shops">Save shops</a> to have them listed first.{% endif %}
+  {% if saved_count %}<a href="/maintenance/saved-shops">{{ saved_count }} saved shop{{ 's' if saved_count != 1 }}</a> come first when nearby.{% endif %}
   {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
   {% if ai_on and not ai_paused and found %}<button type="button" class="btn small" data-shop-ai>Ask Claude which shop</button>{% endif %}
   <span id="shop-ai-state">{% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.{% elif ai_paused %}AI notes are paused — today's budget is spent. They come back tomorrow.{% endif %}</span></p>

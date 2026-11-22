@@ -15,15 +15,13 @@
 </div>
 
 <section class="panel map-first">
-  <div class="panel-head"><h2>Where the trucks are</h2>
-    <span class="subtle">{{ pins|length }} of {{ fleet_size }} reporting a position</span></div>
+  <div class="panel-head"><span class="subtle">{{ pins|length }} of {{ fleet_size }} reporting a position</span></div>
   {% if pins %}
   <div id="fleet-map" data-trucks='{{ pins|json_attr }}'></div>
   <p class="subtle map-legend">
     <span class="dot bad"></span> breakdown or overdue service
     <span class="dot warn"></span> fault or due soon
     <span class="dot ok"></span> nothing outstanding
-    — positions come from Samsara on the 15-minute sync. Click a truck for its driver.
   </p>
   {% else %}
   <p class="empty">No truck has reported a position yet.</p>
@@ -119,7 +117,7 @@
       </tbody>
     </table></div>
     {% else %}
-    <p class="empty">No active fault codes.{% if not summary.faults_active %} Connect Samsara to see engine faults here.{% endif %}</p>
+    <p class="empty">No active fault codes.</p>
     {% endif %}
   </section>
 

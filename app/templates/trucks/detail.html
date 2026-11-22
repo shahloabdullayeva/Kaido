@@ -42,8 +42,7 @@
     <div class="fuel-gauge" role="img" aria-label="Tank {{ truck.fuel_percent|number }} percent"><span style="width: {{ [[truck.fuel_percent, 0]|max, 100]|min }}%"></span></div>
     <div class="stat-hint">~{{ tank.gallons|number }} of {{ truck.tank_gallons }} gal · ~{{ tank.range|number }} mi range · {{ truck.fuel_percent_at|ago }}</div>
     {% else %}<div class="stat-value">—</div><div class="stat-hint">{{ truck.tank_gallons }} gal tank · level not reported by telematics</div>{% endif %}</div>
-  {% if mpg %}<div class="stat"><div class="stat-label">MPG from fill-ups</div><div class="stat-value">{{ mpg|number(1) }}</div>
-    <div class="stat-hint">last 60 days of diesel and odometer</div></div>{% endif %}
+  {% if mpg %}<div class="stat"><div class="stat-label">MPG from fill-ups</div><div class="stat-value">{{ mpg|number(1) }}</div></div>{% endif %}
   {% if economy %}
   <div class="stat"><div class="stat-label">Fuel economy</div><div class="stat-value">{{ economy.latest|number(1) }}</div>
     <div class="stat-hint">recent MPG · {{ economy.average|number(1) }} average</div></div>

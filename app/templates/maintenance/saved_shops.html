@@ -4,8 +4,7 @@
 {% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script><script src="/static/saved_map.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Saved shops</h1>
-    <p>Shops {{ company.name }} trusts. Whenever a work order looks for somewhere to send a truck, any of these within 100 miles is listed first, marked saved, and Claude is told to prefer them.</p></div>
+  <div><h1>Saved shops</h1></div>
   <a class="btn ghost" href="/maintenance">Back</a>
 </div>
 {% if at_least(role, 'admin') %}
@@ -29,9 +28,9 @@
 {% endif %}
 {% if shops %}
 <section class="panel">
-  <div class="panel-head"><h2>Map</h2><span class="subtle">{{ shops|length }} saved shops · {{ truck_pins|length }} trucks where Samsara last saw them</span></div>
+  <div class="panel-head"><h2>Map</h2><span class="subtle">{{ shops|length }} saved shops · {{ truck_pins|length }} trucks</span></div>
   <div id="saved-map" data-shops='{{ pins|json_attr }}' data-trucks='{{ truck_pins|json_attr }}'></div>
-  <p class="map-legend subtle"><span class="dot saved"></span> saved shop <span class="dot truck"></span> truck — click a shop for its note and Google Maps</p>
+  <p class="map-legend subtle"><span class="dot saved"></span> saved shop <span class="dot truck"></span> truck</p>
 </section>
 {% endif %}
 <section class="panel">

@@ -44,7 +44,6 @@
   {% if invoice.status == 'paid' %}
   <p class="invoice-paid">Paid on {{ invoice.paid_at|day }}{% if owner and invoice.paid_note %} · {{ invoice.paid_note }}{% endif %}</p>
   {% endif %}
-  <p class="subtle">Trucks are counted on the day the invoice is issued. Sold trucks and trucks from outside the fleet are not counted.</p>
 </section>
 
 {% if owner %}

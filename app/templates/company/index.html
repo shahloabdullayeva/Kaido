@@ -23,7 +23,7 @@
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Daily follow-up</h2><span class="subtle">one Telegram message a day to everyone here with Telegram linked</span></div>
+  <div class="panel-head"><h2>Daily follow-up</h2></div>
   <form method="post" action="/company/followup">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <div class="form-grid">
@@ -41,7 +41,7 @@
 </section>
 
 <section class="panel">
-  <div class="panel-head"><h2>Truck Telegram groups</h2><span class="subtle">each truck's group gets only its own PTI reminders</span></div>
+  <div class="panel-head"><h2>Truck Telegram groups</h2></div>
   <div class="pad">
     <p>To connect a truck's group: add <span class="mono">@kaidofleet_bot</span> to it, then send the <span class="mono">/truck</span> line shown on that truck's page. The driver then sends <span class="mono">/unit</span> once so reminders tag them.</p>
   </div>
