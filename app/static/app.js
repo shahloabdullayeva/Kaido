@@ -123,3 +123,8 @@ if (whoMenu) {
     if (event.key === 'Escape') whoMenu.open = false;
   });
 }
+
+document.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-confirm-click]');
+  if (button && !window.confirm(button.dataset.confirmClick)) event.preventDefault();
+});

@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block body %}
+{% set fleet_tab = 'trailers' %}{% include "_fleet_tabs.html" %}
+<div class="page-head">
+  <div><h1>Trailers</h1></div>
+  {% if at_least(role, 'admin') %}<a class="btn" href="/trailers/new">Add trailer</a>{% endif %}
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/trailers" class="filters" data-autosubmit>
+      <label class="field"><span>Status</span>
+        <select name="status">
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+          {% for key, text in statuses.items() %}<option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ text }}</option>{% endfor %}
+        </select>
+      </label>
+    </form>
+    <span class="subtle">{{ trailers|length }}</span>
+  </div>
+  {% if trailers %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Trailer</th><th>Type</th><th>Plate</th><th>With truck</th><th>Where</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for r in trailers %}
+      <tr class="clickrow" data-href="/trailers/{{ r.id }}">
+        <td><a class="rowlink" href="/trailers/{{ r.id }}">{{ r.unit_number }}</a><div class="subtle">{{ r.year or '' }} {{ r.make or '' }}{% if r.length_ft %} · {{ r.length_ft }} ft{% endif %}</div></td>
+        <td>{{ kinds.get(r.kind, r.kind) }}</td>
+        <td class="mono">{{ r.plate or '' }}{% if r.plate_state %} · {{ r.plate_state }}{% endif %}</td>
+        <td>{% if r.truck_id %}<a href="/trucks/{{ r.truck_id }}">{{ r.truck_unit }}</a>{% else %}—{% endif %}</td>
+        <td>{{ r.truck_location or '' }}</td>
+        <td><span class="badge {{ 'ok' if r.status == 'active' else ('bad' if r.status == 'out_of_service' else 'muted') }}">{{ statuses.get(r.status, r.status) }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No trailers yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

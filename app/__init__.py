@@ -143,10 +143,11 @@ def create_app():
     from .views.billing import bp as billing_bp
     from .views.site import bp as site_bp
     from .views.alerts import bp as alerts_bp
+    from .views.trailers import bp as trailers_bp
 
     for blueprint in (auth_bp, dashboard_bp, trucks_bp, drivers_bp, fuel_bp, trips_bp, learn_bp,
                       maintenance_bp, breakdowns_bp, faults_bp, integrations_bp,
-                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp, cat_bp, billing_bp, site_bp, alerts_bp):
+                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp, cat_bp, billing_bp, site_bp, alerts_bp, trailers_bp):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(404)

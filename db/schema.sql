@@ -1265,3 +1265,28 @@ create table if not exists mpg_checks (
   base_miles numeric,
   primary key (truck_id, day)
 );
+
+create table if not exists trailers (
+  id serial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  unit_number text not null,
+  kind text not null default 'dry_van',
+  vin text,
+  plate text,
+  plate_state text,
+  year int,
+  make text,
+  length_ft int,
+  status text not null default 'active',
+  truck_id int references trucks(id) on delete set null,
+  external_id text,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  located_at timestamptz,
+  location text,
+  annual_inspection_on date,
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (company_id, unit_number)
+);

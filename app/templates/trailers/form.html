@@ -1,0 +1,41 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+{% set fleet_tab = 'trailers' %}{% include "_fleet_tabs.html" %}
+<div class="page-head">
+  <div><h1>{{ 'Trailer ' ~ trailer.unit_number if mode == 'edit' else 'Add trailer' }}</h1>
+    {% if trailer.truck_id %}<p>With <a href="/trucks/{{ trailer.truck_id }}">Unit {{ trailer.truck_unit }}</a>{% if trailer.truck_location %} · {{ trailer.truck_location }}{% endif %}</p>{% endif %}</div>
+  <a class="btn ghost" href="/trailers">Back</a>
+</div>
+<section class="panel">
+  <form method="post" action="{{ '/trailers/' ~ trailer.id if mode == 'edit' else '/trailers' }}">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      {{ field('Trailer number', 'unit_number', trailer.unit_number or '', required=True, attrs='maxlength="40"') }}
+      <label class="field"><span>Type</span><select name="kind">
+        {% for key, text in kinds.items() %}<option value="{{ key }}" {% if trailer.kind == key %}selected{% endif %}>{{ text }}</option>{% endfor %}
+      </select></label>
+      {{ field('VIN', 'vin', trailer.vin or '', attrs='maxlength="17"') }}
+      {{ field('Plate', 'plate', trailer.plate or '', attrs='maxlength="20"') }}
+      {{ field('Plate state', 'plate_state', trailer.plate_state or '', attrs='maxlength="4"') }}
+      {{ field('Year', 'year', trailer.year or '', type='number') }}
+      {{ field('Make', 'make', trailer.make or '', attrs='maxlength="60"') }}
+      {{ field('Length (ft)', 'length_ft', trailer.length_ft or '', type='number') }}
+      <label class="field"><span>With truck</span><select name="truck_id">
+        <option value="">None</option>
+        {% for t in trucks %}<option value="{{ t.id }}" {% if trailer.truck_id == t.id %}selected{% endif %}>{{ t.unit_number }}</option>{% endfor %}
+      </select></label>
+      <label class="field"><span>Status</span><select name="status">
+        {% for key, text in statuses.items() %}<option value="{{ key }}" {% if (trailer.status or 'active') == key %}selected{% endif %}>{{ text }}</option>{% endfor %}
+      </select></label>
+      {{ field('Notes', 'notes', trailer.notes or '', type='textarea', full=True) }}
+    </div>
+    {% if at_least(role, 'admin') %}
+    <div class="form-actions">
+      <button class="btn" type="submit">{{ 'Save' if mode == 'edit' else 'Add trailer' }}</button>
+      {% if mode == 'edit' %}<button class="btn ghost danger" name="delete" value="1" type="submit" data-confirm-click="Delete this trailer?">Delete</button>{% endif %}
+    </div>
+    {% endif %}
+  </form>
+</section>
+{% endblock %}

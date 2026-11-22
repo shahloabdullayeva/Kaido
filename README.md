@@ -560,6 +560,8 @@ speeding only under the Speeding filter).
 **Alerts** page (`/alerts`, top menu): every health, hours, service, MPG, check engine, safety and fuel-check alert in
 one list, filtered by type, status and period (all by default).
 
+**Trailers** (Trucks → Trailers): number, type, VIN, plate, year, make, length, status, and the truck it is with. Samsara has no trailers on either account, so they are entered by hand.
+
 **Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
 companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a
 Telegram group and a tank reading under 90 minutes old):
