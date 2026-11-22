@@ -16,7 +16,7 @@
     {% for a in alerts %}
       <tr class="clickrow" data-href="/trucks/{{ a.truck_id }}">
         <td><a class="rowlink" href="/trucks/{{ a.truck_id }}">{{ a.unit_number }}</a></td>
-        <td>{{ alert_titles.get(a.kind, a.kind) }}</td>
+        <td>{{ alert_titles(a.kind) }}</td>
         <td>{{ a.detail }}</td>
         <td>{{ a.opened_at|ago }}</td>
         <td><span class="badge {{ 'muted' if a.cleared_at else 'warn' }}">{{ 'cleared' if a.cleared_at else 'open' }}</span></td>

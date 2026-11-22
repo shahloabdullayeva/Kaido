@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, timezone
 from html import escape
 
@@ -31,7 +32,19 @@ SILENT_HOURS = 6
 SILENT_MAX_HOURS = 48
 REOPEN_HOURS = 6
 FAULT_NEW_DAYS = 30
-OFFICE_ONLY = {"idling", "not_reporting"}
+OFFICE_ONLY = {"idling", "not_reporting", "service_soon", "service_over", "mpg_drop"}
+REOPEN = {"mpg_drop": 24 * 7, "service_soon": 24 * 30, "service_over": 24 * 30}
+HOUR_MS = 3_600_000
+HOS_FRESH_MINUTES = 40
+HOS_WORKING = ("DS_D", "DS_ON")
+MPG_RECENT_DAYS = 7
+MPG_BASE_DAYS = 28
+MPG_RECENT_MILES = 800
+MPG_BASE_MILES = 2000
+MPG_DROP = 0.12
+MPG_OK = 0.06
+ML_PER_GALLON = 3785.41
+M_PER_MILE = 1609.344
 
 TITLES = {
     "battery_low": "Battery low",
@@ -42,7 +55,23 @@ TITLES = {
     "idling": "Idling",
     "not_reporting": "Not reporting",
     "check_engine": "Check engine",
+    "hos_drive": "Driving hours almost out",
+    "hos_shift": "14-hour shift almost out",
+    "hos_break": "30-minute break due",
+    "hos_cycle": "70-hour cycle almost out",
+    "hos_violation": "Hours violation",
+    "service_soon": "Service due soon",
+    "service_over": "Service overdue",
+    "mpg_drop": "MPG dropped",
 }
+
+
+def base_kind(kind):
+    return kind.split(":", 1)[0]
+
+
+def title_of(kind):
+    return TITLES.get(base_kind(kind), kind)
 
 
 def now():
@@ -52,7 +81,7 @@ def now():
 def parse_time(text):
     if not text:
         return None
-    return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    return datetime.fromisoformat(re.sub(r"\.\d+", "", text.replace("Z", "+00:00")))
 
 
 def reading(health, key, minutes=FRESH_MINUTES):
@@ -145,7 +174,7 @@ def checks(truck):
 
 
 def message(truck, kind, detail, office):
-    lines = [f"<b>{TITLES[kind]}</b> · Unit {escape(unit_label(truck['unit_number']))}", escape(detail)]
+    lines = [f"<b>{title_of(kind)}</b> · Unit {escape(unit_label(truck['unit_number']))}", escape(detail)]
     if truck.get("location"):
         lines.append(f"Near {escape(truck['location'])}")
     if office:
@@ -157,7 +186,7 @@ def message(truck, kind, detail, office):
 
 def deliver(truck, kind, detail, office_too=True):
     sent = False
-    if truck.get("telegram_chat_id") and kind not in OFFICE_ONLY:
+    if truck.get("telegram_chat_id") and base_kind(kind) not in OFFICE_ONLY:
         sent = bool(send(truck["telegram_chat_id"], message(truck, kind, detail, False)).get("ok")) or sent
     if office_too:
         for chat in company_chats(truck["company_id"]):
@@ -170,7 +199,8 @@ def open_alert(truck, kind, value, detail, dry=False):
            (truck["id"], kind)):
         return False
     if one("""select 1 from health_alerts where truck_id = %s and kind = %s and fault_id is null
-              and cleared_at > now() - make_interval(hours => %s)""", (truck["id"], kind, REOPEN_HOURS)):
+              and cleared_at > now() - make_interval(hours => %s)""",
+           (truck["id"], kind, REOPEN.get(base_kind(kind), REOPEN_HOURS))):
         return False
     if dry:
         return True
@@ -223,16 +253,142 @@ def fault_alerts(dry=False):
     return sent
 
 
-def run(dry=False):
+def apply(truck, found, clear, dry, sent):
+    for kind in clear - set(found):
+        if not dry:
+            execute("""update health_alerts set cleared_at = now() where truck_id = %s and kind = %s
+                       and fault_id is null and cleared_at is null""", (truck["id"], kind))
+    for kind, (value, detail) in found.items():
+        if open_alert(truck, kind, value, detail, dry):
+            sent.append((truck["unit_number"], kind, detail))
+
+
+def clock(ms):
+    minutes = max(int(float(ms)) // 60_000, 0)
+    return f"{minutes // 60}:{minutes % 60:02d}"
+
+
+def hos_checks(row):
+    found, clear = {}, set()
+    working = row["duty_status"] in HOS_WORKING
+    driving = row["duty_status"] == "DS_D"
+    drive, shift, brk, cycle = (None if row[k] is None else float(row[k]) for k in
+                                ("drive_remaining", "shift_remaining", "break_remaining", "cycle_remaining"))
+    if driving and any(v is not None and v <= 0 for v in (drive, shift, brk)):
+        found["hos_violation"] = (0, "Driving with no hours left. Stop and log off duty.")
+    elif not driving:
+        clear.add("hos_violation")
+    rules = [("hos_drive", drive, HOUR_MS, 2 * HOUR_MS, "of driving left."),
+             ("hos_shift", shift, HOUR_MS, 2 * HOUR_MS, "left on the 14-hour shift."),
+             ("hos_break", brk, HOUR_MS / 2, 2 * HOUR_MS, "until the 30-minute break is due."),
+             ("hos_cycle", cycle, 3 * HOUR_MS, 6 * HOUR_MS, "left on the 70-hour cycle.")]
+    for kind, value, low, ok, words in rules:
+        if value is None:
+            continue
+        if working and 0 < value < low:
+            found[kind] = (round(value / 60_000), f"{clock(value)} {words}")
+        elif value >= ok:
+            clear.add(kind)
+    return found, clear
+
+
+def hos_run(dry, sent):
+    for row in rows(
+        """select distinct on (h.driver_id) h.*, t.id as truck_id from hos_status h
+           join trucks t on t.driver_id = h.driver_id and t.status = 'active'
+           join companies c on c.id = t.company_id and c.status = 'active'
+           where h.driver_id is not null and h.updated_at > now() - make_interval(mins => %s)
+           order by h.driver_id, h.updated_at desc""",
+        (HOS_FRESH_MINUTES,),
+    ):
+        truck = one("select t.*, c.name as company_name from trucks t join companies c on c.id = t.company_id where t.id = %s",
+                    (row["truck_id"],))
+        found, clear = hos_checks(row)
+        apply(truck, found, clear, dry, sent)
+
+
+def service_run(dry, sent):
+    from .queries import service_status, trucks_with_service
+    for company in rows("select * from companies where status = 'active'"):
+        for truck in trucks_with_service(company["id"]):
+            if truck["status"] != "active":
+                continue
+            truck["company_name"] = company["name"]
+            found, clear = {}, set()
+            for item in service_status(truck):
+                key = item.get("kind") or item["label"]
+                soon, over = f"service_soon:{key}", f"service_over:{key}"
+                if item["tone"] == "bad":
+                    found[over] = (item.get("remaining"), f"{item['label']}: {item['detail']}.")
+                    clear.add(soon)
+                elif item["tone"] == "warn":
+                    found[soon] = (item.get("remaining"), f"{item['label']}: {item['detail']}.")
+                    clear.add(over)
+                elif item["tone"] == "ok":
+                    clear.update({soon, over})
+            apply(truck, found, clear, dry, sent)
+
+
+def mpg_of(report):
+    miles = (report.get("distanceTraveledMeters") or 0) / M_PER_MILE
+    gallons = (report.get("fuelConsumedMl") or 0) / ML_PER_GALLON
+    return (miles / gallons if gallons > 1 else None), miles
+
+
+def mpg_run(dry, sent):
+    from .sync import client_for
+    from .safety import iso
+    today = datetime.now(timezone.utc).date()
+    for company in rows(
+        """select c.* from companies c join integrations i on i.company_id = c.id and i.provider = 'samsara'
+           where c.status = 'active' and i.credential is not null"""
+    ):
+        if one("select 1 from mpg_checks where company_id = %s and day = %s", (company["id"], today)):
+            continue
+        client, _ = client_for(company["id"])
+        end = now()
+        split = end - timedelta(days=MPG_RECENT_DAYS)
+        start = split - timedelta(days=MPG_BASE_DAYS)
+        recent = client.get("/fleet/reports/vehicles/fuel-energy", {"startDate": iso(split), "endDate": iso(end)})
+        base = client.get("/fleet/reports/vehicles/fuel-energy", {"startDate": iso(start), "endDate": iso(split)})
+        before = {r["vehicle"]["id"]: r for r in (base.get("data") or {}).get("vehicleReports", [])}
+        linked = {r["external_id"]: r["truck_id"] for r in rows(
+            "select external_id, truck_id from vehicle_links where company_id = %s and truck_id is not null", (company["id"],))}
+        for report in (recent.get("data") or {}).get("vehicleReports", []):
+            truck_id = linked.get(report["vehicle"]["id"])
+            old = before.get(report["vehicle"]["id"])
+            if not truck_id or not old:
+                continue
+            now_mpg, now_miles = mpg_of(report)
+            old_mpg, old_miles = mpg_of(old)
+            if not dry:
+                execute("""insert into mpg_checks values (%s, %s, %s, %s, %s, %s, %s) on conflict do nothing""",
+                        (company["id"], truck_id, today, now_mpg, now_miles, old_mpg, old_miles))
+            if not now_mpg or not old_mpg or now_miles < MPG_RECENT_MILES or old_miles < MPG_BASE_MILES:
+                continue
+            truck = one("select t.*, c.name as company_name from trucks t join companies c on c.id = t.company_id where t.id = %s",
+                        (truck_id,))
+            if truck["status"] != "active":
+                continue
+            drop = 1 - now_mpg / old_mpg
+            found, clear = {}, set()
+            if drop >= MPG_DROP:
+                found["mpg_drop"] = (round(now_mpg, 2), f"{now_mpg:.1f} mpg this week, was {old_mpg:.1f} ({drop:.0%} lower). "
+                                     "Check tires, air leaks, injectors and idling.")
+            elif drop < MPG_OK:
+                clear.add("mpg_drop")
+            apply(truck, found, clear, dry, sent)
+
+
+def run(dry=False, slow=True):
     sent = []
     for truck in rows(TRUCKS):
         found, clear = checks(truck)
-        for kind in clear - set(found):
-            if not dry:
-                execute("""update health_alerts set cleared_at = now() where truck_id = %s and kind = %s
-                           and fault_id is null and cleared_at is null""", (truck["id"], kind))
-        for kind, (value, detail) in found.items():
-            if open_alert(truck, kind, value, detail, dry):
-                sent.append((truck["unit_number"], kind, detail))
+        apply(truck, found, clear, dry, sent)
     sent += fault_alerts(dry)
+    for step in (hos_run, service_run, mpg_run) if slow else (hos_run,):
+        try:
+            step(dry, sent)
+        except Exception:
+            log.exception("%s failed", step.__name__)
     return sent

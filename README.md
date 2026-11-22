@@ -546,6 +546,9 @@ for 6 hours. Listed under Trucks → Faults → Truck health.
 - DEF low: under 15% (under 5% says the truck will slow down).
 - Check engine: a warning or stop-lamp code new to that truck in 30 days (stop-lamp codes already go to the office, so only the group gets those here).
 - Office only: idling 60 minutes or more, and no ELD signal for 6 to 48 hours.
+- Hours (Horizon, BOOKIT only; the Samsara tokens have no HOS scope): under 1 h of driving or of the 14-hour shift, under 30 min to the break, under 3 h of cycle, or driving with a clock at zero. To the group and the office.
+- Service: due soon (10% of the interval or 1,000 mi, or 30 days) and overdue, per service. Office only. Needs a service on record for the truck (Settings → Service baselines); none exist yet.
+- MPG dropped: once a day, Samsara's fuel-energy report, last 7 days vs the 28 before; 12% or more lower with 800+ mi this week. Office only, at most once a week per truck.
 - Tire pressure is not possible: no truck in either fleet reports it (no tire sensors).
 
 **Safety** (`app/safety.py`, `manage.py safety` from `bin/sync.sh` every 15 minutes). Pulls Samsara camera

@@ -1254,3 +1254,14 @@ create table if not exists safety_events (
 );
 create index if not exists safety_events_company on safety_events (company_id, happened_at desc);
 create index if not exists safety_events_driver on safety_events (driver_id, happened_at desc);
+
+create table if not exists mpg_checks (
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  day date not null,
+  recent_mpg numeric,
+  recent_miles numeric,
+  base_mpg numeric,
+  base_miles numeric,
+  primary key (truck_id, day)
+);

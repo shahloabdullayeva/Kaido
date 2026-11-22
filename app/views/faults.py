@@ -30,7 +30,7 @@ def index():
     integration = one(
         "select * from integrations where company_id = %s and provider = 'samsara'", (g.company["id"],)
     )
-    from ..health import TITLES
+    from ..health import title_of
     alerts = rows(
         """select a.*, t.unit_number from health_alerts a join trucks t on t.id = a.truck_id
            where a.company_id = %s and a.fault_id is null and (a.cleared_at is null or a.opened_at > now() - interval '7 days')
@@ -38,7 +38,7 @@ def index():
         (g.company["id"],),
     )
     return render_template("faults/list.html", title="Faults", active="/trucks", items=items,
-                           scope=scope, integration=integration, alerts=alerts, alert_titles=TITLES)
+                           scope=scope, integration=integration, alerts=alerts, alert_titles=title_of)
 
 
 @bp.post("/faults/<int:fault_id>/acknowledge")
