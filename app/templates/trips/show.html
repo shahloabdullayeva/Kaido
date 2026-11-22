@@ -8,7 +8,7 @@
 <div class="page-head">
   <div>
     <h1>{% if trip.load_number %}Load {{ trip.load_number }}{% else %}Trip #{{ trip.id }}{% endif %}
-      <span class="badge {{ tones.get(trip.status, 'muted') }}">{{ trip.status }}</span></h1>
+      <span class="badge {{ tones.get(trip.status, 'muted') }}">{{ 'delivered' if trip.status == 'done' else trip.status }}</span></h1>
     <p>Unit {{ unit }}{% if who %} · {{ who }}{% endif %} · planned {{ trip.created_at|ago }}</p>
   </div>
   <div class="actions-row">

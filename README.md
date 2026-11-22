@@ -390,6 +390,8 @@ does not flood anyone. Admins mark each one "Looks OK" or "Confirmed problem", w
 sends it (load ID, $rate, `PU1:` name / address / `FCFS:` or `APPT:` window, `DEL1:` ..., any
 number of stops), pick a truck, and Kaido plans the whole trip:
 
+- **Delivered.** When the truck reaches the delivery the trip is set to done, and done trips show as
+  "delivered" on the Trips page and the trip page.
 - **Places instead of a load.** Without `PU`/`DEL` lines the box takes plain places: one per line or
   "Dallas, TX to Phoenix, AZ". One place is a fuel-only run from the truck to there; two or more are
   stops with no dock time or window ("Arrive" on the map and messages).

@@ -20,7 +20,7 @@
         <td class="right">{{ trip.distance_miles|number }}</td>
         <td class="right">{% if trip.summary.fuel_cost is not none %}{{ trip.summary.fuel_cost|money }}{% else %}—{% endif %}</td>
         <td class="right fuel-good">{% if trip.summary.savings %}{{ trip.summary.savings|money }}{% else %}—{% endif %}</td>
-        <td class="trip-flags"><span class="badge {{ tones.get(trip.status, 'muted') }}">{{ trip.status }}</span>
+        <td class="trip-flags"><span class="badge {{ tones.get(trip.status, 'muted') }}">{{ 'delivered' if trip.status == 'done' else trip.status }}</span>
           {% if trip.summary.late %}<span class="badge bad">late</span>{% endif %}
           {% if trip.summary.restart_needed %}<span class="badge warn">34 h restart</span>{% endif %}
           {% if trip.summary.impossible %}<span class="badge bad">no fuel plan</span>{% endif %}</td>
