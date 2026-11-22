@@ -538,6 +538,10 @@ companies with the fuel assistant switched on in Fuel → Settings, only for tru
 Telegram group and a tank reading under 90 minutes old):
 - A card is sent when the tank is at or below the alert level (company default 35%, or the
   driver's own). It is not repeated for 4 hours, or for 90 minutes once the tank is under 15%.
+- Stations are picked around wherever the truck is now (ahead of its heading when moving).
+  If the truck has an active trip and is on that trip's route, this card is not sent; the
+  trip follower sends the next planned stop on the load's route instead. Off the route, the
+  location card is sent as usual.
 - Range = (tank % − reserve %) × tank gallons × the truck's MPG. MPG comes from its own fills
   and odometer over 60 days, or the company default.
 - Candidates are stations within range (capped at the company's search miles) and, when the

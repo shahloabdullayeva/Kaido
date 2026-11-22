@@ -941,6 +941,19 @@ def send_next(trip, truck, mile, why=""):
     return bool(result.get("ok"))
 
 
+def covers(truck):
+    trip = one(
+        """select * from trips where truck_id = %s and status in ('sent', 'accepted') and chat_id is not null
+             and created_at > now() - make_interval(days => %s) order by id desc limit 1""",
+        (truck["id"], FOLLOW_DAYS),
+    )
+    if not trip or truck.get("latitude") is None:
+        return False
+    points, miles = route_of(trip)
+    mile, off = locate(points, miles, float(truck["latitude"]), float(truck["longitude"]))
+    return off <= OFF_ROUTE_MILES and mile < float(trip["distance_miles"]) - 3
+
+
 def follow():
     done = []
     active = rows(

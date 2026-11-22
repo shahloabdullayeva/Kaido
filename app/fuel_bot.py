@@ -353,10 +353,11 @@ def match_transactions():
 
 
 def run(force=False):
+    from . import trips
     sent = []
     for truck in ready_trucks(force):
         prefs = prefs_for(truck)
-        if should_offer(truck, prefs):
+        if should_offer(truck, prefs) and not trips.covers(truck):
             offer_id, ok = offer_for(truck, "low")
             sent.append((truck["unit_number"], offer_id, ok))
     execute("""update fuel_offers set status = 'expired' where status = 'sent'
