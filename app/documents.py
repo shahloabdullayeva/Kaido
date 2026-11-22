@@ -182,7 +182,7 @@ def message(doc, office):
 def run():
     sent = 0
     for doc in rows(LIST_SQL + """ join companies c on c.id = d.company_id
-                                   where c.status = 'active' and d.expires_on is not null
+                                   where c.status = 'active' and c.document_alerts_enabled and d.expires_on is not null
                                      and d.expires_on <= current_date + 30"""):
         doc = shape(doc)
         stage = stage_of(doc["left"])

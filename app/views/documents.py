@@ -46,6 +46,26 @@ def index():
                            status=status, owners=documents.OWNERS, counts=counts, missing=documents.missing(g.company["id"]))
 
 
+@bp.post("/documents/alerts")
+@login_required
+@company_required
+def alerts_switch():
+    if not at_least(g.role, "admin"):
+        flash("Only an admin can change this.", "bad")
+        return redirect("/documents")
+    enabled = request.form.get("enabled") == "1"
+    if enabled:
+        execute("""update documents set notified_stage = case
+                     when expires_on < current_date then 0
+                     when expires_on <= current_date + 1 then 1 when expires_on <= current_date + 7 then 7
+                     when expires_on <= current_date + 14 then 14 when expires_on <= current_date + 30 then 30 end
+                   where company_id = %s and notified_stage is null and expires_on is not null""", (g.company["id"],))
+    execute("update companies set document_alerts_enabled = %s where id = %s", (enabled, g.company["id"]))
+    audit("documents.alerts", "company", g.company["id"], {"enabled": enabled})
+    flash("Document alerts on." if enabled else "Document alerts off.", "ok")
+    return redirect("/documents")
+
+
 @bp.get("/documents/new")
 @login_required
 @company_required

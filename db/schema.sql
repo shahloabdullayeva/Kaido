@@ -1339,3 +1339,5 @@ alter table companies add column if not exists home_longitude numeric(9,6);
 
 alter table maintenance_orders add column if not exists shop_rating smallint check (shop_rating between 1 and 5);
 alter table maintenance_orders add column if not exists shop_comment text;
+
+alter table companies add column if not exists document_alerts_enabled boolean not null default false;

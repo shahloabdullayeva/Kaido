@@ -563,7 +563,8 @@ one list, filtered by type, status and period (all by default).
 **Documents** (`app/documents.py`, Trucks → Documents). Driver, truck, trailer and company papers (CDL, medical
 card, MVR, clearinghouse, registration, insurance, annual DOT, IFTA, 2290, permits, UCR, BOC-3, MCS-150 and more)
 with number, issue and expiry dates and a PDF or photo in `uploads/documents/<company>/`. Truck, driver and
-trailer pages show their own. Alerts go to the office at 30, 14, 7 and 1 days before and on the day it expires
+trailer pages show their own. Alerts are off for every company until an admin presses "Turn on alerts" on the
+Documents page (turning them on does not send old steps: each document starts from its current step). They go to the office at 30, 14, 7 and 1 days before and on the day it expires
 (the driver's truck group gets 30, 7 and expired for driver papers); changing the date starts the steps again.
 The page also lists who is missing a CDL, medical card, registration, insurance or annual inspection. The old
 licence/medical/registration/insurance date fields were moved here (they were all empty).

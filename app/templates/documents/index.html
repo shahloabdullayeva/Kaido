@@ -4,7 +4,14 @@
 {% set fleet_tab = 'documents' %}{% include "_fleet_tabs.html" %}
 <div class="page-head">
   <div><h1>Documents</h1></div>
-  <div class="actions-row"><a class="btn" href="/documents/new?owner={{ owner if owner != 'all' else 'driver' }}">Add document</a></div>
+  <div class="actions-row">
+    {% if at_least(role, 'admin') %}<form method="post" action="/documents/alerts">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <input type="hidden" name="enabled" value="{{ '0' if g.company.document_alerts_enabled else '1' }}">
+      <button class="btn ghost" type="submit">{{ 'Turn off alerts' if g.company.document_alerts_enabled else 'Turn on alerts' }}</button>
+    </form>{% endif %}
+    <span class="badge {{ 'ok' if g.company.document_alerts_enabled else 'muted' }}">Alerts {{ 'on' if g.company.document_alerts_enabled else 'off' }}</span>
+    <a class="btn" href="/documents/new?owner={{ owner if owner != 'all' else 'driver' }}">Add document</a></div>
 </div>
 <section class="panel">
   <div class="panel-head">
