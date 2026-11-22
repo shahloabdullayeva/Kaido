@@ -548,6 +548,12 @@ for 6 hours. Listed under Trucks → Faults → Truck health.
 - Office only: idling 60 minutes or more, and no ELD signal for 6 to 48 hours.
 - Tire pressure is not possible: no truck in either fleet reports it (no tire sensors).
 
+**Safety** (`app/safety.py`, `manage.py safety` from `bin/sync.sh` every 15 minutes). Pulls Samsara camera
+safety events and speeding intervals (30 days backfilled on first run) into `safety_events`. Crash, harsh
+braking/turn/acceleration, phone use, no seatbelt, drowsiness and heavy or severe speeding go to the office at once,
+one per truck and type in 6 hours. Everything is on Trucks → Safety (per-driver counts and the event list; light
+speeding only under the Speeding filter).
+
 **Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
 companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a
 Telegram group and a tank reading under 90 minutes old):

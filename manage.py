@@ -129,6 +129,13 @@ def cmd_sync(args):
     return 0
 
 
+def cmd_safety(args):
+    from app import safety
+    for name, result in safety.run().items():
+        print(f"{name} safety: {result}")
+    return 0
+
+
 def cmd_horizon_connect(args):
     from app import horizon
     company = one("select * from companies where lower(name) = lower(%s)", (args.company,))
@@ -640,6 +647,7 @@ def main():
     sync.add_argument("--company")
     sync.add_argument("--all", action="store_true")
     sync.set_defaults(func=cmd_sync)
+    sub.add_parser("safety", help="pull Samsara safety events and speeding").set_defaults(func=cmd_safety)
 
     hconnect = sub.add_parser("horizon-connect", help="store Horizon ELD credentials for a company")
     hconnect.add_argument("--company", required=True)

@@ -1229,3 +1229,28 @@ create table if not exists health_alerts (
 create unique index if not exists health_alerts_open on health_alerts (truck_id, kind) where cleared_at is null and fault_id is null;
 create unique index if not exists health_alerts_fault on health_alerts (fault_id) where fault_id is not null;
 create index if not exists health_alerts_company on health_alerts (company_id, opened_at desc);
+
+create table if not exists safety_events (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int references trucks(id) on delete set null,
+  driver_id int references drivers(id) on delete set null,
+  external_id text not null,
+  kind text not null,
+  label text,
+  severity text,
+  happened_at timestamptz not null,
+  ended_at timestamptz,
+  speed_mph numeric,
+  limit_mph numeric,
+  g_force numeric,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  place text,
+  raw jsonb,
+  alerted_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (company_id, external_id)
+);
+create index if not exists safety_events_company on safety_events (company_id, happened_at desc);
+create index if not exists safety_events_driver on safety_events (driver_id, happened_at desc);
