@@ -33,9 +33,13 @@
     {% if at_least(role, 'admin') %}
     <div class="form-actions">
       <button class="btn" type="submit">{{ 'Save' if mode == 'edit' else 'Add trailer' }}</button>
-      {% if mode == 'edit' %}<button class="btn ghost danger" name="delete" value="1" type="submit" data-confirm-click="Delete this trailer?">Delete</button>{% endif %}
+      {% if mode == 'edit' %}<button class="btn ghost danger" name="delete" value="1" type="submit" data-confirm-click="Delete this trailer and its documents?">Delete</button>{% endif %}
     </div>
     {% endif %}
   </form>
 </section>
+{% if mode == 'edit' %}
+{% from "documents/_panel.html" import documents_panel %}
+{{ documents_panel(docs, 'trailer', trailer.id, '/trailers/' ~ trailer.id) }}
+{% endif %}
 {% endblock %}

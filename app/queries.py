@@ -146,34 +146,12 @@ def attention_score(truck):
 
 
 def expiring_documents(company_id, days=45):
-    truck_rows = rows(
-        """select id, unit_number, registration_expires, insurance_expires
-           from trucks
-           where company_id = %s and status <> 'sold'
-             and (registration_expires <= current_date + %s or insurance_expires <= current_date + %s)""",
-        (company_id, days, days),
-    )
-    driver_rows = rows(
-        """select id, name, license_expires, medical_expires
-           from drivers
-           where company_id = %s and status = 'active'
-             and (license_expires <= current_date + %s or medical_expires <= current_date + %s)""",
-        (company_id, days, days),
-    )
-    out = []
-    for truck in truck_rows:
-        if truck["registration_expires"]:
-            out.append({"kind": "Registration", "who": f"Unit {truck['unit_number']}", "href": f"/trucks/{truck['id']}", "on": truck["registration_expires"]})
-        if truck["insurance_expires"]:
-            out.append({"kind": "Insurance", "who": f"Unit {truck['unit_number']}", "href": f"/trucks/{truck['id']}", "on": truck["insurance_expires"]})
-    for driver in driver_rows:
-        if driver["license_expires"]:
-            out.append({"kind": "Licence", "who": driver["name"], "href": f"/drivers/{driver['id']}", "on": driver["license_expires"]})
-        if driver["medical_expires"]:
-            out.append({"kind": "Medical card", "who": driver["name"], "href": f"/drivers/{driver['id']}", "on": driver["medical_expires"]})
-    cutoff = date.today()
-    out = [row for row in out if (row["on"] - cutoff).days <= days]
-    return sorted(out, key=lambda row: row["on"])
+    from . import documents
+    found = rows(documents.LIST_SQL + """ where d.company_id = %s and d.expires_on is not null
+                                          and d.expires_on <= current_date + %s order by d.expires_on""",
+                 (company_id, days))
+    return [{"kind": doc["label"], "who": doc["who"], "href": doc["href"], "on": doc["expires_on"]}
+            for doc in map(documents.shape, found)]
 
 
 def company_summary(company_id):

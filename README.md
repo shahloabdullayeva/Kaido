@@ -560,7 +560,16 @@ speeding only under the Speeding filter).
 **Alerts** page (`/alerts`, top menu): every health, hours, service, MPG, check engine, safety and fuel-check alert in
 one list, filtered by type, status and period (all by default).
 
-**Trailers** (Trucks → Trailers): number, type, VIN, plate, year, make, length, status, and the truck it is with. Samsara has no trailers on either account, so they are entered by hand.
+**Documents** (`app/documents.py`, Trucks → Documents). Driver, truck, trailer and company papers (CDL, medical
+card, MVR, clearinghouse, registration, insurance, annual DOT, IFTA, 2290, permits, UCR, BOC-3, MCS-150 and more)
+with number, issue and expiry dates and a PDF or photo in `uploads/documents/<company>/`. Truck, driver and
+trailer pages show their own. Alerts go to the office at 30, 14, 7 and 1 days before and on the day it expires
+(the driver's truck group gets 30, 7 and expired for driver papers); changing the date starts the steps again.
+The page also lists who is missing a CDL, medical card, registration, insurance or annual inspection. The old
+licence/medical/registration/insurance date fields were moved here (they were all empty).
+
+**Trailers** (Trucks → Trailers): number, type, VIN, plate, year, make, length, status, the truck it is with, and
+documents. Samsara has no trailers on either account, so they are entered by hand.
 
 **Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
 companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a

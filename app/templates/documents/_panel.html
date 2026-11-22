@@ -1,0 +1,24 @@
+{% macro documents_panel(docs, owner, owner_id, back) %}
+<section class="panel">
+  <div class="panel-head"><h2>Documents</h2>
+    <a class="btn ghost small" href="/documents/new?owner={{ owner }}{% if owner_id %}&id={{ owner_id }}{% endif %}&back={{ back|urlencode }}">Add document</a></div>
+  {% if docs %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Document</th><th>Number</th><th>Expires</th><th>Status</th><th>File</th></tr></thead>
+    <tbody>
+    {% for d in docs %}
+      <tr class="clickrow" data-href="/documents/{{ d.id }}?back={{ back|urlencode }}">
+        <td><a class="rowlink" href="/documents/{{ d.id }}?back={{ back|urlencode }}">{{ d.label }}</a></td>
+        <td class="mono">{{ d.number or '' }}{% if d.state %} · {{ d.state }}{% endif %}</td>
+        <td>{{ d.expires_on|day if d.expires_on else '—' }}</td>
+        <td><span class="badge {{ d.tone }}">{{ d.status }}</span></td>
+        <td>{% if d.file_path %}<a href="/documents/{{ d.id }}/file" target="_blank" rel="noopener">Open</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No documents.</p>
+  {% endif %}
+</section>
+{% endmacro %}

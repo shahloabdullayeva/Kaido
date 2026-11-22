@@ -1,0 +1,62 @@
+{% extends "layout.html" %}
+{% from "documents/_panel.html" import documents_panel %}
+{% block body %}
+{% set fleet_tab = 'documents' %}{% include "_fleet_tabs.html" %}
+<div class="page-head">
+  <div><h1>Documents</h1></div>
+  <div class="actions-row"><a class="btn" href="/documents/new?owner={{ owner if owner != 'all' else 'driver' }}">Add document</a></div>
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/documents" class="filters" data-autosubmit>
+      <label class="field"><span>For</span>
+        <select name="owner">
+          <option value="all" {% if owner == 'all' %}selected{% endif %}>All</option>
+          {% for key, text in owners.items() %}<option value="{{ key }}" {% if owner == key %}selected{% endif %}>{{ text }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Status</span>
+        <select name="status">
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+          <option value="expired" {% if status == 'expired' %}selected{% endif %}>Expired</option>
+          <option value="soon" {% if status == 'soon' %}selected{% endif %}>Expiring in 30 days</option>
+          <option value="ok" {% if status == 'ok' %}selected{% endif %}>Valid</option>
+        </select>
+      </label>
+    </form>
+    <span class="subtle">{{ items|length }} · {{ counts.expired }} expired · {{ counts.soon }} expiring soon</span>
+  </div>
+  {% if items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Who</th><th>Document</th><th>Number</th><th>Expires</th><th>Status</th><th>File</th></tr></thead>
+    <tbody>
+    {% for d in items %}
+      <tr class="clickrow" data-href="/documents/{{ d.id }}">
+        <td><a href="{{ d.href }}">{{ (d.who or '—') }}</a></td>
+        <td><a class="rowlink" href="/documents/{{ d.id }}">{{ d.label }}</a></td>
+        <td class="mono">{{ d.number or '' }}{% if d.state %} · {{ d.state }}{% endif %}</td>
+        <td>{{ d.expires_on|day if d.expires_on else '—' }}</td>
+        <td><span class="badge {{ d.tone }}">{{ d.status }}</span></td>
+        <td>{% if d.file_path %}<a href="/documents/{{ d.id }}/file" target="_blank" rel="noopener">Open</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No documents.</p>
+  {% endif %}
+</section>
+{% if missing %}
+<section class="panel">
+  <div class="panel-head"><h2>Missing</h2><span class="subtle">{{ missing|length }}</span></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Who</th><th>Not on file</th></tr></thead>
+    <tbody>
+    {% for m in missing %}
+      <tr class="clickrow" data-href="{{ m.href }}"><td><a class="rowlink" href="{{ m.href }}">{{ m.who }}</a></td><td>{{ m.lacks|join(', ') }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}

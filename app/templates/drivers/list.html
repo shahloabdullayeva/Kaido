@@ -22,8 +22,8 @@
         {% set h = hours.get(driver.id) %}
         <td>{% if h %}<span class="badge {{ h.duty_tone }}">{{ h.duty_label }}</span><div class="subtle">{{ h.updated_at|ago }}</div>{% else %}<span class="subtle">—</span>{% endif %}</td>
         <td class="hos-mini">{% if h %}<span class="hos-clock-mini {{ h.drive_tone }}">{{ h.drive }}</span> / {{ h.shift }} / {{ h.cycle }}{% else %}<span class="subtle">—</span>{% endif %}</td>
-        <td>{{ driver.license_expires|day }}<div class="subtle mono">{{ driver.license_number or '' }}</div></td>
-        <td>{{ driver.medical_expires|day }}</td>
+        <td>{{ driver.cdl_expires|day if driver.cdl_expires else '—' }}<div class="subtle mono">{{ driver.license_number or '' }}</div></td>
+        <td>{{ driver.medical_card_expires|day if driver.medical_card_expires else '—' }}</td>
         <td><span class="badge {{ driver.status|tone }}">{{ driver.status }}</span></td>
       </tr>
       {% endfor %}

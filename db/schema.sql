@@ -1266,6 +1266,45 @@ create table if not exists mpg_checks (
   primary key (truck_id, day)
 );
 
+create table if not exists documents (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  owner text not null check (owner in ('driver', 'truck', 'trailer', 'company')),
+  driver_id int references drivers(id) on delete cascade,
+  truck_id int references trucks(id) on delete cascade,
+  trailer_id int,
+  kind text not null,
+  title text,
+  number text,
+  state text,
+  issued_on date,
+  expires_on date,
+  file_path text,
+  file_name text,
+  content_type text,
+  note text,
+  notified_stage int,
+  created_by int references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists documents_company on documents (company_id, expires_on);
+create index if not exists documents_driver on documents (driver_id);
+create index if not exists documents_truck on documents (truck_id);
+
+insert into documents (company_id, owner, driver_id, kind, expires_on)
+select d.company_id, 'driver', d.id, 'cdl', d.license_expires from drivers d
+where d.license_expires is not null and not exists (select 1 from documents x where x.driver_id = d.id and x.kind = 'cdl');
+insert into documents (company_id, owner, driver_id, kind, expires_on)
+select d.company_id, 'driver', d.id, 'medical', d.medical_expires from drivers d
+where d.medical_expires is not null and not exists (select 1 from documents x where x.driver_id = d.id and x.kind = 'medical');
+insert into documents (company_id, owner, truck_id, kind, expires_on)
+select t.company_id, 'truck', t.id, 'registration', t.registration_expires from trucks t
+where t.registration_expires is not null and not exists (select 1 from documents x where x.truck_id = t.id and x.kind = 'registration');
+insert into documents (company_id, owner, truck_id, kind, expires_on)
+select t.company_id, 'truck', t.id, 'insurance', t.insurance_expires from trucks t
+where t.insurance_expires is not null and not exists (select 1 from documents x where x.truck_id = t.id and x.kind = 'insurance');
+
 create table if not exists trailers (
   id serial primary key,
   company_id int not null references companies(id) on delete cascade,
@@ -1290,3 +1329,6 @@ create table if not exists trailers (
   updated_at timestamptz not null default now(),
   unique (company_id, unit_number)
 );
+do $$ begin
+  alter table documents add constraint documents_trailer_fk foreign key (trailer_id) references trailers(id) on delete cascade;
+exception when duplicate_object then null; end $$;

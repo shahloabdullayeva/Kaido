@@ -250,6 +250,14 @@ def cmd_followup(args):
     except Exception:
         from app.logs import get
         get("health").exception("health run failed")
+    try:
+        from app import documents
+        noted = documents.run()
+        if noted:
+            print(f"document alerts {noted}")
+    except Exception:
+        from app.logs import get
+        get("documents").exception("document alerts failed")
     if reminded or alerted or sent or drivers:
         print(f"reminders {reminded}, fault alerts {alerted}, follow-ups {sent}, driver PTI messages {drivers}")
     if fueled["offers"] or fueled["refuels"] or fueled["receipts"] or fueled.get("fueled") or reports:

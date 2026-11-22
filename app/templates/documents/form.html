@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block body %}
+{% set fleet_tab = 'documents' %}{% include "_fleet_tabs.html" %}
+<div class="page-head">
+  <div><h1>{{ doc.label if doc.id else 'Add document' }}</h1>{% if doc.id %}<p>{{ doc.who }}</p>{% endif %}</div>
+  <a class="btn ghost" href="{{ back }}">Back</a>
+</div>
+<section class="panel">
+  <form method="post" action="{{ '/documents/' ~ doc.id if doc.id else '/documents' }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="back" value="{{ back }}">
+    <div class="form-grid">
+      {% if not doc.id %}
+      <label class="field"><span>For</span>
+        <select name="owner" data-doc-owner>
+          {% for key, text in owner_labels.items() %}<option value="{{ key }}" {% if owner == key %}selected{% endif %}>{{ text }}</option>{% endfor %}
+        </select>
+      </label>
+      {% for key, list in choices.items() %}
+      <label class="field" data-doc-for="{{ key }}" {% if owner != key %}hidden{% endif %}><span>{{ owner_labels[key] }}</span>
+        <select name="owner_id" {% if owner != key %}disabled{% endif %}>
+          {% for o in list %}<option value="{{ o.id }}" {% if owner_id == o.id %}selected{% endif %}>{{ o.label }}</option>{% endfor %}
+        </select>
+      </label>
+      {% endfor %}
+      {% endif %}
+      {% for key, list in kinds.items() %}
+      <label class="field" data-doc-for="{{ key }}" {% if owner != key %}hidden{% endif %}><span>Document</span>
+        <select name="kind" {% if owner != key %}disabled{% endif %}>
+          {% for k, text in list %}<option value="{{ k }}" {% if doc.kind == k %}selected{% endif %}>{{ text }}</option>{% endfor %}
+        </select>
+      </label>
+      {% endfor %}
+      {{ field('Name (for Other)', 'title', doc.title or '', attrs='maxlength="120"') }}
+      {{ field('Number', 'number', doc.number or '', attrs='maxlength="80"') }}
+      {{ field('State', 'state', doc.state or '', attrs='maxlength="4"') }}
+      {{ field('Issued', 'issued_on', doc.issued_on|date_input if doc.issued_on else '', type='date') }}
+      {{ field('Expires', 'expires_on', doc.expires_on|date_input if doc.expires_on else '', type='date') }}
+      <label class="field"><span>File{% if doc.file_name %} · <a href="/documents/{{ doc.id }}/file" target="_blank" rel="noopener">{{ doc.file_name }}</a>{% endif %}</span>
+        <input type="file" name="file" accept=".pdf,image/*" capture="environment"></label>
+      {{ field('Note', 'note', doc.note or '', type='textarea', full=True) }}
+    </div>
+    <div class="form-actions">
+      <button class="btn" type="submit">Save</button>
+      {% if doc.id and at_least(role, 'admin') %}<button class="btn ghost danger" name="delete" value="1" type="submit" data-confirm-click="Delete this document?">Delete</button>{% endif %}
+    </div>
+  </form>
+</section>
+{% endblock %}

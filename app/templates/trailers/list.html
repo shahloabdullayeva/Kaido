@@ -19,7 +19,7 @@
   </div>
   {% if trailers %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Trailer</th><th>Type</th><th>Plate</th><th>With truck</th><th>Where</th><th>Status</th></tr></thead>
+    <thead><tr><th>Trailer</th><th>Type</th><th>Plate</th><th>With truck</th><th>Where</th><th>Documents</th><th>Status</th></tr></thead>
     <tbody>
     {% for r in trailers %}
       <tr class="clickrow" data-href="/trailers/{{ r.id }}">
@@ -28,6 +28,7 @@
         <td class="mono">{{ r.plate or '' }}{% if r.plate_state %} · {{ r.plate_state }}{% endif %}</td>
         <td>{% if r.truck_id %}<a href="/trucks/{{ r.truck_id }}">{{ r.truck_unit }}</a>{% else %}—{% endif %}</td>
         <td>{{ r.truck_location or '' }}</td>
+        <td>{% if r.expired_docs %}<span class="badge bad">{{ r.expired_docs }} expired</span>{% endif %}{% if r.soon_docs %} <span class="badge warn">{{ r.soon_docs }} soon</span>{% endif %}</td>
         <td><span class="badge {{ 'ok' if r.status == 'active' else ('bad' if r.status == 'out_of_service' else 'muted') }}">{{ statuses.get(r.status, r.status) }}</span></td>
       </tr>
     {% endfor %}

@@ -18,8 +18,6 @@
       {{ field('Telegram username', 'telegram_username', driver.telegram_username, attrs='maxlength="60" placeholder="without the @"') }}
       {{ field('Licence number', 'license_number', driver.license_number, attrs='maxlength="40"') }}
       {{ field('Licence state', 'license_state', driver.license_state, attrs='maxlength="4"') }}
-      {{ field('Licence expires', 'license_expires', driver.license_expires|date_input, type='date') }}
-      {{ field('Medical card expires', 'medical_expires', driver.medical_expires|date_input, type='date') }}
       {{ field('Hired on', 'hired_on', driver.hired_on|date_input, type='date') }}
       <label class="field"><span>Status</span>
         <select name="status">
@@ -34,6 +32,8 @@
     </div>
   </form>
 </section>
+{% if mode == "edit" %}{% from "documents/_panel.html" import documents_panel %}
+{{ documents_panel(docs, 'driver', driver.id, '/drivers/' ~ driver.id) }}{% endif %}
 {% if mode == "edit" %}{% set reminder_entity, reminder_entity_id = "driver", driver.id %}
 {% include "reminders/_panel.html" %}{% endif %}
 {% endblock %}

@@ -1,3 +1,5 @@
+from datetime import datetime, time, timezone
+
 from flask import Blueprint, g, render_template, request
 
 from .. import forms
@@ -12,7 +14,7 @@ bp = Blueprint("alerts", __name__)
 
 GROUPS = {
     "health": "Truck health", "engine": "Check engine", "hours": "Hours", "service": "Service",
-    "mpg": "MPG", "safety": "Safety", "fuel": "Fuel",
+    "mpg": "MPG", "safety": "Safety", "fuel": "Fuel", "documents": "Documents",
 }
 HEALTH_GROUP = {"check_engine": "engine", "service_soon": "service", "service_over": "service", "mpg_drop": "mpg"}
 PERIODS = {"all": None, "1": 1, "7": 7, "30": 30}
@@ -82,6 +84,15 @@ def index():
             items.append({"at": row["happened_at"], "group": "fuel", "title": FUEL_LABELS.get(row["kind"], row["kind"]),
                           "detail": row["summary"], "truck_id": row["truck_id"], "unit": row["unit_number"],
                           "driver": row["driver_name"], "open": row["status"] == "open", "link": "/fuel/alerts"})
+    if kind in ("all", "documents"):
+        from .. import documents
+        for doc in documents.listing(company_id):
+            if doc["left"] is None or doc["left"] > documents.SOON_DAYS:
+                continue
+            items.append({"at": datetime.combine(doc["expires_on"], time(12), timezone.utc), "group": "documents",
+                          "title": doc["label"], "detail": doc["status"], "truck_id": doc.get("truck_id"),
+                          "unit": doc.get("truck_unit"), "driver": doc.get("driver_name"), "open": doc["left"] < 0,
+                          "link": f"/documents/{doc['id']}"})
     if status != "all":
         items = [i for i in items if (i["open"] is True) == (status == "open")]
     items.sort(key=lambda i: i["at"], reverse=True)

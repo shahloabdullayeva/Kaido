@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms, hos, pm_list, pti, pti_driver, sheets
+from .. import documents, forms, hos, pm_list, pti, pti_driver, sheets
 from .. import fuel as fuel_engine
 from ..audit import audit
 from ..auth import login_required
@@ -398,6 +398,7 @@ def detail(truck_id):
         last_oil=last_oil, inspections=inspections, pti_link=pti_link, pti_kinds=pti.KINDS,
         group_code=group_code, group_truck=pti_driver.one_truck(g.company["id"], truck_id),
         hours=hours, links=links, mpg=mpg, tank=tank, fuel_offers=fuel_offers,
+        docs=documents.for_owner(g.company["id"], "truck", truck_id),
         readings=rows(
             """select r.*, u.name as by_name from odometer_readings r left join users u on u.id = r.created_by
                where r.truck_id = %s order by r.read_at desc, r.id desc limit 8""",

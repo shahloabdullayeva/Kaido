@@ -242,6 +242,8 @@
   <p class="pad">{{ truck.notes }}</p>
 </section>
 {% endif %}
+{% from "documents/_panel.html" import documents_panel %}
+{{ documents_panel(docs, 'truck', truck.id, '/trucks/' ~ truck.id) }}
 {% set assistant_truck_id = truck.id %}
 {% include "_assistant.html" %}
 {% set reminder_entity, reminder_entity_id = "truck", truck.id %}

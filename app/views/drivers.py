@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms, hos
+from .. import documents, forms, hos
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -35,7 +35,9 @@ def index():
         """select d.*, (select count(*) from trucks t where t.driver_id = d.id) as truck_count,
              (select string_agg(t.unit_number, ', ' order by t.unit_number) from trucks t where t.driver_id = d.id) as units,
              exists (select 1 from driver_links l where l.driver_id = d.id and l.provider = 'horizoneld') as in_horizon,
-             exists (select 1 from trucks t where t.driver_id = d.id and t.driver_source = 'samsara') as from_samsara
+             exists (select 1 from trucks t where t.driver_id = d.id and t.driver_source = 'samsara') as from_samsara,
+             (select max(x.expires_on) from documents x where x.driver_id = d.id and x.kind = 'cdl') as cdl_expires,
+             (select max(x.expires_on) from documents x where x.driver_id = d.id and x.kind = 'medical') as medical_card_expires
            from drivers d where d.company_id = %s order by d.status, lower(d.name)""",
         (g.company["id"],),
     )
@@ -83,7 +85,8 @@ def detail(driver_id):
     in_horizon = one("select 1 as yes from driver_links where driver_id = %s and provider = 'horizoneld'", (driver_id,))
     return render_template("drivers/form.html", title=driver["name"], active="/trucks",
                            driver=driver, statuses=STATUSES, mode="edit", trucks=trucks, in_horizon=bool(in_horizon),
-                           hours=hos.for_drivers(g.company["id"], [driver_id]).get(driver_id))
+                           hours=hos.for_drivers(g.company["id"], [driver_id]).get(driver_id),
+                           docs=documents.for_owner(g.company["id"], "driver", driver_id))
 
 
 @bp.post("/drivers/<int:driver_id>")

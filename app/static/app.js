@@ -128,3 +128,12 @@ document.addEventListener('click', (event) => {
   const button = event.target.closest('[data-confirm-click]');
   if (button && !window.confirm(button.dataset.confirmClick)) event.preventDefault();
 });
+document.querySelectorAll('[data-doc-owner]').forEach((pick) => {
+  pick.addEventListener('change', () => {
+    document.querySelectorAll('[data-doc-for]').forEach((box) => {
+      const on = box.dataset.docFor === pick.value;
+      box.hidden = !on;
+      box.querySelectorAll('select').forEach((s) => { s.disabled = !on; });
+    });
+  });
+});

@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import forms
+from .. import documents, forms
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -42,6 +42,9 @@ def index():
     clause = "" if status == "all" else " and r.status = %(status)s"
     found = rows(
         f"""select r.*, t.unit_number as truck_unit, t.location as truck_location,
+              (select count(*) from documents x where x.trailer_id = r.id and x.expires_on < current_date) as expired_docs,
+              (select count(*) from documents x where x.trailer_id = r.id
+                 and x.expires_on between current_date and current_date + 30) as soon_docs
             from trailers r left join trucks t on t.id = r.truck_id
             where r.company_id = %(company)s{clause} order by r.status = 'sold', lower(r.unit_number)""",
         {"company": g.company["id"], "status": status},
@@ -91,7 +94,8 @@ def detail(trailer_id):
     if not trailer:
         return render_template("errors/404.html"), 404
     return render_template("trailers/form.html", title=f"Trailer {trailer['unit_number']}", active="/trucks", trailer=trailer,
-                           kinds=KINDS, statuses=STATUSES, trucks=trucks(g.company["id"]), mode="edit")
+                           kinds=KINDS, statuses=STATUSES, trucks=trucks(g.company["id"]), mode="edit",
+                           docs=documents.for_owner(g.company["id"], "trailer", trailer_id))
 
 
 @bp.post("/trailers/<int:trailer_id>")
@@ -102,6 +106,8 @@ def update(trailer_id):
     if not trailer:
         return render_template("errors/404.html"), 404
     if request.form.get("delete"):
+        for doc in rows("select * from documents where trailer_id = %s", (trailer_id,)):
+            documents.remove_file(doc)
         execute("delete from trailers where id = %s", (trailer_id,))
         audit("trailer.delete", "trailer", trailer_id)
         flash(f"Trailer {trailer['unit_number']} deleted.", "ok")
