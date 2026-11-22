@@ -1332,3 +1332,7 @@ create table if not exists trailers (
 do $$ begin
   alter table documents add constraint documents_trailer_fk foreign key (trailer_id) references trailers(id) on delete cascade;
 exception when duplicate_object then null; end $$;
+
+alter table companies add column if not exists home_address text;
+alter table companies add column if not exists home_latitude numeric(9,6);
+alter table companies add column if not exists home_longitude numeric(9,6);

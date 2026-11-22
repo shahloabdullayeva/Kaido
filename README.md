@@ -571,6 +571,11 @@ licence/medical/registration/insurance date fields were moved here (they were al
 **Trailers** (Trucks → Trailers): number, type, VIN, plate, year, make, length, status, the truck it is with, and
 documents. Samsara has no trailers on either account, so they are entered by hand.
 
+**Status board** (Trucks → Status board, `app/board.py`): every truck sorted into En route (5 mph or more), Stopped
+(with how long since it last moved), Home (within 2 mi of the home yard set on the Company page), In shop (truck
+status, a work order in progress, or a case in the shop), Broken down (open case), Accident (Samsara crash in 72 h or
+a case that says accident/crash/collision), No signal (6 h) and Inactive. Hooked trailers are shown.
+
 **Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
 companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a
 Telegram group and a tank reading under 90 minutes old):

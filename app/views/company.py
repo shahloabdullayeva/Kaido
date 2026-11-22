@@ -119,6 +119,14 @@ def update():
             g.company["id"],
         ),
     )
+    home = forms.text(request.form.get("home_address"), 200)
+    if home != g.company.get("home_address"):
+        from ..shops import geocode
+        spot = geocode(home) if home else None
+        if home and not spot:
+            flash("Could not find the home yard address on the map.", "bad")
+        execute("update companies set home_address = %s, home_latitude = %s, home_longitude = %s where id = %s",
+                (home, spot and spot["latitude"], spot and spot["longitude"], g.company["id"]))
     audit("company.updated", "company", g.company["id"])
     flash("Company details saved.", "ok")
     return redirect("/company")

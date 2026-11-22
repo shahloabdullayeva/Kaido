@@ -17,6 +17,7 @@
       {{ field('Contact phone', 'contact_phone', company.contact_phone, type='tel', attrs='maxlength="40"') }}
       {{ field('Contact email', 'contact_email', company.contact_email, type='email', attrs='maxlength="200"') }}
       {{ field('Timezone', 'timezone', company.timezone, attrs='maxlength="60"') }}
+      {{ field('Home yard address', 'home_address', company.home_address or '', attrs='maxlength="200"', full=True) }}
     </div>
     <div class="form-actions"><button class="btn" type="submit">Save details</button></div>
   </form>

@@ -715,3 +715,9 @@ body.trip-live { margin: 0; background: var(--bg, #f5f6f8); display: flex; flex-
 @media (prefers-color-scheme: dark) { .fuel-up { color: #f97066; } .fuel-down { color: #4ade80; } }
 [data-theme="dark"] .fuel-up { color: #f97066; } [data-theme="dark"] .fuel-down { color: #4ade80; }
 [data-theme="light"] .fuel-up { color: #b42318; } [data-theme="light"] .fuel-down { color: #17703a; }
+
+.board { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; align-items: start; }
+.board-col { border: 1px solid var(--line, var(--face-dark)); background: var(--paper); border-radius: 8px; padding: 10px; min-width: 0; }
+.board-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.board-card { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; margin-top: 6px; border: 1px solid var(--line-soft, var(--face-dark)); border-radius: 6px; text-decoration: none; color: inherit; overflow-wrap: anywhere; }
+.board-card:hover { border-color: var(--accent, currentColor); }

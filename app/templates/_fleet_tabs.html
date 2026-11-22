@@ -1,5 +1,6 @@
 <nav class="fuel-tabs" aria-label="Fleet sections">
   <a href="/trucks" {% if fleet_tab == 'trucks' %}class="on"{% endif %}>Trucks</a>
+  <a href="/trucks/board" {% if fleet_tab == 'board' %}class="on"{% endif %}>Status board</a>
   <a href="/drivers" {% if fleet_tab == 'drivers' %}class="on"{% endif %}>Drivers</a>
   <a href="/trailers" {% if fleet_tab == 'trailers' %}class="on"{% endif %}>Trailers</a>
   <a href="/faults" {% if fleet_tab == 'faults' %}class="on"{% endif %}>Faults</a>

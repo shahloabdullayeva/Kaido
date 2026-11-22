@@ -39,6 +39,14 @@ def form_values(source):
     }
 
 
+@bp.get("/trucks/board")
+@login_required
+@company_required
+def status_board():
+    from ..board import board
+    return render_template("trucks/board.html", title="Status board", active="/trucks", wide=True, columns=board(g.company))
+
+
 @bp.get("/trucks")
 @login_required
 @company_required
