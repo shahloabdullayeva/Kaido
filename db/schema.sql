@@ -1336,3 +1336,6 @@ exception when duplicate_object then null; end $$;
 alter table companies add column if not exists home_address text;
 alter table companies add column if not exists home_latitude numeric(9,6);
 alter table companies add column if not exists home_longitude numeric(9,6);
+
+alter table maintenance_orders add column if not exists shop_rating smallint check (shop_rating between 1 and 5);
+alter table maintenance_orders add column if not exists shop_comment text;

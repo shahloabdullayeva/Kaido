@@ -576,6 +576,12 @@ documents. Samsara has no trailers on either account, so they are entered by han
 status, a work order in progress, or a case in the shop), Broken down (open case), Accident (Samsara crash in 72 h or
 a case that says accident/crash/collision), No signal (6 h) and Inactive. Hooked trailers are shown.
 
+**Shop finder extras**: a row of place types (truck repair, towing, tires, mobile mechanic, reefer repair, trailer
+repair, truck parking, truck wash), each with its own Google queries or OpenStreetMap filter. Each shop has
+"Text the job" (opens the phone's SMS with unit, VIN, location link, driver and the work order description) and
+"Copy the job". Work orders have a shop rating (1-5) and comment; the shop list shows visits, average cost,
+rating, days in the shop and the last comment for shops used before (all work, not only oil).
+
 **Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
 companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a
 Telegram group and a tank reading under 90 minutes old):

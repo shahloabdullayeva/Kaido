@@ -32,6 +32,23 @@ GEOCODE_DAYS = 90
 GOOGLE_CACHE_HOURS = 1
 GOOGLE_GEOCODE_DAYS = 30
 GOOGLE_QUERIES = ("semi truck repair shop", "truck stop")
+NEEDS = {"repair": "Truck repair", "tow": "Towing", "tires": "Tires", "mobile": "Mobile mechanic",
+         "reefer": "Reefer repair", "trailer": "Trailer repair", "parking": "Truck parking", "wash": "Truck wash"}
+NEED_QUERIES = {
+    "repair": GOOGLE_QUERIES,
+    "tow": ("heavy duty towing semi truck",),
+    "tires": ("commercial truck tire shop", "semi truck tire repair"),
+    "mobile": ("mobile diesel truck mechanic",),
+    "reefer": ("reefer repair thermo king carrier transicold",),
+    "trailer": ("semi trailer repair shop",),
+    "parking": ("truck parking", "truck stop"),
+    "wash": ("truck wash",),
+}
+TIRE_WORDS = re.compile(r"\btires?\b|\btyres?\b|goodyear|bridgestone|michelin|firestone|tire ?service", re.I)
+REEFER_WORDS = re.compile(r"reefer|thermo ?king|transicold|refrigerat", re.I)
+TRAILER_WORDS = re.compile(r"trailer", re.I)
+WASH_WORDS = re.compile(r"\bwash\b|blue beacon", re.I)
+PARK_WORDS = re.compile(r"parking|truck stop|travel (center|plaza)|\blove'?s\b|pilot|flying j|\bpetro\b|\bta\b", re.I)
 EARTH_MILES = 3958.7613
 
 QUERY = """[out:json][timeout:45][bbox:{box}];
@@ -41,6 +58,8 @@ QUERY = """[out:json][timeout:45][bbox:{box}];
   nwr["shop"="tyres"];
   nwr["amenity"="fuel"]["hgv"="yes"];
   nwr["service:vehicle:towing"="yes"];
+  nwr["amenity"="parking"]["hgv"~"yes|designated"];
+  nwr["amenity"="car_wash"]["hgv"="yes"];
   nwr["shop"="car_repair"]({near});
 );
 out center tags;"""
@@ -64,6 +83,35 @@ def service_of(shop):
     if ROAD_WORDS.search(text):
         return "road"
     return "shop"
+
+
+def needs_of(shop):
+    text = " ".join(str(part) for part in [shop.get("name"), shop.get("kind"), (shop.get("saved") or {}).get("note")] if part)
+    kind = shop.get("kind") or ""
+    found = set()
+    if kind == "parking" or kind == "truck_stop" or PARK_WORDS.search(text):
+        found.add("parking")
+    if kind == "car_wash" or WASH_WORDS.search(text):
+        found.add("wash")
+    if kind == "tyres" or TIRE_WORDS.search(text):
+        found.add("tires")
+    if TOW_WORDS.search(text):
+        found.add("tow")
+    if ROAD_WORDS.search(text):
+        found.add("mobile")
+    if REEFER_WORDS.search(text):
+        found.add("reefer")
+    if TRAILER_WORDS.search(text):
+        found.add("trailer")
+    if kind not in ("parking", "car_wash"):
+        found.add("repair")
+    return found
+
+
+def by_need(found, need):
+    if not need or need == "repair":
+        return [shop for shop in found if "repair" in needs_of(shop)]
+    return [shop for shop in found if need in needs_of(shop)]
 
 
 def by_drive(found, drive):
@@ -440,13 +488,16 @@ def _truck_fit(tags, name):
     return "unconfirmed"
 
 
-def nearby(latitude, longitude, radius_miles=50, limit=8, min_confirmed=3):
-    """Shops around a point: from Google when it is set up and under today's cap, else OpenStreetMap."""
+def nearby(latitude, longitude, radius_miles=50, limit=8, min_confirmed=3, need="repair"):
+    """Places around a point for one need: from Google when it is set up and under today's cap, else OpenStreetMap."""
     if google_places.usable():
         try:
-            return _nearby_google(latitude, longitude, radius_miles, limit)
+            return _nearby_google(latitude, longitude, radius_miles, limit, need)
         except google_places.GoogleError as err:
             log.warning("Google shop search failed, using OpenStreetMap: %s", err)
+    if need not in (None, "repair"):
+        shops, meta = _collect(latitude, longitude, max(radius_miles, 100), 200)
+        return by_need(shops, need)[:limit], meta
     return _nearby_osm(latitude, longitude, radius_miles, limit, min_confirmed)
 
 
@@ -464,8 +515,8 @@ def _nearby_osm(latitude, longitude, radius_miles, limit, min_confirmed):
     return shops[:limit], meta
 
 
-def _google_places(latitude, longitude, radius_m):
-    cell = "g:" + _cell(latitude, longitude)
+def _google_places(latitude, longitude, radius_m, need="repair"):
+    cell = ("g:" if need in (None, "repair") else f"g{need}:") + _cell(latitude, longitude)
     fresh = one(
         "select payload from shop_lookups where cell = %s and radius_m = %s and fetched_at > now() - make_interval(hours => %s)",
         (cell, radius_m, GOOGLE_CACHE_HOURS),
@@ -473,7 +524,7 @@ def _google_places(latitude, longitude, radius_m):
     if fresh:
         return fresh["payload"], True
     places, seen = [], set()
-    for query in GOOGLE_QUERIES:
+    for query in NEED_QUERIES.get(need or "repair", GOOGLE_QUERIES):
         for place in google_places.search_shops(query, latitude, longitude, radius_m):
             if place.get("id") in seen:
                 continue
@@ -530,9 +581,9 @@ def _short_address(text):
     return re.sub(r",\s*(USA|United States|Canada|Mexico)$", "", text)
 
 
-def _nearby_google(latitude, longitude, radius_miles, limit):
+def _nearby_google(latitude, longitude, radius_miles, limit, need="repair"):
     radius_m = int(radius_miles * 1609.344)
-    places, from_cache = _google_places(latitude, longitude, radius_m)
+    places, from_cache = _google_places(latitude, longitude, radius_m, need)
     zone = zone_for(float(longitude))
     now = datetime.now(zone)
     shops = [shop for shop in (from_google(place, latitude, longitude, now) for place in places) if shop]

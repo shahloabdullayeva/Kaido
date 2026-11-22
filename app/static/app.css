@@ -721,3 +721,4 @@ body.trip-live { margin: 0; background: var(--bg, #f5f6f8); display: flex; flex-
 .board-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .board-card { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; margin-top: 6px; border: 1px solid var(--line-soft, var(--face-dark)); border-radius: 6px; text-decoration: none; color: inherit; overflow-wrap: anywhere; }
 .board-card:hover { border-color: var(--accent, currentColor); }
+.shop-needs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }

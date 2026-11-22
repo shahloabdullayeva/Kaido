@@ -216,6 +216,7 @@ def create():
         ),
     )
     store_extras(order["id"], parts, request.form)
+    save_rating(order["id"])
     apply_completion(order, truck)
     audit("maintenance.created", "maintenance_order", order["id"], {"unit": truck["unit_number"], "kind": kind, "status": status})
     flash("Work order saved.", "ok")
@@ -260,12 +261,21 @@ def _tokens(name):
     return {word for word in words if word not in NOISE_WORDS and len(word) > 1}
 
 
+def save_rating(order_id):
+    rating = forms.integer(request.form.get("shop_rating"))
+    execute("update maintenance_orders set shop_rating = %s, shop_comment = %s where id = %s and company_id = %s",
+            (rating if rating and 1 <= rating <= 5 else None, forms.text(request.form.get("shop_comment"), 500),
+             order_id, g.company["id"]))
+
+
 def vendor_history(company_id):
     history = rows(
-        """select vendor, count(*) as visits, avg(cost) as average, max(performed_on) as last
+        """select vendor, count(*) as visits, avg(cost) as average, max(performed_on) as last,
+             avg(shop_rating) as rating, count(shop_rating) as rated,
+             avg(performed_on - coalesce(scheduled_for, created_at::date)) filter (where performed_on is not null) as days,
+             (array_agg(shop_comment order by performed_on desc nulls last) filter (where shop_comment is not null))[1] as comment
            from maintenance_orders
-           where company_id = %s and kind = 'oil' and status = 'done'
-             and vendor is not null and vendor <> '' and cost is not null
+           where company_id = %s and status = 'done' and vendor is not null and vendor <> ''
            group by vendor""",
         (company_id,),
     )
@@ -286,7 +296,10 @@ def match_history(shop_name, history):
             best, best_score = row, score
     if best and best_score >= 0.34:
         return {"vendor": best["vendor"], "visits": best["visits"],
-                "average": float(best["average"]), "last": best["last"].strftime("%b %Y")}
+                "average": float(best["average"]) if best["average"] is not None else None,
+                "last": best["last"].strftime("%b %Y") if best["last"] else None,
+                "rating": round(float(best["rating"]), 1) if best["rating"] is not None else None, "rated": best["rated"],
+                "days": round(float(best["days"]), 1) if best["days"] is not None else None, "comment": best["comment"]}
     return None
 
 
@@ -352,7 +365,7 @@ def origin_from_link(link):
 
 def shop_truck(truck_id):
     return one(
-        """select t.*, d.name as driver_name from trucks t
+        """select t.*, d.name as driver_name, d.phone as driver_phone from trucks t
            left join drivers d on d.id = t.driver_id
            where t.id = %s and t.company_id = %s""",
         (truck_id, g.company["id"]),
@@ -365,7 +378,8 @@ def find_shops(truck):
         return origin, [], None, problem
     latitude, longitude = float(origin["latitude"]), float(origin["longitude"])
     try:
-        found, meta = shop_search.nearby(latitude, longitude, radius_miles=config.SHOP_RADIUS_MILES)
+        need = forms.pick(request.args.get("need"), list(shop_search.NEEDS), "repair")
+        found, meta = shop_search.nearby(latitude, longitude, radius_miles=config.SHOP_RADIUS_MILES, need=need)
     except Exception as err:
         log.warning("shop search around %.4f,%.4f failed: %s", latitude, longitude, err)
         found, meta = [], None
@@ -377,6 +391,7 @@ def find_shops(truck):
         from_google = bool(meta and meta.get("source") == "google")
         found = shop_search.with_saved(found, saved, latitude, longitude, now,
                                        details_budget=3 if from_google else 0)
+        found = shop_search.by_need(found, forms.pick(request.args.get("need"), list(shop_search.NEEDS), "repair"))
     history = vendor_history(g.company["id"])
     for shop in found:
         shop["history"] = match_history(shop["name"], history)
@@ -414,7 +429,8 @@ def shops(truck_id):
                            fleet_average=fleet_oil_average(), ai_on=advisor.available(),
                            ai_paused=advisor.over_budget(), problem=problem,
                            drive=forms.pick(request.args.get("drive"), ["yes", "no"], None),
-                           services=shop_search.SERVICES, light_note=shop_search.LIGHT_NOTE)
+                           services=shop_search.SERVICES, light_note=shop_search.LIGHT_NOTE,
+                           needs=shop_search.NEEDS, need=forms.pick(request.args.get("need"), list(shop_search.NEEDS), "repair"))
 
 
 @bp.get("/maintenance/shops/<int:truck_id>/advice")
@@ -531,6 +547,7 @@ def update(order_id):
         ),
     )
     store_extras(order_id, parts, request.form)
+    save_rating(order_id)
     apply_completion(updated, truck)
     audit("maintenance.updated", "maintenance_order", order_id, {"status": status})
     flash("Work order updated.", "ok")

@@ -154,6 +154,11 @@
         </select>
       </label>
       {{ field('Invoice number', 'invoice_no', order.invoice_no if editing else '', attrs='maxlength="40"') }}
+      <label class="field"><span>Shop rating</span><select name="shop_rating">
+        <option value="">Not rated</option>
+        {% for n in range(5, 0, -1) %}<option value="{{ n }}" {% if editing and order.shop_rating == n %}selected{% endif %}>{{ n }} / 5</option>{% endfor %}
+      </select></label>
+      {{ field('Shop comment', 'shop_comment', order.shop_comment if editing else '', attrs='maxlength="500"') }}
     </div>
 
     <h3 class="form-section" id="invoice">Invoice</h3>

@@ -427,6 +427,28 @@ const wireVendorPicks = () => {
 const wireSearch = () => {
   const flip = body.querySelector('[data-shop-drive]');
   if (flip) flip.addEventListener('click', () => { driveChoice = flip.dataset.shopDrive; load(trucks.value, lastParams); });
+  const jobText = () => {
+    const base = (body.querySelector('#shop-job') || {}).innerHTML || '';
+    const box = document.createElement('textarea');
+    box.innerHTML = base;
+    const problem = (document.querySelector('textarea[name=description]') || {}).value || '';
+    return (box.value.trim() + (problem.trim() ? ' Needs: ' + problem.trim() : '') + ' Can you take it, and when?').replace(/\s+/g, ' ');
+  };
+  for (const link of body.querySelectorAll('[data-shop-text]')) {
+    link.addEventListener('click', () => { link.href = 'sms:' + link.dataset.shopText + '?&body=' + encodeURIComponent(jobText()); });
+  }
+  for (const copy of body.querySelectorAll('[data-shop-copy]')) {
+    copy.addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(jobText()); copy.textContent = 'Copied'; } catch (err) { window.prompt('Copy this:', jobText()); }
+    });
+  }
+  for (const pick of body.querySelectorAll('[data-shop-need]')) {
+    pick.addEventListener('click', () => {
+      const params = { ...(lastParams || {}) };
+      if (pick.dataset.shopNeed === 'repair') delete params.need; else params.need = pick.dataset.shopNeed;
+      load(trucks.value, params);
+    });
+  }
   const retry = body.querySelector('[data-shop-retry]');
   if (retry) retry.addEventListener('click', () => load(trucks.value, lastParams));
   const ask = body.querySelector('[data-shop-ai]');

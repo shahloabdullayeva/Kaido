@@ -6,6 +6,7 @@
 </div>
 {% if drive %}<p class="shop-drive">{% if drive == 'no' %}<strong>Truck cannot drive</strong>{% else %}<strong>Truck can drive</strong>{% endif %}
   <button type="button" class="btn ghost small" data-shop-drive="{{ 'yes' if drive == 'no' else 'no' }}">{{ 'It can drive after all' if drive == 'no' else 'It cannot drive — show towing' }}</button></p>{% endif %}
+<div class="shop-needs">{% for key, text in needs.items() %}<button type="button" class="btn {{ '' if need == key else 'ghost' }} small" data-shop-need="{{ key }}">{{ text }}</button>{% endfor %}</div>
 <p class="subtle shop-origin">
   {%- if origin and origin.source == 'samsara' %}
   <strong>{{ truck.unit_number }}</strong> is at {{ origin.label }}{% if origin.at %}, reported {{ origin.at|ago }}{% endif %}.
@@ -33,6 +34,7 @@
   {% if meta and meta.source == 'osm' %}OpenStreetMap coverage is thin in rural areas — try a nearby town, or the driver's own judgement.{% else %}Try a nearby town.{% endif %}</p>
   {% else %}
 <p class="shop-pick" id="shop-pick" hidden></p>
+<template id="shop-job">Hi, this is {{ g.company.name }}{% if g.company.contact_phone %} ({{ g.company.contact_phone }}){% endif %}. Unit {{ truck.unit_number }}{% if truck.year or truck.make %}, {{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}{% endif %}{% if truck.vin %}, VIN {{ truck.vin }}{% endif %}.{% if origin %} The truck is at {{ origin.label }}{% if origin.latitude %} (https://maps.google.com/?q={{ origin.latitude }},{{ origin.longitude }}){% endif %}.{% endif %}{% if truck.driver_name %} Driver {{ truck.driver_name|title }}{% if truck.driver_phone %}, {{ truck.driver_phone }}{% endif %}.{% endif %}</template>
 <ol class="shop-list">
   {% for shop in found %}
   <li data-shop="{{ loop.index }}" data-lat="{{ shop.latitude }}" data-lon="{{ shop.longitude }}" data-name="{{ shop.name }}"
@@ -55,12 +57,14 @@
     {% if shop.hours_lines %}<details class="shop-hours"><summary>Hours</summary>{{ shop.hours_lines|join(' · ') }}</details>
     {% elif shop.opening_hours %}<div class="shop-hours">Hours: {{ shop.opening_hours|osm_hours }}</div>{% endif %}
     {% if shop.history %}
-    <div class="shop-history">You have used this shop {{ shop.history.visits }}×, average
-      {{ shop.history.average|money }}, last {{ shop.history.last }}.</div>
+    <div class="shop-history">Used {{ shop.history.visits }}×{% if shop.history.average %} · average {{ shop.history.average|money }}{% endif %}{% if shop.history.last %} · last {{ shop.history.last }}{% endif %}{% if shop.history.rating %} · rated {{ shop.history.rating }}/5 ({{ shop.history.rated }}){% endif %}{% if shop.history.days is not none %} · about {{ shop.history.days }} days in shop{% endif %}
+      {% if shop.history.comment %}<div class="subtle">"{{ shop.history.comment }}"</div>{% endif %}</div>
     {% endif %}
     <div class="shop-note" data-note hidden></div>
     <div class="shop-actions">
-      {% if shop.dial %}<a class="btn small" href="tel:{{ shop.dial }}">Call</a>{% endif %}
+      {% if shop.dial %}<a class="btn small" href="tel:{{ shop.dial }}">Call</a>
+      <a class="btn ghost small" href="sms:{{ shop.dial }}" data-shop-text="{{ shop.dial }}" data-shop-name="{{ shop.name }}">Text the job</a>{% endif %}
+      <button type="button" class="btn ghost small" data-shop-copy data-shop-name="{{ shop.name }}">Copy the job</button>
       <a class="btn ghost small" href="{{ shop.maps }}" target="_blank" rel="noopener noreferrer" data-maps>Google Maps</a>
       <button type="button" class="btn ghost small" data-show-shop="{{ loop.index }}">Show on map</button>
       <button type="button" class="btn ghost small" data-pick-vendor="{{ shop.name }}" data-pick-phone="{{ shop.phone or '' }}" data-pick-address="{{ shop.address or '' }}">Use this shop</button>
