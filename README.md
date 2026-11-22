@@ -533,6 +533,19 @@ known, it uses only stations within 3 miles of that route. Without a track, it u
 within 30 miles. When the cheapest of them was at least 3¢/gal lower, the difference × gallons
 is stored on the purchase as `missed_usd`, with the cheaper station and its distance.
 
+**Truck health alerts** (`app/health.py`, every 5 minutes from `bin/followup.sh`, all companies). The
+Samsara sync saves battery volts, coolant temperature, oil pressure, DEF level, rpm and engine state on
+`trucks.health`. An alert is sent once, on the first reading that crosses the line, to the truck's group and
+to everyone in the company with Telegram linked; it clears when the reading comes back and cannot reopen
+for 6 hours. Listed under Trucks → Faults → Truck health.
+- Battery low: under 12.2 V with the engine off. Not charging: under 12.8 V with the engine running.
+- Engine running hot: coolant 104°C (219°F) or more while running.
+- Low oil pressure: under 10 psi below 1,000 rpm, under 20 psi above, with oil and rpm read together.
+- DEF low: under 15% (under 5% says the truck will slow down).
+- Check engine: a warning or stop-lamp code new to that truck in 30 days (stop-lamp codes already go to the office, so only the group gets those here).
+- Office only: idling 60 minutes or more, and no ELD signal for 6 to 48 hours.
+- Tire pressure is not possible: no truck in either fleet reports it (no tire sensors).
+
 **Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
 companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a
 Telegram group and a tank reading under 90 minutes old):

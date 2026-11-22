@@ -8,7 +8,11 @@ from .logs import get
 from .samsara import SamsaraClient, SamsaraError, meters_to_miles, parse_fault_codes
 from .security import decrypt, encrypt
 
-STAT_TYPES = ["obdOdometerMeters", "gpsOdometerMeters", "faultCodes", "engineStates", "gps", "fuelPercents"]
+STAT_TYPES = ["obdOdometerMeters", "gpsOdometerMeters", "faultCodes", "engineStates", "gps", "fuelPercents",
+              "batteryMilliVolts", "engineCoolantTemperatureMilliC", "engineOilPressureKPa", "defLevelMilliPercent",
+              "engineRpm"]
+HEALTH_KEYS = ["engineState", "batteryMilliVolts", "engineCoolantTemperatureMilliC", "engineOilPressureKPa",
+               "defLevelMilliPercent", "engineRpm"]
 
 UNIT_PATTERN = re.compile(r"#\s*(\d+[A-Za-z]?)")
 NAME_PREFIXES = re.compile(r"^[\s.:#-]*(bmg|llap|unit|truck|who)\b[\s.:#-]*", re.I)
@@ -307,6 +311,11 @@ def record_fuel(truck, block):
     return 1
 
 
+def record_health(truck, stat):
+    health = {key: stat[key] for key in HEALTH_KEYS if isinstance(stat.get(key), dict)}
+    execute("update trucks set health = %s, health_at = now() where id = %s", (json.dumps(health), truck["id"]))
+
+
 def record_track(company_id, truck_id):
     execute(
         """insert into truck_positions (company_id, truck_id, latitude, longitude, heading, speed_mph, odometer,
@@ -442,6 +451,7 @@ def sync_company(company_id):
             counters["positions"] += record_position(truck, stat.get("gps"))
             counters["fuel"] = counters.get("fuel", 0) + record_fuel(truck, stat.get("fuelPercent") or stat.get("fuelPercents"))
             record_track(company_id, truck["id"])
+            record_health(truck, stat)
             faults = parse_fault_codes(stat.get("faultCodes"))
             opened, cleared = sync_faults(company_id, truck, faults)
             counters["faults_opened"] += opened

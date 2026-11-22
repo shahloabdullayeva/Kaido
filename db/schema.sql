@@ -1210,3 +1210,22 @@ create table if not exists state_diesel_daily (
   cheapest_station_id int references fuel_stations(id) on delete set null,
   primary key (day, state)
 );
+
+alter table trucks add column if not exists health jsonb;
+alter table trucks add column if not exists health_at timestamptz;
+
+create table if not exists health_alerts (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  kind text not null,
+  value numeric,
+  detail text,
+  fault_id bigint references fault_events(id) on delete set null,
+  opened_at timestamptz not null default now(),
+  cleared_at timestamptz,
+  sent_at timestamptz
+);
+create unique index if not exists health_alerts_open on health_alerts (truck_id, kind) where cleared_at is null and fault_id is null;
+create unique index if not exists health_alerts_fault on health_alerts (fault_id) where fault_id is not null;
+create index if not exists health_alerts_company on health_alerts (company_id, opened_at desc);

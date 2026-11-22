@@ -7,6 +7,25 @@
   </div>
   {% if at_least(role, 'admin') %}<a class="btn ghost" href="/integrations">Integrations</a>{% endif %}
 </div>
+{% if alerts %}
+<section class="panel">
+  <div class="panel-head"><h2>Truck health</h2></div>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Alert</th><th>Reading</th><th>Since</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for a in alerts %}
+      <tr class="clickrow" data-href="/trucks/{{ a.truck_id }}">
+        <td><a class="rowlink" href="/trucks/{{ a.truck_id }}">{{ a.unit_number }}</a></td>
+        <td>{{ alert_titles.get(a.kind, a.kind) }}</td>
+        <td>{{ a.detail }}</td>
+        <td>{{ a.opened_at|ago }}</td>
+        <td><span class="badge {{ 'muted' if a.cleared_at else 'warn' }}">{{ 'cleared' if a.cleared_at else 'open' }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
 <section class="panel">
   <div class="panel-head">
     <form method="get" action="/faults" class="filters" data-autosubmit>
