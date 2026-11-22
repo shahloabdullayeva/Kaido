@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Alerts</h1></div>
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/alerts" class="filters" data-autosubmit>
+      <label class="field"><span>Type</span>
+        <select name="kind">
+          <option value="all" {% if kind == 'all' %}selected{% endif %}>All</option>
+          {% for key, label in groups.items() %}<option value="{{ key }}" {% if kind == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Status</span>
+        <select name="status">
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+          <option value="open" {% if status == 'open' %}selected{% endif %}>Open</option>
+          <option value="cleared" {% if status == 'cleared' %}selected{% endif %}>Cleared</option>
+        </select>
+      </label>
+      <label class="field"><span>Period</span>
+        <select name="period">
+          <option value="all" {% if period == 'all' %}selected{% endif %}>All</option>
+          <option value="1" {% if period == '1' %}selected{% endif %}>24 hours</option>
+          <option value="7" {% if period == '7' %}selected{% endif %}>7 days</option>
+          <option value="30" {% if period == '30' %}selected{% endif %}>30 days</option>
+        </select>
+      </label>
+    </form>
+    <span class="subtle">{{ total }}{% for key, n in counts.items() %} · {{ groups[key] }} {{ n }}{% endfor %}</span>
+  </div>
+  {% if items %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Unit</th><th>Driver</th><th>Alert</th><th>Detail</th><th>Status</th></tr></thead>
+    <tbody>
+    {% for item in items %}
+      <tr{% if item.link %} class="clickrow" data-href="{{ item.link }}"{% endif %}>
+        <td>{{ item.at|day }}<div class="subtle">{{ item.at|ago }}</div></td>
+        <td>{% if item.truck_id %}<a href="/trucks/{{ item.truck_id }}">{{ item.unit }}</a>{% else %}—{% endif %}</td>
+        <td>{{ (item.driver or '—')|title }}</td>
+        <td><span class="badge {{ 'bad' if item.group in ('safety', 'engine') else 'warn' }}">{{ groups[item.group] }}</span> {{ item.title }}</td>
+        <td>{{ item.detail or '' }}</td>
+        <td>{% if item.open is none %}—{% elif item.open %}<span class="badge warn">open</span>{% else %}<span class="badge muted">cleared</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No alerts.</p>
+  {% endif %}
+</section>
+{% endblock %}

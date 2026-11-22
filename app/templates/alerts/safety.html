@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% block body %}
+{% set fleet_tab = 'safety' %}{% include "_fleet_tabs.html" %}
+<div class="page-head">
+  <div><h1>Safety</h1></div>
+</div>
+<section class="panel">
+  <div class="panel-head">
+    <form method="get" action="/safety" class="filters" data-autosubmit>
+      <label class="field"><span>Type</span>
+        <select name="kind">
+          <option value="all" {% if group == 'all' %}selected{% endif %}>All</option>
+          {% for key, pair in groups.items() %}<option value="{{ key }}" {% if group == key %}selected{% endif %}>{{ pair[0] }}</option>{% endfor %}
+        </select>
+      </label>
+      <label class="field"><span>Period</span>
+        <select name="period">
+          <option value="all" {% if period == 'all' %}selected{% endif %}>All</option>
+          <option value="1" {% if period == '1' %}selected{% endif %}>24 hours</option>
+          <option value="7" {% if period == '7' %}selected{% endif %}>7 days</option>
+          <option value="30" {% if period == '30' %}selected{% endif %}>30 days</option>
+        </select>
+      </label>
+    </form>
+  </div>
+  {% if drivers %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Driver</th><th>Total</th>{% for key, pair in groups.items() %}<th>{{ pair[0] }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% for d in drivers %}
+      <tr><td>{{ d.name|title }}</td><td><strong>{{ d.total }}</strong></td>{% for key in groups %}<td>{{ d[key] or '' }}</td>{% endfor %}</tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="empty">No safety events.</p>
+  {% endif %}
+</section>
+{% if events %}
+<section class="panel">
+  <div class="table-wrap"><table>
+    <thead><tr><th>When</th><th>Unit</th><th>Driver</th><th>Event</th><th>Detail</th><th></th></tr></thead>
+    <tbody>
+    {% for e in events %}
+      <tr>
+        <td>{{ e.happened_at|day }}<div class="subtle">{{ e.happened_at|ago }}</div></td>
+        <td>{% if e.truck_id %}<a href="/trucks/{{ e.truck_id }}">{{ e.unit_number }}</a>{% else %}—{% endif %}</td>
+        <td>{{ (e.driver_name or '—')|title }}</td>
+        <td><span class="badge {{ 'bad' if e.serious else 'muted' }}">{{ e.title }}</span></td>
+        <td>{{ e.detail or '' }}</td>
+        <td>{% if e.latitude %}<a href="https://www.google.com/maps?q={{ e.latitude }},{{ e.longitude }}" target="_blank" rel="noopener">Map</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endblock %}

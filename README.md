@@ -557,6 +557,9 @@ braking/turn/acceleration, phone use, no seatbelt, drowsiness and heavy or sever
 one per truck and type in 6 hours. Everything is on Trucks → Safety (per-driver counts and the event list; light
 speeding only under the Speeding filter).
 
+**Alerts** page (`/alerts`, top menu): every health, hours, service, MPG, check engine, safety and fuel-check alert in
+one list, filtered by type, status and period (all by default).
+
 **Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
 companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a
 Telegram group and a tank reading under 90 minutes old):
