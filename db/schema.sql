@@ -1366,3 +1366,4 @@ create table if not exists alert_topics (
   created_at timestamptz not null default now(),
   primary key (chat_id, topic)
 );
+alter table companies add column if not exists alerts_group boolean not null default false;

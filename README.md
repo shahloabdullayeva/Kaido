@@ -553,7 +553,7 @@ for 6 hours. Listed under Trucks → Faults → Truck health.
 
 **Alerts group** (`app/alert_group.py`). Make a Telegram group with Topics on, add the bot as admin with
 "Manage topics", and send `/alerts` there (or just promote the bot, if you are a Kaido admin). Every active
-company you are admin of is linked (`alert_groups`), one topic per issue is created (`alert_topics`: check
+company you are admin of with `companies.alerts_group` on is linked (`alert_groups`; only BOOKIT for now), one topic per issue is created (`alert_topics`: check
 engine, stop-lamp faults, battery, charging, engine temperature, oil pressure, DEF, tire pressure, idling, ELD
 not reporting, hours, service, MPG, speeding, harsh driving and camera, fuel checks, fuel reports, PTI,
 documents, reminders, daily follow-up, summary), and `manage.py alerts-history --chat <id>` replays every past

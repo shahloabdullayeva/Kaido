@@ -138,7 +138,7 @@ def office_photo(company_id, topic, png, caption):
 def link(chat, user):
     companies = rows(
         """select c.id, c.name from memberships m join companies c on c.id = m.company_id
-           where m.user_id = %s and m.role = 'admin' and c.status = 'active' order by c.id""",
+           where m.user_id = %s and m.role = 'admin' and c.status = 'active' and c.alerts_group order by c.id""",
         (user["id"],),
     )
     for company in companies:
@@ -165,7 +165,7 @@ def handle(chat, sender, reply_to=None):
         return
     companies = link(chat, user)
     if not companies:
-        send(chat["id"], "You are not an admin of any active company in Kaido.", reply_to_message_id=reply_to)
+        send(chat["id"], "No company of yours is set to use an alerts group.", reply_to_message_id=reply_to)
         return
     made = ensure_topics(chat["id"])
     if made == 0 and not one("select 1 from alert_topics where chat_id = %s", (chat["id"],)):
