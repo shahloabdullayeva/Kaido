@@ -189,8 +189,8 @@ def run():
         if stage is None or (doc["notified_stage"] is not None and doc["notified_stage"] <= stage):
             continue
         execute("update documents set notified_stage = %s where id = %s", (stage, doc["id"]))
-        for chat in company_chats(doc["company_id"]):
-            send(chat, message(doc, True))
+        from .alert_group import office
+        office(doc["company_id"], "documents", message(doc, True))
         if doc["owner"] == "driver" and stage in (30, 7, 0):
             truck = one("select telegram_chat_id from trucks where driver_id = %s and status = 'active' and telegram_chat_id is not null",
                         (doc["driver_id"],))

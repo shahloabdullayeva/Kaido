@@ -1341,3 +1341,28 @@ alter table maintenance_orders add column if not exists shop_rating smallint che
 alter table maintenance_orders add column if not exists shop_comment text;
 
 alter table companies add column if not exists document_alerts_enabled boolean not null default false;
+
+create table if not exists alert_groups (
+  company_id int primary key references companies(id) on delete cascade,
+  chat_id bigint not null,
+  linked_by int references users(id) on delete set null,
+  linked_at timestamptz not null default now(),
+  backfilled_at timestamptz
+);
+create index if not exists alert_groups_chat on alert_groups (chat_id);
+alter table alert_groups enable row level security;
+alter table alert_groups force row level security;
+drop policy if exists company_lock on alert_groups;
+create policy company_lock on alert_groups
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+create table if not exists alert_topics (
+  chat_id bigint not null,
+  topic text not null,
+  thread_id bigint not null,
+  created_at timestamptz not null default now(),
+  primary key (chat_id, topic)
+);

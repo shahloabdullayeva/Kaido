@@ -170,8 +170,8 @@ def _alert(inspection, result):
         word = "wrong photo" if finding["verdict"] == "wrong_photo" else "possible issue"
         lines.append(f"• {escape(finding['label'])} ({word}, driver marked {escape(finding['marked'])}): {escape(finding['note'])}")
     lines += ["", f"{config.APP_URL}/pti/report/{inspection['id']}"]
-    for chat in company_chats(inspection["company_id"]):
-        send(chat, "\n".join(lines))
+    from .alert_group import office
+    office(inspection["company_id"], "pti", "\n".join(lines))
 
 
 def run_pending(limit=5):

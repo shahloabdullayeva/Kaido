@@ -273,6 +273,12 @@ def handle_group_update(update, send):
         chat = member.get("chat") or {}
         if status in ("left", "kicked") and chat.get("id"):
             pti_driver.forget_group(chat["id"])
+            from app.db import execute
+            execute("delete from alert_groups where chat_id = %s", (chat["id"],))
+        elif status == "administrator" and chat.get("is_forum"):
+            from app import alert_group
+            if alert_group.kaido_user(member.get("from") or {}) and not alert_group.chat_of_any(chat["id"]):
+                alert_group.handle(chat, member.get("from") or {})
         return True
     message = update.get("message") or {}
     chat = message.get("chat") or {}
@@ -283,6 +289,15 @@ def handle_group_update(update, send):
         return True
     parts = (message.get("text") or "").split()
     command = parts[0].split("@")[0] if parts else ""
+    if command == "/alerts":
+        from app import alert_group
+        try:
+            alert_group.handle(chat, message.get("from") or {}, message.get("message_id"))
+        except Exception:
+            from app.logs import get
+            get("telegram-bot").exception("/alerts in %s failed", chat["id"])
+            send(chat["id"], "Something went wrong setting up alerts here.")
+        return True
     if command == "/unit":
         _truck, reply = pti_driver.claim_unit(chat["id"], message.get("from") or {}, " ".join(parts[1:]))
         send(chat["id"], reply, reply_to_message_id=message.get("message_id"))
@@ -327,6 +342,12 @@ def handle_group_update(update, send):
         send(chat["id"], "To name this group after the unit, make the bot an admin with \"Change group info\" "
                          "and send /rename, or rename it by hand.")
     return True
+
+
+def cmd_alerts_history(args):
+    from app import alert_group
+    print(alert_group.send_history(args.chat))
+    return 0
 
 
 def cmd_summary(args):
@@ -682,6 +703,9 @@ def main():
     follow.set_defaults(func=cmd_followup)
 
     sub.add_parser("telegram-bot", help="link Telegram accounts").set_defaults(func=cmd_telegram)
+    hist = sub.add_parser("alerts-history", help="send past alerts into a linked alerts group")
+    hist.add_argument("--chat", type=int, required=True)
+    hist.set_defaults(func=cmd_alerts_history)
     sub.add_parser("pti-cleanup", help="delete PTI photos/videos past the FMCSA 3 months").set_defaults(func=cmd_pti_cleanup)
     details_parser = sub.add_parser("saved-shop-details", help="fill missing saved-shop addresses from OpenStreetMap")
     details_parser.add_argument("--limit", type=int, default=2000)

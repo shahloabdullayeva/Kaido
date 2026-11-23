@@ -146,8 +146,8 @@ def alert(company):
         execute("update safety_events set alerted_at = now() where id = %s", (event["id"],))
         if recent:
             continue
-        for chat in company_chats(company["id"]):
-            send(chat, message(event, company))
+        from .alert_group import office, safety_topic
+        office(company["id"], safety_topic(event["kind"]), message(event, company))
         sent += 1
     return sent
 

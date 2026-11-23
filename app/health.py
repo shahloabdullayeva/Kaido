@@ -27,6 +27,10 @@ OIL_SAME_MINUTES = 3
 DEF_LOW = 15
 DEF_EMPTY = 5
 DEF_OK = 30
+TIRE_LOW_KPA = 586
+TIRE_FLAT_KPA = 414
+TIRE_OK_KPA = 620
+TIRE_FRESH_MINUTES = 120
 IDLE_MINUTES = 60
 SILENT_HOURS = 6
 SILENT_MAX_HOURS = 48
@@ -55,6 +59,7 @@ TITLES = {
     "idling": "Idling",
     "not_reporting": "Not reporting",
     "check_engine": "Check engine",
+    "tire_low": "Tire pressure low",
     "hos_drive": "Driving hours almost out",
     "hos_shift": "14-hour shift almost out",
     "hos_break": "30-minute break due",
@@ -100,6 +105,11 @@ def fahrenheit(celsius):
 
 def psi(kpa):
     return round(kpa * 0.145)
+
+
+def tire_name(key):
+    words = re.sub(r"(?<!^)(?=[A-Z])", " ", re.sub(r"(?i)tire|pressure|kpa", "", key)).strip().lower()
+    return words or "tire"
 
 
 def duration(minutes):
@@ -155,6 +165,20 @@ def checks(truck):
         elif pct >= DEF_OK:
             clear.add("def_low")
 
+    tires = health.get("tirePressure")
+    tire_at = parse_time(tires.get("time")) if isinstance(tires, dict) else None
+    if tire_at and now() - tire_at <= timedelta(minutes=TIRE_FRESH_MINUTES):
+        readings = {key: value for key, value in tires.items()
+                    if "pressure" in key.lower() and isinstance(value, (int, float)) and value > 0}
+        low = {key: value for key, value in readings.items() if value < TIRE_LOW_KPA}
+        if low:
+            worst = min(low.values())
+            names = ", ".join(f"{tire_name(key)} {psi(value)} psi" for key, value in sorted(low.items(), key=lambda kv: kv[1]))
+            tail = "Stop and check it before driving on." if worst < TIRE_FLAT_KPA else "Check and air up at the next stop."
+            found["tire_low"] = (psi(worst), f"{names}. {tail}")
+        elif readings and min(readings.values()) >= TIRE_OK_KPA:
+            clear.add("tire_low")
+
     live = truck["located_at"] and now() - truck["located_at"] < timedelta(minutes=FRESH_MINUTES)
     if state == "Idle" and state_at and live:
         minutes = (now() - state_at).total_seconds() / 60
@@ -189,8 +213,9 @@ def deliver(truck, kind, detail, office_too=True):
     if truck.get("telegram_chat_id") and base_kind(kind) not in OFFICE_ONLY:
         sent = bool(send(truck["telegram_chat_id"], message(truck, kind, detail, False)).get("ok")) or sent
     if office_too:
-        for chat in company_chats(truck["company_id"]):
-            sent = bool(send(chat, message(truck, kind, detail, True)).get("ok")) or sent
+        from .alert_group import health_topic, office
+        for result in office(truck["company_id"], health_topic(kind), message(truck, kind, detail, True)):
+            sent = bool(result.get("ok")) or sent
     return sent
 
 

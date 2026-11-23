@@ -245,8 +245,8 @@ def alert(inspection_id):
         lines.append(f"Near {escape(item['location'])}")
     lines += ["", f"{config.APP_URL}/pti/report/{item['id']}"]
     text = "\n".join(lines)
-    for chat in company_chats(item["company_id"]):
-        send(chat, text)
+    from .alert_group import office
+    office(item["company_id"], "pti", text)
     execute("update inspections set alerted_at = now() where id = %s", (inspection_id,))
     return 1
 

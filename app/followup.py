@@ -140,10 +140,10 @@ def run(now=None, force_company=None):
             "select id from followups where company_id = %s and local_day = %s", (company["id"], today)
         ):
             continue
-        chats = company_chats(company["id"])
+        from .alert_group import chat_of, office
+        chats = [chat_of(company["id"])] if chat_of(company["id"]) else company_chats(company["id"])
         text = build(company, today)
-        for chat in chats:
-            send(chat, text)
+        office(company["id"], "followup", text)
         execute(
             """insert into followups (company_id, local_day, recipients, body) values (%s, %s, %s, %s)
                on conflict (company_id, local_day) do update set recipients = excluded.recipients,
@@ -178,8 +178,8 @@ def send_fault_alerts():
             "",
             f"{config.APP_URL}/faults/{fault['id']}",
         ] if part is not None)
-        for chat in company_chats(fault["company_id"]):
-            send(chat, text)
+        from .alert_group import office
+        office(fault["company_id"], "stop_lamp", text)
         execute("insert into fault_alerts (fault_id, company_id) values (%s, %s) on conflict do nothing",
                 (fault["id"], fault["company_id"]))
     return len(fresh)

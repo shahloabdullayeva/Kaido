@@ -161,8 +161,12 @@ def send_due():
             f"Set by {escape(reminder['author'] or 'someone')}",
             f"{config.APP_URL}{href}",
         ])
-        for chat in reminder_chats(reminder):
-            send(chat, text)
+        if reminder["audience"] == "admins":
+            from .alert_group import office
+            office(reminder["company_id"], "reminders", text, fallback=reminder_chats(reminder))
+        else:
+            for chat in reminder_chats(reminder):
+                send(chat, text)
         execute("update reminders set sent_at = now() where id = %s", (reminder["id"],))
         sent += 1
     return sent

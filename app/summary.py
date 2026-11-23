@@ -78,9 +78,9 @@ def run(backups):
     sent = []
     for company in rows("select * from companies where status = 'active' order by id"):
         text = build(company, backups)
-        chats = company_chats(company["id"], admins_only=True)
-        for chat in chats:
-            send(chat, text)
+        from .alert_group import chat_of, office
+        chats = [chat_of(company["id"])] if chat_of(company["id"]) else company_chats(company["id"], admins_only=True)
+        office(company["id"], "summary", text, admins_only=True)
         execute("insert into summaries (company_id, recipients, body) values (%s, %s, %s)",
                 (company["id"], len(chats), text))
         sent.append((company["name"], len(chats)))

@@ -549,7 +549,17 @@ for 6 hours. Listed under Trucks → Faults → Truck health.
 - Hours (Horizon, BOOKIT only; the Samsara tokens have no HOS scope): under 1 h of driving or of the 14-hour shift, under 30 min to the break, under 3 h of cycle, or driving with a clock at zero. To the group and the office.
 - Service: due soon (10% of the interval or 1,000 mi, or 30 days) and overdue, per service. Office only. Needs a service on record for the truck (Settings → Service baselines); none exist yet.
 - MPG dropped: once a day, Samsara's fuel-energy report, last 7 days vs the 28 before; 12% or more lower with 800+ mi this week. Office only, at most once a week per truck.
-- Tire pressure is not possible: no truck in either fleet reports it (no tire sensors).
+- Tire pressure low: any tire under 85 psi (under 60 psi says stop), from Samsara's `tirePressure` stat, clears at 90 psi. Neither current fleet has tire sensors, so it only fires for trucks that report them.
+
+**Alerts group** (`app/alert_group.py`). Make a Telegram group with Topics on, add the bot as admin with
+"Manage topics", and send `/alerts` there (or just promote the bot, if you are a Kaido admin). Every active
+company you are admin of is linked (`alert_groups`), one topic per issue is created (`alert_topics`: check
+engine, stop-lamp faults, battery, charging, engine temperature, oil pressure, DEF, tire pressure, idling, ELD
+not reporting, hours, service, MPG, speeding, harsh driving and camera, fuel checks, fuel reports, PTI,
+documents, reminders, daily follow-up, summary), and `manage.py alerts-history --chat <id>` replays every past
+alert, follow-up and summary into its topic, oldest first, about 18 a minute. Once a company has a group, its
+office alerts go there instead of to each person's Telegram; driver messages are unchanged. A deleted topic is
+made again on the next alert. Removing the bot from the group unlinks it.
 
 **Safety** (`app/safety.py`, `manage.py safety` from `bin/sync.sh` every 15 minutes). Pulls Samsara camera
 safety events and speeding intervals (30 days backfilled on first run) into `safety_events`. Crash, harsh

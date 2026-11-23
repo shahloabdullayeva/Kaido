@@ -10,9 +10,9 @@ from .security import decrypt, encrypt
 
 STAT_TYPES = ["obdOdometerMeters", "gpsOdometerMeters", "faultCodes", "engineStates", "gps", "fuelPercents",
               "batteryMilliVolts", "engineCoolantTemperatureMilliC", "engineOilPressureKPa", "defLevelMilliPercent",
-              "engineRpm"]
+              "engineRpm", "tirePressure"]
 HEALTH_KEYS = ["engineState", "batteryMilliVolts", "engineCoolantTemperatureMilliC", "engineOilPressureKPa",
-               "defLevelMilliPercent", "engineRpm"]
+               "defLevelMilliPercent", "engineRpm", "tirePressure"]
 
 UNIT_PATTERN = re.compile(r"#\s*(\d+[A-Za-z]?)")
 NAME_PREFIXES = re.compile(r"^[\s.:#-]*(bmg|llap|unit|truck|who)\b[\s.:#-]*", re.I)

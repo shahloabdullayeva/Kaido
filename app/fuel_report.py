@@ -483,6 +483,12 @@ def send_fleet(company, force=False, start_day=None, to=None):
     data = fleet_data(company, begin, end)
     png = render_fleet(data, start)
     caption = fleet_caption(data, start)
+    from .alert_group import office_photo
+    if to is None and (force or not already(company["id"], "fleet", 0, start)):
+        result = office_photo(company["id"], "fuel_reports", png, caption)
+        if result is not None:
+            mark(company["id"], "fleet", 0, start, bool(result.get("ok")))
+            return int(bool(result.get("ok")))
     sent = 0
     for user in to or managers(company["id"]):
         if not force and already(company["id"], "fleet", user["id"], start):

@@ -78,7 +78,7 @@ def call(method, payload=None, files=None):
         if not data.get("ok"):
             log.warning("%s failed: %s", method, data.get("description"))
         result = data.get("result")
-        return {"ok": bool(data.get("ok")), "reason": data.get("description"),
+        return {"ok": bool(data.get("ok")), "reason": data.get("description"), "result": result,
                 "message_id": result.get("message_id") if isinstance(result, dict) else None}
     except (requests.RequestException, ValueError) as err:
         reason = redact(str(err))

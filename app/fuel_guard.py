@@ -211,6 +211,11 @@ def notify(alert):
              escape(alert["summary"]),
              f"<a href=\"{config.APP_URL}/fuel/alerts\">Open in Kaido</a>"]
     text = "\n".join(lines)
+    from .alert_group import chat_of, office
+    if chat_of(alert["company_id"]):
+        sent = sum(bool(r.get("ok")) for r in office(alert["company_id"], "fuel", text))
+        execute("update fuel_alerts set notified_at = now() where id = %s", (alert["id"],))
+        return sent
     sent = 0
     for user in rows(
         """select distinct u.telegram_chat_id from users u join memberships m on m.user_id = u.id
