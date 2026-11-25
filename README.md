@@ -745,6 +745,15 @@ change writes "<name> changed status from X to Y" into the thread. Cancelled ord
 the Status filter is Cancelled; Delete asks first and removes the order with its comments, files and reminders.
 The list shows the comment count per order and filters by status, truck/trailer and system.
 
+## Search
+
+The search box in the top bar (`app/search.py`, `static/search.js`) looks through units (number, label, VIN in full or
+any part such as the last 6, plate, group), drivers (name, phone, Telegram), trailers, work orders (number,
+description, shop, invoice number), saved shops and recalls (3 letters or more), ignoring capitals and matching any
+part ("jacq" finds Jean Jacques, "0239" finds the unit). Results show grouped as you type; arrows move, Enter or a
+click opens the page (units and drivers open the combined unit/driver page). `/` or Ctrl+K (Cmd+K) jumps into the box.
+Pressing Enter with no list open goes to `/search`, which opens the page directly when there is one match.
+
 ## Recalls
 
 `manage.py recalls` (cron, Mondays 05:30 server time; `app/recalls.py`) checks every truck and trailer with a VIN.

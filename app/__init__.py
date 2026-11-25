@@ -145,10 +145,11 @@ def create_app():
     from .views.alerts import bp as alerts_bp
     from .views.documents import bp as documents_bp
     from .views.trailers import bp as trailers_bp
+    from .views.search import bp as search_bp
 
     for blueprint in (auth_bp, dashboard_bp, trucks_bp, drivers_bp, fuel_bp, trips_bp, learn_bp,
                       maintenance_bp, breakdowns_bp, faults_bp, integrations_bp,
-                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp, cat_bp, billing_bp, site_bp, alerts_bp, documents_bp, trailers_bp):
+                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp, cat_bp, billing_bp, site_bp, alerts_bp, documents_bp, trailers_bp, search_bp):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(404)

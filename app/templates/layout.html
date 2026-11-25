@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="/static/app.css?v={{ cat_version }}">
 <link rel="stylesheet" href="/static/modern.css?v={{ cat_version }}">
 <script src="/static/boot.js?v={{ cat_version }}"></script>
+<script src="/static/search.js?v={{ cat_version }}" defer></script>
 <link rel="icon" href="/static/favicon.svg?v=2">
 {% block head %}{% endblock %}
 </head>
@@ -51,6 +52,10 @@
       {% endif %}
     {% endfor %}
   </nav>
+  {% if company %}<form class="global-search" method="get" action="/search" role="search" data-global-search>
+    <input type="search" name="q" placeholder="Search  /" aria-label="Search units, drivers, VINs, work orders" autocomplete="off" maxlength="80">
+    <div class="search-drop" hidden></div>
+  </form>{% endif %}
   <div class="who">
     {% include "_cat.html" %}
     <details class="who-menu">

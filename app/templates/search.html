@@ -1,0 +1,12 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head"><div><h1>Search</h1><p>{{ q }}</p></div></div>
+{% for group in groups %}
+<section class="panel">
+  <div class="panel-head"><h2>{{ group.title }}</h2></div>
+  <ul class="unit-list">{% for item in group["items"] %}
+    <li><a href="{{ item.href }}"{% if item.external %} target="_blank" rel="noopener"{% endif %}>{{ item.label }}</a><span class="subtle">{{ item.detail }}</span></li>
+  {% endfor %}</ul>
+</section>
+{% else %}<p class="empty">Nothing found for "{{ q }}".</p>{% endfor %}
+{% endblock %}

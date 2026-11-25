@@ -771,3 +771,12 @@ form.inline { display: inline; }
 .threshold { align-items: end; } .threshold input { width: 80px; }
 .comeback { border-color: #cc4444; }
 .recall-list summary { cursor: pointer; } .recall-list p { margin: 6px 0; font-size: 13px; } .recall-list input { max-width: 150px; }
+.global-search { position: relative; margin-left: auto; margin-right: 12px; }
+.global-search input { width: 220px; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--face-dark); background: var(--paper); color: inherit; }
+.search-drop { position: absolute; right: 0; top: calc(100% + 4px); width: 380px; max-width: 92vw; max-height: 70vh; overflow-y: auto; z-index: 2000;
+  background: var(--paper); border: 1px solid var(--face-dark); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.3); padding: 4px 0; }
+.search-head { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 8px 12px 2px; }
+.search-drop a { display: block; padding: 6px 12px; text-decoration: none; color: inherit; }
+.search-drop a span { display: block; font-size: 12px; color: var(--muted); }
+.search-drop a.on, .search-drop a:hover { background: var(--shade); }
+@media (max-width: 800px) { .global-search { order: 5; width: 100%; margin: 6px 0; } .global-search input { width: 100%; box-sizing: border-box; } }
