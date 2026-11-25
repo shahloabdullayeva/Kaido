@@ -52,7 +52,7 @@ def describe(company_id, entity, entity_id):
         return (row["name"], f"/drivers/{entity_id}") if row else None
     if entity == "maintenance_order":
         row = one(
-            """select m.kind, t.unit_number from maintenance_orders m join trucks t on t.id = m.truck_id
+            """select m.kind, case when m.asset_type = 'trailer' then tr.unit_number else t.unit_number end as unit_number from maintenance_orders m left join trucks t on t.id = m.truck_id left join trailers tr on tr.id = m.trailer_id
                where m.id = %s and m.company_id = %s""",
             (entity_id, company_id),
         )

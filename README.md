@@ -728,6 +728,16 @@ the work order already made from it, #30; case 13 became #34), and the case upda
 matching work order. Statuses: open, scheduled, towing, in shop, in progress, done, cancelled. Priority: low, medium,
 high, urgent. "Report a breakdown" on a truck page opens a work order flagged as a breakdown.
 
+Opening one asks only for the basics: truck or trailer, the unit, what's wrong, priority, when it was reported and
+whether it is broken down, with shop and scheduled date folded away. A trailer order can have no truck and no driver
+(a dropped trailer) and records where it is sitting (`location`). The status is open, or scheduled when a shop or
+date is given. On the work order page: a status bar (one click per status), a comments thread (author, time, a photo
+or PDF per comment, stored in `uploads/maintenance/comments/`), then the details, with parts, labor, tax, invoice,
+payment and shop rating folded into "Costs and invoice" (open once the order is done or has any cost). Every status
+change writes "<name> changed status from X to Y" into the thread. Cancelled orders are hidden from the list unless
+the Status filter is Cancelled; Delete asks first and removes the order with its comments, files and reminders.
+The list shows the comment count per order and filters by status, truck/trailer and system.
+
 ## Service schedule
 
 Oil is per truck (`oil_interval_miles`), 25,000 miles by default and 15,000 for

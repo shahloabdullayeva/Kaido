@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% block scripts %}<script src="/static/work_order_new.js?v={{ cat_version }}"></script>{% endblock %}
+{% block body %}
+<div class="page-head">
+  <div><h1>{{ 'Report a breakdown' if breakdown else 'New work order' }}</h1></div>
+  <div class="actions-row"><a class="btn ghost" href="/maintenance">Back</a></div>
+</div>
+<section class="panel">
+  <form method="post" action="/maintenance" class="wo-new" data-wo-new>
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    {% if pti_id %}<input type="hidden" name="pti_id" value="{{ pti_id }}">{% endif %}
+    <div class="segmented" role="radiogroup" aria-label="Asset type">
+      <label><input type="radio" name="asset_type" value="truck" {% if asset == 'truck' %}checked{% endif %}> Truck</label>
+      <label><input type="radio" name="asset_type" value="trailer" {% if asset == 'trailer' %}checked{% endif %}> Trailer</label>
+    </div>
+    <div class="form-grid">
+      <label class="field" data-for="truck"><span>Truck</span>
+        <select name="truck_id">
+          <option value="">Select a truck</option>
+          {% set own = trucks|rejectattr('is_outside')|list %}
+          {% set other = trucks|selectattr('is_outside')|list %}
+          <optgroup label="Your trucks">
+          {% for truck in own %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}{% if truck.driver_name %} · {{ truck.driver_name }}{% endif %}</option>{% endfor %}
+          </optgroup>
+          {% if other %}<optgroup label="Outside trucks">
+          {% for truck in other %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+          </optgroup>{% endif %}
+          <option value="outside">+ Outside truck, not in the list</option>
+        </select>
+      </label>
+      <label class="field" data-for="trailer" hidden><span>Trailer</span>
+        <select name="trailer_id">
+          <option value="">Select a trailer</option>
+          {% for trailer in trailers %}<option value="{{ trailer.id }}" data-truck="{{ trailer.truck_id or '' }}" data-where="{{ trailer.location or '' }}" {% if trailer_id == trailer.id %}selected{% endif %}>{{ trailer.unit_number }}{% if trailer.truck_unit %} · with {{ trailer.truck_unit }}{% endif %}</option>{% endfor %}
+        </select>
+        {% if not trailers %}<em><a href="/trailers/new">Add a trailer</a></em>{% endif %}
+      </label>
+      <label class="field"><span>Priority</span>
+        <select name="priority">
+          {% for value in priorities %}<option value="{{ value }}" {% if value == priority %}selected{% endif %}>{{ value|capitalize }}</option>{% endfor %}
+        </select>
+      </label>
+      <fieldset class="outside full" id="outside-truck" hidden>
+        <legend>Outside truck</legend>
+        <div class="form-grid">
+          {{ field('Unit number or plate', 'outside_unit', '', attrs='maxlength="40"') }}
+          {{ field('Carrier / owner', 'outside_carrier', '', attrs='maxlength="160"') }}
+          {{ field('VIN', 'outside_vin', '', attrs='maxlength="24"') }}
+          {{ field('Plate', 'outside_plate', '', attrs='maxlength="20"') }}
+          {{ field('Make and model', 'outside_vehicle', '', attrs='maxlength="60"') }}
+        </div>
+      </fieldset>
+      {{ field("What's wrong", 'description', prefill_description or '', type='textarea', required=True, full=True, attrs='rows="3" maxlength="2000"') }}
+      {{ field('Reported', 'reported_at', now, type='datetime-local') }}
+      <label class="field check"><input type="checkbox" name="breakdown" value="1" {% if breakdown %}checked{% endif %}> <span>Broken down</span></label>
+      <div class="full trailer-extra" data-for="trailer" hidden>
+        <div class="form-grid">
+          <label class="field"><span>Truck (optional)</span>
+            <select name="truck_id" disabled>
+              <option value="">None, dropped</option>
+              {% for truck in trucks|rejectattr('is_outside') %}<option value="{{ truck.id }}">{{ truck.unit_number }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="field"><span>Driver (optional)</span>
+            <select name="driver_id" disabled>
+              <option value="">None</option>
+              {% for driver in drivers|rejectattr('is_outside') %}<option value="{{ driver.id }}">{{ driver.name }}</option>{% endfor %}
+            </select>
+          </label>
+          {{ field('Where it is sitting', 'location', '', attrs='maxlength="200" placeholder="Address or yard name" disabled', full=True) }}
+        </div>
+      </div>
+      <details class="full wo-more">
+        <summary>Shop and date</summary>
+        <div class="form-grid">
+          {{ field('Shop', 'vendor', '', attrs='maxlength="160"') }}
+          {{ field('Scheduled for', 'scheduled_for', '', type='date') }}
+        </div>
+      </details>
+    </div>
+    <div class="form-actions"><button class="btn" type="submit">Open work order</button>
+      <a class="btn ghost" href="/maintenance">Cancel</a></div>
+  </form>
+</section>
+{% endblock %}

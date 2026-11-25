@@ -25,7 +25,7 @@ def _scope(filters, alias="t"):
         clauses.append(f"{alias}.id = %s")
         params.append(filters["truck_id"])
     if filters.get("fleet") == "own":
-        clauses.append(f"not {alias}.is_outside")
+        clauses.append(f"not coalesce({alias}.is_outside, false)")
     elif filters.get("fleet") == "outside":
         clauses.append(f"{alias}.is_outside")
     return clauses, params
@@ -48,12 +48,13 @@ def _where(company_col, filters, date_expr=None, driver_col=None, alias="t"):
 
 
 def maintenance(filters):
-    where, params = _where("m.company_id", filters, "coalesce(m.performed_on, m.scheduled_for)", "m.driver_id")
+    where, params = _where("m.company_id", filters, "coalesce(m.performed_on, m.scheduled_for, m.reported_at::date)", "m.driver_id")
     data = rows(
-        f"""select m.id, coalesce(m.performed_on, m.scheduled_for) as day, t.unit_number,
+        f"""select m.id, coalesce(m.performed_on, m.scheduled_for, m.reported_at::date) as day,
+              case when m.asset_type = 'trailer' then tr.unit_number else t.unit_number end as unit_number,
               case when t.is_outside then coalesce(t.outside_carrier, 'outside') else '' end as carrier,
               d.name as driver, m.kind, m.status, m.vendor, m.invoice_no, m.odometer, m.cost, m.description
-            from maintenance_orders m join trucks t on t.id = m.truck_id
+            from maintenance_orders m left join trucks t on t.id = m.truck_id left join trailers tr on tr.id = m.trailer_id
             left join drivers d on d.id = m.driver_id
             where {where} order by day desc nulls last, m.id desc""",
         params,

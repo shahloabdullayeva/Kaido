@@ -56,11 +56,11 @@ def home():
     pins = fleet_pins(fleet, hos.for_drivers(company_id))
     attention = sorted([t for t in fleet if t["score"] > 0], key=lambda t: (-t["score"], t["unit_number"]))[:8]
     breakdowns = rows(
-        """select b.*, b.reported_at as occurred_at, t.unit_number, d.name as driver_name
-           from maintenance_orders b join trucks t on t.id = b.truck_id
-           left join drivers d on d.id = b.driver_id
-           where b.company_id = %s and b.breakdown and b.status not in ('done', 'cancelled')
-           order by b.reported_at desc limit 6""",
+        """select m.*, m.reported_at as occurred_at, case when m.asset_type = 'trailer' then tr.unit_number else t.unit_number end as unit_number, d.name as driver_name
+           from maintenance_orders m left join trucks t on t.id = m.truck_id left join trailers tr on tr.id = m.trailer_id
+           left join drivers d on d.id = m.driver_id
+           where m.company_id = %s and m.breakdown and m.status not in ('done', 'cancelled')
+           order by m.reported_at desc limit 6""",
         (company_id,),
     )
     faults = rows(
@@ -75,7 +75,7 @@ def home():
         (company_id,),
     )
     upcoming = rows(
-        """select m.*, t.unit_number from maintenance_orders m join trucks t on t.id = m.truck_id
+        """select m.*, case when m.asset_type = 'trailer' then tr.unit_number else t.unit_number end as unit_number from maintenance_orders m left join trucks t on t.id = m.truck_id left join trailers tr on tr.id = m.trailer_id
            where m.company_id = %s and m.status not in ('done', 'cancelled')
            order by coalesce(m.scheduled_for, current_date) limit 6""",
         (company_id,),

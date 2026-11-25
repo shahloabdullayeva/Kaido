@@ -1452,7 +1452,7 @@ begin
       returning id into target;
     end if;
     insert into work_order_comments (company_id, order_id, kind, body, created_by, author_name, created_at)
-    values (b.company_id, target, 'event', 'Reported as case #' || b.id, b.created_by,
+    values (b.company_id, target, 'event', 'reported this as case #' || b.id, b.created_by,
             (select name from users where id = b.created_by), b.occurred_at);
     insert into work_order_comments (company_id, order_id, kind, body, created_by, author_name, created_at)
     select u.company_id, target, case when u.status is not null and u.note like 'Status changed to %' then 'status' else 'comment' end,
@@ -1464,3 +1464,11 @@ begin
     update reminders set entity = 'maintenance_order', entity_id = target where entity = 'breakdown' and entity_id = b.id;
   end loop;
 end $$;
+
+alter table maintenance_orders alter column truck_id drop not null;
+alter table maintenance_orders add column if not exists asset_type text not null default 'truck';
+alter table maintenance_orders add column if not exists trailer_id int references trailers(id) on delete cascade;
+alter table maintenance_orders drop constraint if exists maintenance_orders_asset_check;
+alter table maintenance_orders add constraint maintenance_orders_asset_check
+  check ((asset_type = 'truck' and truck_id is not null) or (asset_type = 'trailer' and trailer_id is not null));
+create index if not exists maint_trailer_idx on maintenance_orders (trailer_id, performed_on desc);

@@ -103,9 +103,9 @@ def download():
 @company_required
 def order_pdf(order_id):
     order = one(
-        """select m.*, t.unit_number, t.vin, t.make, t.model, t.year, t.engine, t.is_outside, t.outside_carrier,
+        """select m.*, case when m.asset_type = 'trailer' then tr.unit_number else t.unit_number end as unit_number, coalesce(tr.vin, t.vin) as vin, t.make, t.model, t.year, t.engine, t.is_outside, t.outside_carrier,
              d.name as driver_name, d.phone as driver_phone, u.name as author
-           from maintenance_orders m join trucks t on t.id = m.truck_id
+           from maintenance_orders m left join trucks t on t.id = m.truck_id left join trailers tr on tr.id = m.trailer_id
            left join drivers d on d.id = m.driver_id left join users u on u.id = m.created_by
            where m.id = %s and m.company_id = %s""",
         (order_id, g.company["id"]),
@@ -114,7 +114,8 @@ def order_pdf(order_id):
         return render_template("errors/404.html"), 404
     cell = reports.cell_text
     fields = [
-        ("Truck", f"Unit {order['unit_number']}" + (f" ({order['outside_carrier'] or 'outside truck'})" if order["is_outside"] else "")),
+        ("Trailer" if order["asset_type"] == "trailer" else "Truck", f"Unit {order['unit_number']}" + (f" ({order['outside_carrier'] or 'outside truck'})" if order["is_outside"] else "")),
+        ("Where", order["location"]), ("Priority", order["priority"]),
         ("Vehicle", " ".join(str(p) for p in [order["year"], order["make"], order["model"]] if p)),
         ("Engine", order["engine"]), ("VIN", order["vin"]),
         ("Driver", " · ".join(p for p in [order["driver_name"], order["driver_contact"] or order["driver_phone"]] if p)),
@@ -136,7 +137,9 @@ def order_pdf(order_id):
               cell(float(part["quantity"]) * float(part["unit_price"]), "money") if part["unit_price"] is not None else "")
              for part in work_orders.parts_of(order_id)]
     body = reports.record_pdf(f"Work order #{order_id}", g.company["name"], fields,
-                              [("What was done", order["description"])],
+                              [("What was done", order["description"]), ("Cause", order["cause"]), ("What fixed it", order["resolution"]),
+                               ("Comments", "\n".join(f"{c['created_at']:%d %b %Y %H:%M} · {c['author'] or 'Kaido'}: {c['body'] or c['file_name'] or ''}"
+                                                       for c in work_orders.comments_of(order_id)))],
                               tables=[("Parts", (70, 40, 20, 30, 30), ("Part", "Part number", "Qty", "Unit price", "Amount"), parts)])
     audit("report.downloaded", "maintenance_order", order_id, {"format": "pdf"})
     return Response(body, mimetype="application/pdf",

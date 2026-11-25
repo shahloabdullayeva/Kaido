@@ -89,8 +89,44 @@ def chosen_driver(form, truck):
     return driver_id, None
 
 
+def company_trailers():
+    return rows(
+        """select tr.id, tr.unit_number, tr.kind, tr.truck_id, tr.location, t.unit_number as truck_unit
+           from trailers tr left join trucks t on t.id = tr.truck_id
+           where tr.company_id = %s and tr.status <> 'sold' order by lower(tr.unit_number)""",
+        (g.company["id"],),
+    )
+
+
 def form_choices():
-    return {"trucks": active_trucks(), "drivers": active_drivers(), "payment_methods": work_orders.PAYMENT_METHODS}
+    return {"trucks": active_trucks(), "drivers": active_drivers(), "trailers": company_trailers(),
+            "payment_methods": work_orders.PAYMENT_METHODS, "priorities": work_orders.PRIORITIES}
+
+
+def author():
+    return g.session.get("name") or g.session.get("email")
+
+
+def load_order(order_id):
+    return one(
+        f"""select m.*, {work_orders.UNIT_COL} as unit_number, t.unit_number as truck_unit, tr.unit_number as trailer_unit,
+                   d.name as driver_name, d.phone as driver_phone
+            from maintenance_orders m {work_orders.UNIT_JOIN}
+            left join drivers d on d.id = m.driver_id
+            where m.id = %s and m.company_id = %s""",
+        (order_id, g.company["id"]),
+    )
+
+
+def close_out(order, status):
+    if status == "done":
+        execute(
+            """update maintenance_orders set resolved_at = coalesce(resolved_at, now()),
+                 performed_on = coalesce(performed_on, current_date) where id = %s""",
+            (order["id"],),
+        )
+    elif status != "cancelled":
+        execute("update maintenance_orders set resolved_at = null where id = %s", (order["id"],))
 
 
 def driver_contact_for(form, driver_id):
@@ -116,32 +152,43 @@ def store_extras(order_id, parts, form):
         audit("maintenance.files_added", "maintenance_order", order_id, {"files": [row["name"] for row in saved]})
 
 
+LIST_FILTERS = ["all", "open"] + work_orders.STATUSES
+
+
 @bp.get("/maintenance")
 @login_required
 @company_required
 def index():
-    status = forms.pick(request.args.get("status"), STATUSES + ["all", "open"], "all")
+    status = forms.pick(request.args.get("status"), LIST_FILTERS, "all")
     group = forms.pick(request.args.get("group"), list(GROUP_LABELS), "")
+    asset = forms.pick(request.args.get("asset"), ["truck", "trailer"], "")
     params = [g.company["id"]]
     clause = ""
-    if status == "open":
+    if status == "all":
+        clause = " and m.status <> 'cancelled'"
+    elif status == "open":
         clause = " and m.status not in ('done', 'cancelled')"
-    elif status != "all":
+    else:
         clause = " and m.status = %s"
         params.append(status)
+    if asset:
+        clause += " and m.asset_type = %s"
+        params.append(asset)
     if group:
         clause += " and (m.kind = any(%s) or m.kind like %s)" if group == "pm" else " and m.kind = any(%s)"
         params.append(kinds_in(group))
         if group == "pm":
             params.append(CUSTOM_PREFIX + "%")
     orders = rows(
-        f"""select m.*, t.unit_number, d.name as driver_name, coalesce(m.driver_contact, d.phone) as contact,
-                   (select count(*) from maintenance_files f where f.order_id = m.id) as files
-            from maintenance_orders m
-            join trucks t on t.id = m.truck_id
+        f"""select m.*, {work_orders.UNIT_COL} as unit_number, d.name as driver_name,
+                   coalesce(m.driver_contact, d.phone) as contact,
+                   (select count(*) from maintenance_files f where f.order_id = m.id) as files,
+                   (select count(*) from work_order_comments c where c.order_id = m.id and c.kind = 'comment') as comments
+            from maintenance_orders m {work_orders.UNIT_JOIN}
             left join drivers d on d.id = m.driver_id
             where m.company_id = %s{clause}
-            order by coalesce(m.performed_on, m.scheduled_for, m.reported_at::date) desc nulls first, m.id desc limit 200""",
+            order by (m.status in ('done', 'cancelled')), coalesce(m.performed_on, m.scheduled_for, m.reported_at::date) desc,
+                     m.id desc limit 300""",
         tuple(params),
     )
     spend = one(
@@ -150,86 +197,88 @@ def index():
              and performed_on >= date_trunc('month', current_date)""",
         (g.company["id"],),
     )
+    cancelled = one("select count(*) as n from maintenance_orders where company_id = %s and status = 'cancelled'",
+                    (g.company["id"],))["n"]
     return render_template("maintenance/list.html", title="Maintenance", active="/maintenance",
-                           orders=orders, status=status, statuses=STATUSES, spend=spend,
-                           group=group, group_labels=GROUP_LABELS)
+                           orders=orders, status=status, statuses=work_orders.STATUSES, spend=spend,
+                           group=group, group_labels=GROUP_LABELS, asset=asset, cancelled=cancelled)
 
 
 @bp.get("/maintenance/new")
 @login_required
 @role_required("admin")
 def new():
-    g.google_map = google_places.available()
-    return render_template("maintenance/form.html", title="New work order", active="/maintenance",
-                           groups=pm_list.groups(g.company["id"]), statuses=STATUSES,
-                           truck_id=forms.integer(request.args.get("truck_id")), order=None,
+    breakdown = request.args.get("breakdown") == "1"
+    return render_template("maintenance/new.html", title="New work order", active="/maintenance",
+                           truck_id=forms.integer(request.args.get("truck_id")),
+                           trailer_id=forms.integer(request.args.get("trailer_id")),
+                           asset="trailer" if request.args.get("trailer_id") or request.args.get("asset") == "trailer" else "truck",
                            prefill_description=forms.text(request.args.get("description"), 2000),
-                           pti_id=forms.integer(request.args.get("pti")),
-                           breakdown=request.args.get("breakdown") == "1",
-                           drive=forms.pick(request.args.get("drive"), ["yes", "no"], None), **form_choices())
+                           pti_id=forms.integer(request.args.get("pti")), breakdown=breakdown,
+                           priority="high" if breakdown else "medium",
+                           now=datetime.now().strftime("%Y-%m-%dT%H:%M"), **form_choices())
 
 
 @bp.post("/maintenance")
 @login_required
 @role_required("admin")
 def create():
-    description = forms.required(request.form.get("description"), 2000)
+    form = request.form
+    company_id = g.company["id"]
+    asset = forms.pick(form.get("asset_type"), ["truck", "trailer"], "truck")
+    back = "/maintenance/new" + ("?asset=trailer" if asset == "trailer" else "")
+    description = forms.required(form.get("description"), 2000)
     if not description:
-        flash("Describe the work.", "bad")
-        return redirect("/maintenance/new")
-    if request.form.get("truck_id") == "outside":
-        truck, problem = outside_truck(request.form)
+        flash("Say what is wrong.", "bad")
+        return redirect(back)
+    truck = trailer = None
+    if asset == "trailer":
+        trailer = one("select * from trailers where id = %s and company_id = %s",
+                      (forms.integer(form.get("trailer_id")), company_id))
+        if not trailer:
+            flash("Pick a trailer.", "bad")
+            return redirect(back)
+        truck_id = forms.integer(form.get("truck_id"))
+        truck = one("select * from trucks where id = %s and company_id = %s", (truck_id, company_id)) if truck_id else None
+    elif form.get("truck_id") == "outside":
+        truck, problem = outside_truck(form)
         if problem:
             flash(problem, "bad")
-            return redirect("/maintenance/new")
-        truck_id = truck["id"]
+            return redirect(back)
     else:
-        truck_id = forms.integer(request.form.get("truck_id"))
-        truck = one("select * from trucks where id = %s and company_id = %s", (truck_id, g.company["id"]))
-    if not truck:
-        flash("Pick a truck.", "bad")
-        return redirect("/maintenance/new")
-    driver_id, problem = chosen_driver(request.form, truck)
+        truck = one("select * from trucks where id = %s and company_id = %s",
+                    (forms.integer(form.get("truck_id")), company_id))
+        if not truck:
+            flash("Pick a truck.", "bad")
+            return redirect(back)
+    driver_id, problem = chosen_driver(form, truck)
     if problem:
         flash(problem, "bad")
-        return redirect(f"/maintenance/new?truck_id={truck_id}")
-    status = forms.pick(request.form.get("status"), STATUSES, "scheduled")
-    kind = forms.pick(request.form.get("kind"), pm_list.kinds(g.company["id"]), "repair")
-    performed_on = forms.day(request.form.get("performed_on"))
-    odometer = forms.integer(request.form.get("odometer"))
-    parts, labor, tax, total = work_orders.money_from(request.form)
+        return redirect(back)
+    vendor = forms.text(form.get("vendor"), 160)
+    scheduled_for = forms.day(form.get("scheduled_for"))
+    status = "scheduled" if vendor or scheduled_for else "open"
     order = insert(
-        """insert into maintenance_orders (company_id, truck_id, driver_id, kind, status, scheduled_for, performed_on,
-             odometer, vendor, invoice_no, cost, description, next_due_on, next_due_odometer, created_by,
-             shop_where, shop_lat, shop_lon, shop_phone, shop_address, driver_contact, labor_cost, tax, paid_with)
-           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-           returning *""",
-        (
-            g.company["id"], truck_id, driver_id, kind, status,
-            forms.day(request.form.get("scheduled_for")), performed_on, odometer,
-            forms.text(request.form.get("vendor"), 160), forms.text(request.form.get("invoice_no"), 40),
-            total, description,
-            forms.day(request.form.get("next_due_on")), forms.integer(request.form.get("next_due_odometer")),
-            g.session["user_id"], *shop_origin_fields(request.form),
-            forms.text(request.form.get("shop_phone"), 40), forms.text(request.form.get("shop_address"), 300),
-            driver_contact_for(request.form, driver_id), labor, tax,
-            forms.pick(request.form.get("paid_with"), list(work_orders.PAYMENT_LABELS), None),
-        ),
+        """insert into maintenance_orders (company_id, asset_type, truck_id, trailer_id, driver_id, kind, status, priority,
+             reported_at, scheduled_for, vendor, description, breakdown, location, odometer, created_by)
+           values (%s, %s, %s, %s, %s, 'repair', %s, %s, coalesce(%s, now()), %s, %s, %s, %s, %s, %s, %s) returning *""",
+        (company_id, asset, truck["id"] if truck else None, trailer["id"] if trailer else None, driver_id, status,
+         forms.pick(form.get("priority"), work_orders.PRIORITIES, "medium"), forms.moment(form.get("reported_at")),
+         scheduled_for, vendor, description, forms.checkbox(form.get("breakdown")),
+         forms.text(form.get("location"), 200),
+         ((truck or {}).get("odometer") or None) if asset == "truck" else None, g.session["user_id"]),
     )
-    if forms.checkbox(request.form.get("breakdown")):
-        execute("update maintenance_orders set breakdown = true, priority = 'high' where id = %s", (order["id"],))
-    store_extras(order["id"], parts, request.form)
-    save_rating(order["id"])
-    apply_completion(order, truck)
-    audit("maintenance.created", "maintenance_order", order["id"], {"unit": truck["unit_number"], "kind": kind, "status": status})
-    flash("Work order saved.", "ok")
-    pti_id = forms.integer(request.form.get("pti_id"))
-    if pti_id:
+    work_orders.add_comment(company_id, order["id"], "event", "opened this work order", g.session["user_id"], author())
+    unit = trailer["unit_number"] if trailer else truck["unit_number"]
+    audit("maintenance.created", "maintenance_order", order["id"], {"unit": unit, "asset": asset, "status": status})
+    pti_id = forms.integer(form.get("pti_id"))
+    if pti_id and truck:
         execute(
             """update inspections set maintenance_order_id = %s
                where id = %s and company_id = %s and truck_id = %s and maintenance_order_id is null""",
-            (order["id"], pti_id, g.company["id"], truck_id),
+            (order["id"], pti_id, company_id, truck["id"]),
         )
+    flash("Work order opened.", "ok")
     return redirect(f"/maintenance/{order['id']}")
 
 
@@ -496,20 +545,18 @@ def oil(truck_id):
 @login_required
 @company_required
 def detail(order_id):
-    order = one(
-        """select m.*, t.unit_number, d.name as driver_name, d.phone as driver_phone from maintenance_orders m
-           join trucks t on t.id = m.truck_id
-           left join drivers d on d.id = m.driver_id
-           where m.id = %s and m.company_id = %s""",
-        (order_id, g.company["id"]),
-    )
+    order = load_order(order_id)
     if not order:
         return render_template("errors/404.html"), 404
     g.google_map = google_places.available()
+    parts = work_orders.parts_of(order_id)
+    files = work_orders.files_of(order_id)
+    costs_open = order["status"] == "done" or bool(parts or files or order["cost"] is not None or order["labor_cost"]
+                                                   or order["invoice_no"] or order["paid_with"] or order["shop_rating"])
     return render_template("maintenance/form.html", title=f"Work order #{order['id']}", active="/maintenance",
-                           groups=pm_list.groups(g.company["id"], order["kind"]), statuses=STATUSES,
-                           order=order, truck_id=order["truck_id"], parts=work_orders.parts_of(order_id),
-                           files=work_orders.files_of(order_id), **form_choices())
+                           groups=pm_list.groups(g.company["id"], order["kind"]), statuses=work_orders.STATUSES,
+                           order=order, truck_id=order["truck_id"], parts=parts, files=files,
+                           comments=work_orders.comments_of(order_id), costs_open=costs_open, **form_choices())
 
 
 @bp.post("/maintenance/<int:order_id>")
@@ -519,42 +566,125 @@ def update(order_id):
     order = one("select * from maintenance_orders where id = %s and company_id = %s", (order_id, g.company["id"]))
     if not order:
         return render_template("errors/404.html"), 404
-    status = forms.pick(request.form.get("status"), STATUSES, order["status"])
-    performed_on = forms.day(request.form.get("performed_on"))
-    truck = one("select * from trucks where id = %s and company_id = %s", (order["truck_id"], g.company["id"]))
-    driver_id, problem = chosen_driver(request.form, truck)
+    form = request.form
+    status = forms.pick(form.get("status"), work_orders.STATUSES, order["status"])
+    truck_id = order["truck_id"]
+    if order["asset_type"] == "trailer" and "truck_id" in form:
+        picked = forms.integer(form.get("truck_id"))
+        truck_id = picked if picked and one("select id from trucks where id = %s and company_id = %s",
+                                            (picked, g.company["id"])) else None
+    truck = one("select * from trucks where id = %s and company_id = %s", (truck_id, g.company["id"])) if truck_id else None
+    driver_id, problem = chosen_driver(form, truck)
     if problem:
         flash(problem, "bad")
         return redirect(f"/maintenance/{order_id}")
-    parts, labor, tax, total = work_orders.money_from(request.form)
+    parts, labor, tax, total = work_orders.money_from(form)
     updated = insert(
-        """update maintenance_orders set driver_id = %s, kind = %s, status = %s, scheduled_for = %s, performed_on = %s,
-             odometer = %s, vendor = %s, invoice_no = %s, cost = %s, description = %s,
-             next_due_on = %s, next_due_odometer = %s, shop_where = %s, shop_lat = %s, shop_lon = %s,
-             shop_phone = %s, shop_address = %s, driver_contact = %s, labor_cost = %s, tax = %s, paid_with = %s,
+        """update maintenance_orders set truck_id = %s, driver_id = %s, kind = %s, status = %s, priority = %s,
+             scheduled_for = %s, performed_on = %s, odometer = %s, vendor = %s, invoice_no = %s, cost = %s,
+             description = %s, next_due_on = %s, next_due_odometer = %s, shop_where = %s, shop_lat = %s,
+             shop_lon = %s, shop_phone = %s, shop_address = %s, driver_contact = %s, labor_cost = %s, tax = %s,
+             paid_with = %s, location = %s, breakdown = %s, cause = %s, resolution = %s, towing_cost = %s,
              updated_at = now()
            where id = %s and company_id = %s returning *""",
         (
-            driver_id,
-            forms.pick(request.form.get("kind"), pm_list.kinds(g.company["id"], order["kind"]), order["kind"]), status,
-            forms.day(request.form.get("scheduled_for")), performed_on,
-            forms.integer(request.form.get("odometer")), forms.text(request.form.get("vendor"), 160),
-            forms.text(request.form.get("invoice_no"), 40), total,
-            forms.required(request.form.get("description"), 2000) or order["description"],
-            forms.day(request.form.get("next_due_on")), forms.integer(request.form.get("next_due_odometer")),
-            *shop_origin_fields(request.form),
-            forms.text(request.form.get("shop_phone"), 40), forms.text(request.form.get("shop_address"), 300),
-            driver_contact_for(request.form, driver_id), labor, tax,
-            forms.pick(request.form.get("paid_with"), list(work_orders.PAYMENT_LABELS), None),
+            truck_id, driver_id,
+            forms.pick(form.get("kind"), pm_list.kinds(g.company["id"], order["kind"]), order["kind"]), status,
+            forms.pick(form.get("priority"), work_orders.PRIORITIES, order["priority"]),
+            forms.day(form.get("scheduled_for")), forms.day(form.get("performed_on")),
+            forms.integer(form.get("odometer")), forms.text(form.get("vendor"), 160),
+            forms.text(form.get("invoice_no"), 40), total,
+            forms.required(form.get("description"), 2000) or order["description"],
+            forms.day(form.get("next_due_on")), forms.integer(form.get("next_due_odometer")),
+            *shop_origin_fields(form),
+            forms.text(form.get("shop_phone"), 40), forms.text(form.get("shop_address"), 300),
+            driver_contact_for(form, driver_id), labor, tax,
+            forms.pick(form.get("paid_with"), list(work_orders.PAYMENT_LABELS), None),
+            forms.text(form.get("location"), 200), forms.checkbox(form.get("breakdown")),
+            forms.text(form.get("cause"), 500), forms.text(form.get("resolution"), 2000),
+            forms.decimal(form.get("towing_cost")),
             order_id, g.company["id"],
         ),
     )
-    store_extras(order_id, parts, request.form)
+    store_extras(order_id, parts, form)
     save_rating(order_id)
-    apply_completion(updated, truck)
+    work_orders.log_status(g.company["id"], order_id, order["status"], status, g.session["user_id"], author())
+    close_out(updated, status)
+    if truck:
+        apply_completion(updated, truck)
     audit("maintenance.updated", "maintenance_order", order_id, {"status": status})
     flash("Work order updated.", "ok")
     return redirect(f"/maintenance/{order_id}")
+
+
+@bp.post("/maintenance/<int:order_id>/status")
+@login_required
+@role_required("admin")
+def change_status(order_id):
+    order = one("select * from maintenance_orders where id = %s and company_id = %s", (order_id, g.company["id"]))
+    if not order:
+        return render_template("errors/404.html"), 404
+    status = forms.pick(request.form.get("status"), work_orders.STATUSES, order["status"])
+    if status != order["status"]:
+        updated = insert("update maintenance_orders set status = %s, updated_at = now() where id = %s returning *",
+                         (status, order_id))
+        work_orders.log_status(g.company["id"], order_id, order["status"], status, g.session["user_id"], author())
+        close_out(updated, status)
+        truck = one("select * from trucks where id = %s", (order["truck_id"],)) if order["truck_id"] else None
+        if truck:
+            apply_completion(updated, truck)
+        audit("maintenance.status", "maintenance_order", order_id, {"from": order["status"], "to": status})
+    return redirect(f"/maintenance/{order_id}#comments")
+
+
+@bp.post("/maintenance/<int:order_id>/comments")
+@login_required
+@company_required
+def add_comment(order_id):
+    order = one("select id from maintenance_orders where id = %s and company_id = %s", (order_id, g.company["id"]))
+    if not order:
+        return render_template("errors/404.html"), 404
+    body = forms.text(request.form.get("body"), 4000)
+    upload = request.files.get("file")
+    if not body and not (upload and upload.filename):
+        flash("Write something or attach a file.", "bad")
+        return redirect(f"/maintenance/{order_id}#comments")
+    row, problem = work_orders.add_comment(g.company["id"], order_id, "comment", body, g.session["user_id"], author(),
+                                           upload)
+    if problem:
+        flash(problem, "bad")
+    else:
+        audit("maintenance.comment", "maintenance_order", order_id, {"comment": row["id"]})
+    return redirect(f"/maintenance/{order_id}#comments")
+
+
+@bp.get("/maintenance/<int:order_id>/comments/<int:comment_id>/file")
+@login_required
+@company_required
+def comment_file(order_id, comment_id):
+    item = one("select * from work_order_comments where id = %s and order_id = %s and company_id = %s",
+               (comment_id, order_id, g.company["id"]))
+    path = work_orders.comment_path(item)
+    if not path:
+        return render_template("errors/404.html"), 404
+    inline = item["content_type"] in ("application/pdf", "image/jpeg", "image/png", "image/webp")
+    response = send_file(path, mimetype=item["content_type"], as_attachment=not inline, download_name=item["file_name"],
+                         max_age=0)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
+
+
+@bp.post("/maintenance/<int:order_id>/delete")
+@login_required
+@role_required("admin")
+def delete(order_id):
+    order = load_order(order_id)
+    if not order:
+        return render_template("errors/404.html"), 404
+    work_orders.delete_order(g.company["id"], order_id)
+    audit("maintenance.deleted", "maintenance_order", order_id, {"unit": order["unit_number"], "description": order["description"][:200]})
+    flash(f"Work order #{order_id} deleted.", "ok")
+    return redirect("/maintenance")
 
 
 @bp.get("/maintenance/<int:order_id>/files/<int:file_id>")

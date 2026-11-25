@@ -6,197 +6,194 @@
 <script src="/static/assistant.js?v={{ cat_version }}"></script>
 <script src="/static/work_order.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
-{% set editing = order is not none %}
+{% set admin = at_least(role, 'admin') %}
+{% set unit_href = ('/trailers/' ~ order.trailer_id) if order.asset_type == 'trailer' else ('/trucks/' ~ order.truck_id) %}
 <div class="page-head">
-  <div><h1>{{ 'Work order #' ~ order.id if editing else 'New work order' }}</h1>
-    </div>
-  <div class="actions-row"><a class="btn" href="#invoice" data-upload-invoice>Upload invoice</a>
-  <a class="btn ghost" href="/maintenance">Back</a></div>
+  <div><h1>Work order #{{ order.id }}</h1>
+    <p><a href="{{ unit_href }}">{{ 'Trailer' if order.asset_type == 'trailer' else 'Unit' }} {{ order.unit_number }}</a>
+      <span class="badge {{ order.status|tone }}">{{ order.status|label }}</span>
+      <span class="badge {{ order.priority|tone }}">{{ order.priority }} priority</span>
+      {% if order.breakdown %}<span class="badge bad">breakdown</span>{% endif %}</p></div>
+  <div class="actions-row">
+    <a class="btn ghost" href="/maintenance/{{ order.id }}/pdf">PDF</a>
+    {% if admin %}<form method="post" action="/maintenance/{{ order.id }}/delete" class="inline" data-confirm="Delete work order #{{ order.id }} with its comments and files? This cannot be undone.">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost danger" type="submit">Delete</button></form>{% endif %}
+    <a class="btn ghost" href="/maintenance">Back</a></div>
 </div>
-{% if editing %}
+
 <div class="stats wo-summary">
-  <div class="stat"><div class="stat-label">Unit</div><div class="stat-value">{{ order.unit_number }}</div><div class="stat-hint">{{ order.driver_name or 'No driver' }}</div></div>
-  <div class="stat"><div class="stat-label">Shop</div><div class="stat-value small">{{ order.vendor or '—' }}</div><div class="stat-hint">{{ order.shop_phone or '' }}</div></div>
-  <div class="stat"><div class="stat-label">Status</div><div class="stat-value"><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></div><div class="stat-hint">{{ (order.performed_on or order.scheduled_for)|day }}</div></div>
-  <div class="stat"><div class="stat-label">Total</div><div class="stat-value">{{ order.cost|money }}</div><div class="stat-hint">{{ parts|length }} part{{ 's' if parts|length != 1 }}{% if order.paid_with %} · {{ payment_methods|selectattr(0, 'equalto', order.paid_with)|map(attribute=1)|first }}{% endif %}</div></div>
-  <div class="stat {{ '' if files else 'warn' }}"><div class="stat-label">Invoice</div><div class="stat-value">{{ files|length }}</div><div class="stat-hint">{{ 'file' if files|length == 1 else 'files' }} attached</div></div>
+  {% if order.driver_name %}<div class="stat"><div class="stat-label">Driver</div><div class="stat-value small">{{ order.driver_name }}</div><div class="stat-hint">{{ order.driver_contact or order.driver_phone or '' }}</div></div>{% endif %}
+  {% if order.asset_type == 'trailer' %}<div class="stat"><div class="stat-label">{{ 'With truck' if order.truck_unit else 'Dropped at' }}</div><div class="stat-value small">{% if order.truck_unit %}<a href="/trucks/{{ order.truck_id }}">{{ order.truck_unit }}</a>{% else %}{{ order.location or 'Not recorded' }}{% endif %}</div></div>{% endif %}
+  {% if order.vendor %}<div class="stat"><div class="stat-label">Shop</div><div class="stat-value small">{{ order.vendor }}</div><div class="stat-hint">{{ order.shop_phone or '' }}</div></div>{% endif %}
+  <div class="stat"><div class="stat-label">Reported</div><div class="stat-value small">{{ order.reported_at|day }}</div>{% if order.scheduled_for %}<div class="stat-hint">scheduled {{ order.scheduled_for|day }}</div>{% endif %}</div>
+  {% if order.cost is not none %}<div class="stat"><div class="stat-label">Total</div><div class="stat-value">{{ order.cost|money }}</div></div>{% endif %}
+  {% if order.status == 'done' %}<div class="stat {{ '' if files else 'warn' }}"><div class="stat-label">Invoice</div><div class="stat-value">{{ files|length }}</div><div class="stat-hint">{{ 'file' if files|length == 1 else 'files' }}</div></div>{% endif %}
 </div>
+
+{% if admin %}
+<form method="post" action="/maintenance/{{ order.id }}/status" class="panel status-bar">
+  <input type="hidden" name="csrf" value="{{ session.csrf }}">
+  <span class="subtle">Status</span>
+  {% for value in statuses %}<button type="submit" name="status" value="{{ value }}" class="btn small {{ '' if order.status == value else 'ghost' }}" {% if order.status == value %}disabled{% endif %}>{{ value|label }}</button>{% endfor %}
+</form>
 {% endif %}
-<section class="panel">
-  <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}" data-truck-fill enctype="multipart/form-data" class="work-order">
+
+<section class="panel" id="comments">
+  <div class="panel-head"><h2>Comments</h2><span class="subtle">{{ comments|selectattr('kind', 'equalto', 'comment')|list|length }}</span></div>
+  <ol class="thread">
+    {% for c in comments %}
+    {% if c.kind == 'comment' %}
+    <li class="thread-item">
+      <div class="thread-meta"><strong>{{ c.author or 'Someone' }}</strong> <span class="subtle" title="{{ c.created_at|stamp }}">{{ c.created_at|stamp }}</span></div>
+      {% if c.body %}<div class="thread-body">{{ c.body }}</div>{% endif %}
+      {% if c.file_path %}<div class="thread-file">{% if c.content_type and c.content_type.startswith('image/') and c.content_type != 'image/heic' %}<a href="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" target="_blank" rel="noopener"><img src="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" alt="{{ c.file_name }}" loading="lazy"></a>{% else %}<a href="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" target="_blank" rel="noopener">{{ c.file_name }}</a>{% endif %}</div>{% endif %}
+    </li>
+    {% else %}
+    <li class="thread-item event"><span>{{ c.author or 'Kaido' }} {{ c.body }}</span> <span class="subtle">{{ c.created_at|stamp }}</span></li>
+    {% endif %}
+    {% endfor %}
+  </ol>
+  <form method="post" action="/maintenance/{{ order.id }}/comments" enctype="multipart/form-data" class="thread-new">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
-    <input type="hidden" name="shop_where" value="{{ order.shop_where or '' if editing else '' }}">
-    {% if breakdown and not editing %}<input type="hidden" name="breakdown" value="1">{% endif %}
-    {% if pti_id and not editing %}<input type="hidden" name="pti_id" value="{{ pti_id }}">{% endif %}
-    <input type="hidden" name="shop_lat" value="{{ order.shop_lat if editing and order.shop_lat is not none else '' }}">
-    <input type="hidden" name="shop_lon" value="{{ order.shop_lon if editing and order.shop_lon is not none else '' }}">
-    <h3 class="form-section">Vehicle and driver</h3>
+    <textarea name="body" rows="2" maxlength="4000" placeholder="Add a comment" aria-label="Comment"></textarea>
+    <div class="actions-row"><input type="file" name="file" accept="application/pdf,image/*" aria-label="Attach a photo or file">
+      <button class="btn" type="submit">Comment</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Details</h2></div>
+  <form method="post" action="/maintenance/{{ order.id }}" data-truck-fill enctype="multipart/form-data" class="work-order">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <input type="hidden" name="shop_where" value="{{ order.shop_where or '' }}">
+    <input type="hidden" name="shop_lat" value="{{ order.shop_lat if order.shop_lat is not none else '' }}">
+    <input type="hidden" name="shop_lon" value="{{ order.shop_lon if order.shop_lon is not none else '' }}">
     <div class="form-grid">
-      <label class="field"><span>Unit number</span>
-        <select name="truck_id" required {% if editing %}disabled{% endif %}>
-          <option value="">Select a truck</option>
-          {% set own = trucks|rejectattr('is_outside')|list %}
-          {% set other = trucks|selectattr('is_outside')|list %}
-          <optgroup label="Your trucks">
-          {% for truck in own %}<option value="{{ truck.id }}"
-            data-driver-id="{{ truck.driver_id or '' }}"
-            data-odometer="{{ truck.odometer or '' }}"
-            data-truck="{{ [truck.year, truck.make, truck.model]|select|join(' ') }}"
-            {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
-          </optgroup>
-          {% if other %}<optgroup label="Outside trucks">
-          {% for truck in other %}<option value="{{ truck.id }}"
-            data-driver-id="{{ truck.driver_id or '' }}"
-            data-odometer="{{ truck.odometer or '' }}"
-            data-truck="{{ [truck.make, truck.outside_carrier]|select|join(' · ') }}"
-            {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
-          </optgroup>{% endif %}
-          {% if not editing %}<option value="outside">+ Outside truck, not in the list</option>{% endif %}
+      {% if order.asset_type == 'trailer' %}
+      <label class="field"><span>Truck</span>
+        <select name="truck_id">
+          <option value="">None, dropped</option>
+          {% for truck in trucks|rejectattr('is_outside') %}<option value="{{ truck.id }}" {% if order.truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
         </select>
-        <em id="truck-summary" class="subtle"></em>
       </label>
-      <label class="field"><span>Driver name</span>
+      {% else %}
+      <label class="field"><span>Unit</span>
+        <select name="truck_id" disabled>
+          {% for truck in trucks %}{% if truck.id == order.truck_id %}<option value="{{ truck.id }}" data-driver-id="{{ truck.driver_id or '' }}" data-odometer="{{ truck.odometer or '' }}" selected>{{ truck.unit_number }}</option>{% endif %}{% endfor %}
+        </select>
+      </label>
+      {% endif %}
+      <label class="field"><span>Driver</span>
         <select name="driver_id">
           <option value="">No driver</option>
-          <optgroup label="Your drivers">
-          {% for driver in drivers|rejectattr('is_outside') %}<option value="{{ driver.id }}" data-phone="{{ driver.phone or '' }}" {% if editing and order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
-          </optgroup>
-          {% set outside_drivers = drivers|selectattr('is_outside')|list %}
-          {% if outside_drivers %}<optgroup label="Outside drivers">
-          {% for driver in outside_drivers %}<option value="{{ driver.id }}" data-phone="{{ driver.phone or '' }}" {% if editing and order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}{% if driver.outside_carrier %} · {{ driver.outside_carrier }}{% endif %}</option>{% endfor %}
-          </optgroup>{% endif %}
-          <option value="outside">+ Outside driver, not in the list</option>
+          {% for driver in drivers %}<option value="{{ driver.id }}" data-phone="{{ driver.phone or '' }}" {% if order.driver_id == driver.id %}selected{% endif %}>{{ driver.name }}{% if driver.is_outside and driver.outside_carrier %} · {{ driver.outside_carrier }}{% endif %}</option>{% endfor %}
         </select>
-        
       </label>
-      <fieldset class="outside full" id="outside-truck" hidden>
-        <legend>Outside truck</legend>
-        <div class="form-grid">
-          {{ field('Unit number or plate', 'outside_unit', '', attrs='maxlength="40"') }}
-          {{ field('Carrier / owner', 'outside_carrier', '', attrs='maxlength="160"', hint='Company or owner-operator it belongs to.') }}
-          {{ field('VIN', 'outside_vin', '', attrs='maxlength="24"', hint='Lets Kaido look up the engine for the oil suggestion.') }}
-          {{ field('Plate', 'outside_plate', '', attrs='maxlength="20"') }}
-          {{ field('Make and model', 'outside_vehicle', '', attrs='maxlength="60"', hint='For example Freightliner Cascadia.') }}
-        </div>
-      </fieldset>
-      <fieldset class="outside full" id="outside-driver" hidden>
-        <legend>Outside driver</legend>
-        <div class="form-grid">
-          {{ field('Name', 'outside_driver_name', '', attrs='maxlength="120"') }}
-          {{ field('Phone', 'outside_driver_phone', '', type='tel', attrs='maxlength="40"') }}
-          {{ field('Carrier', 'outside_driver_carrier', '', attrs='maxlength="160"', hint="Leave empty to use the truck's carrier.") }}
-        </div>
-      </fieldset>
-      {{ field('Driver contact', 'driver_contact', (order.driver_contact or order.driver_phone) if editing else '', type='tel', attrs='maxlength="60" placeholder="+1 555 123 4567"', hint='Filled in from the driver. Saved to the driver too if they had no number.') }}
-      {{ field('Odometer', 'odometer', order.odometer if editing else '', type='number', attrs='min="0"', hint='Last reading from the truck, edit if the shop wrote a different one.') }}
-    </div>
-
-    <h3 class="form-section">Shop</h3>
-    <div class="form-grid">
-      {{ field('Shop name', 'vendor', order.vendor if editing else '', attrs='maxlength="160"', hint='Or pick one from “Where to send it” below.') }}
-      {{ field('Shop phone', 'shop_phone', order.shop_phone if editing else '', type='tel', attrs='maxlength="40"') }}
-      {{ field('Shop address', 'shop_address', order.shop_address if editing else '', attrs='maxlength="300"', full=True) }}
-    </div>
-
-    <h3 class="form-section">Work</h3>
-    <div class="form-grid">
+      {{ field('Driver contact', 'driver_contact', order.driver_contact or order.driver_phone or '', type='tel', attrs='maxlength="60"') }}
+      {% if order.asset_type == 'trailer' or order.breakdown or order.location %}{{ field('Where it is', 'location', order.location or '', attrs='maxlength="200" placeholder="Address or yard name"') }}{% endif %}
       <label class="field"><span>Work type</span>
         <select name="kind">
           {% for key, heading, items in groups %}<optgroup label="{{ heading }}">
-            {% for value, text in items %}<option value="{{ value }}" {% if (editing and order.kind == value) or (not editing and value == 'repair') %}selected{% endif %}>{{ text }}</option>{% endfor %}
+            {% for value, text in items %}<option value="{{ value }}" {% if order.kind == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
           </optgroup>{% endfor %}
         </select>
-        {% if at_least(role, 'admin') %}<em><a href="/maintenance/pm-list">Edit the preventive maintenance list</a></em>{% endif %}
       </label>
-      <label class="field"><span>Status</span>
-        <select name="status">
-          {% for value in statuses %}<option value="{{ value }}" {% if editing and order.status == value %}selected{% endif %}>{{ value|label }}</option>{% endfor %}
+      <label class="field"><span>Priority</span>
+        <select name="priority">
+          {% for value in priorities %}<option value="{{ value }}" {% if order.priority == value %}selected{% endif %}>{{ value|capitalize }}</option>{% endfor %}
         </select>
       </label>
-      {{ field('Scheduled for', 'scheduled_for', (order.scheduled_for|date_input) if editing else '', type='date') }}
-      {{ field('Performed on', 'performed_on', (order.performed_on|date_input) if editing else '', type='date') }}
-      {{ field('What was done', 'description', order.description if editing else (prefill_description or ''), type='textarea', required=True, full=True) }}
+      {{ field('Scheduled for', 'scheduled_for', order.scheduled_for|date_input, type='date') }}
+      {{ field('Done on', 'performed_on', order.performed_on|date_input, type='date') }}
+      {{ field('Odometer', 'odometer', order.odometer if order.odometer is not none else '', type='number', attrs='min="0"') }}
+      <label class="field check"><input type="checkbox" name="breakdown" value="1" {% if order.breakdown %}checked{% endif %}> <span>Broken down</span></label>
+      {{ field("What's wrong / what was done", 'description', order.description, type='textarea', required=True, full=True) }}
+      {% if order.breakdown or order.cause or order.resolution %}
+      {{ field('Cause', 'cause', order.cause or '', attrs='maxlength="500"') }}
+      {{ field('What fixed it', 'resolution', order.resolution or '', attrs='maxlength="2000"') }}
+      {% endif %}
+      {{ field('Shop', 'vendor', order.vendor or '', attrs='maxlength="160"') }}
+      {{ field('Shop phone', 'shop_phone', order.shop_phone or '', type='tel', attrs='maxlength="40"') }}
+      {{ field('Shop address', 'shop_address', order.shop_address or '', attrs='maxlength="300"', full=True) }}
     </div>
 
-    <h3 class="form-section">Parts and cost</h3>
-    {% set part_rows = parts if editing and parts else [] %}
-    <div class="table-wrap"><table class="parts-table" id="parts-table">
-      <thead><tr><th>Part</th><th>Part number</th><th class="right">Qty</th><th class="right">Unit price</th><th class="right">Amount</th><th></th></tr></thead>
-      <tbody>
-        {% for part in part_rows %}
-        <tr data-part>
-          <td><input name="part_name" value="{{ part.name }}" maxlength="200" aria-label="Part"></td>
-          <td><input name="part_number" value="{{ part.part_number or '' }}" maxlength="60" aria-label="Part number"></td>
-          <td class="right"><input name="part_qty" type="number" step="0.01" min="0" value="{{ part.quantity|float }}" aria-label="Quantity"></td>
-          <td class="right"><input name="part_price" type="number" step="0.01" min="0" value="{{ part.unit_price if part.unit_price is not none else '' }}" aria-label="Unit price"></td>
-          <td class="right" data-amount></td>
-          <td><button type="button" class="btn ghost small" data-remove-part aria-label="Remove part">Remove</button></td>
-        </tr>
+    <details class="wo-costs" id="invoice" {% if costs_open %}open{% endif %}>
+      <summary>Costs and invoice</summary>
+      {% set part_rows = parts or [] %}
+      <div class="table-wrap"><table class="parts-table" id="parts-table">
+        <thead><tr><th>Part</th><th>Part number</th><th class="right">Qty</th><th class="right">Unit price</th><th class="right">Amount</th><th></th></tr></thead>
+        <tbody>
+          {% for part in part_rows %}
+          <tr data-part>
+            <td><input name="part_name" value="{{ part.name }}" maxlength="200" aria-label="Part"></td>
+            <td><input name="part_number" value="{{ part.part_number or '' }}" maxlength="60" aria-label="Part number"></td>
+            <td class="right"><input name="part_qty" type="number" step="0.01" min="0" value="{{ part.quantity|float }}" aria-label="Quantity"></td>
+            <td class="right"><input name="part_price" type="number" step="0.01" min="0" value="{{ part.unit_price if part.unit_price is not none else '' }}" aria-label="Unit price"></td>
+            <td class="right" data-amount></td>
+            <td><button type="button" class="btn ghost small" data-remove-part aria-label="Remove part">Remove</button></td>
+          </tr>
+          {% endfor %}
+          <tr data-part data-template{% if part_rows %} hidden{% endif %}>
+            <td><input name="part_name" maxlength="200" aria-label="Part"{% if part_rows %} disabled{% endif %}></td>
+            <td><input name="part_number" maxlength="60" aria-label="Part number"{% if part_rows %} disabled{% endif %}></td>
+            <td class="right"><input name="part_qty" type="number" step="0.01" min="0" value="1" aria-label="Quantity"{% if part_rows %} disabled{% endif %}></td>
+            <td class="right"><input name="part_price" type="number" step="0.01" min="0" aria-label="Unit price"{% if part_rows %} disabled{% endif %}></td>
+            <td class="right" data-amount></td>
+            <td><button type="button" class="btn ghost small" data-remove-part aria-label="Remove part">Remove</button></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <p class="parts-add"><button type="button" class="btn ghost small" id="add-part">+ Add part</button></p>
+      <div class="form-grid">
+        {{ field('Labor', 'labor_cost', order.labor_cost if order.labor_cost is not none else '', type='number', attrs='step="0.01" min="0"') }}
+        {{ field('Tax and fees', 'tax', order.tax if order.tax is not none else '', type='number', attrs='step="0.01" min="0"') }}
+        {{ field('Total amount', 'cost', order.cost if order.cost is not none else '', type='number', attrs='step="0.01" min="0"') }}
+        {% if order.breakdown or order.towing_cost is not none %}{{ field('Towing', 'towing_cost', order.towing_cost if order.towing_cost is not none else '', type='number', attrs='step="0.01" min="0"') }}{% endif %}
+        <label class="field"><span>Paid with</span>
+          <select name="paid_with">
+            <option value="">—</option>
+            {% for value, text in payment_methods %}<option value="{{ value }}" {% if order.paid_with == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
+          </select>
+        </label>
+        {{ field('Invoice number', 'invoice_no', order.invoice_no or '', attrs='maxlength="40"') }}
+        <label class="field"><span>Shop rating</span><select name="shop_rating">
+          <option value="">—</option>
+          {% for n in range(5, 0, -1) %}<option value="{{ n }}" {% if order.shop_rating == n %}selected{% endif %}>{{ n }} / 5</option>{% endfor %}
+        </select></label>
+        {{ field('Shop comment', 'shop_comment', order.shop_comment or '', attrs='maxlength="500"') }}
+        {{ field('Next due date', 'next_due_on', order.next_due_on|date_input, type='date') }}
+        {{ field('Next due odometer', 'next_due_odometer', order.next_due_odometer if order.next_due_odometer is not none else '', type='number', attrs='min="0"') }}
+      </div>
+      {% if files %}
+      <ul class="file-list">
+        {% for item in files %}
+        <li><a href="/maintenance/{{ order.id }}/files/{{ item.id }}" target="_blank" rel="noopener">{{ item.name }}</a>
+          <span class="subtle">{{ item.content_type.split('/')[-1]|upper }} · {{ ((item.bytes or 0) / 1024)|round|int }} KB · {{ item.created_at|day }}{% if item.uploaded_by_name %} · {{ item.uploaded_by_name }}{% endif %}</span>
+          {% if admin %}<button type="submit" class="btn ghost small danger" form="delete-file-{{ item.id }}">Remove</button>{% endif %}</li>
         {% endfor %}
-        <tr data-part data-template{% if part_rows %} hidden{% endif %}>
-          <td><input name="part_name" maxlength="200" placeholder="Oil filter" aria-label="Part"{% if part_rows %} disabled{% endif %}></td>
-          <td><input name="part_number" maxlength="60" placeholder="LF14000NN" aria-label="Part number"{% if part_rows %} disabled{% endif %}></td>
-          <td class="right"><input name="part_qty" type="number" step="0.01" min="0" value="1" aria-label="Quantity"{% if part_rows %} disabled{% endif %}></td>
-          <td class="right"><input name="part_price" type="number" step="0.01" min="0" aria-label="Unit price"{% if part_rows %} disabled{% endif %}></td>
-          <td class="right" data-amount></td>
-          <td><button type="button" class="btn ghost small" data-remove-part aria-label="Remove part">Remove</button></td>
-        </tr>
-      </tbody>
-    </table></div>
-    <p class="parts-add"><button type="button" class="btn ghost small" id="add-part">+ Add part</button></p>
-    <div class="form-grid">
-      {{ field('Labor', 'labor_cost', order.labor_cost if editing else '', type='number', attrs='step="0.01" min="0"') }}
-      {{ field('Tax and fees', 'tax', order.tax if editing else '', type='number', attrs='step="0.01" min="0"') }}
-      {{ field('Total amount', 'cost', order.cost if editing else '', type='number', attrs='step="0.01" min="0"', hint='Adds itself up from parts, labor and tax. Type it yourself when the invoice is not itemized.') }}
-      <label class="field"><span>Paid with</span>
-        <select name="paid_with">
-          <option value="">Not recorded</option>
-          {% for value, text in payment_methods %}<option value="{{ value }}" {% if editing and order.paid_with == value %}selected{% endif %}>{{ text }}</option>{% endfor %}
-        </select>
+      </ul>
+      {% endif %}
+      <label class="field full file-drop"><span>{{ 'Attach more' if files else 'Attach the invoice' }}</span>
+        <input type="file" name="invoice_files" multiple accept="application/pdf,image/*">
       </label>
-      {{ field('Invoice number', 'invoice_no', order.invoice_no if editing else '', attrs='maxlength="40"') }}
-      <label class="field"><span>Shop rating</span><select name="shop_rating">
-        <option value="">Not rated</option>
-        {% for n in range(5, 0, -1) %}<option value="{{ n }}" {% if editing and order.shop_rating == n %}selected{% endif %}>{{ n }} / 5</option>{% endfor %}
-      </select></label>
-      {{ field('Shop comment', 'shop_comment', order.shop_comment if editing else '', attrs='maxlength="500"') }}
-    </div>
-
-    <h3 class="form-section" id="invoice">Invoice</h3>
-    {% if editing and files %}
-    <ul class="file-list">
-      {% for item in files %}
-      <li><a href="/maintenance/{{ order.id }}/files/{{ item.id }}" target="_blank" rel="noopener">{{ item.name }}</a>
-        <span class="subtle">{{ item.content_type.split('/')[-1]|upper }} · {{ ((item.bytes or 0) / 1024)|round|int }} KB · {{ item.created_at|day }}{% if item.uploaded_by_name %} · {{ item.uploaded_by_name }}{% endif %}</span>
-        {% if at_least(role, 'admin') %}<button type="submit" class="btn ghost small danger" form="delete-file-{{ item.id }}">Remove</button>{% endif %}</li>
-      {% endfor %}
-    </ul>
-    {% endif %}
-    <label class="field full file-drop"><span>{{ 'Attach more' if editing and files else 'Attach the invoice' }}</span>
-      <input type="file" name="invoice_files" multiple accept="application/pdf,image/*">
-    </label>
-
-    <h3 class="form-section">Next service</h3>
-    <div class="form-grid">
-      {{ field('Next due date', 'next_due_on', (order.next_due_on|date_input) if editing else '', type='date') }}
-      {{ field('Next due odometer', 'next_due_odometer', order.next_due_odometer if editing else '', type='number', attrs='min="0"') }}
-    </div>
-    <div class="form-actions"><button class="btn" type="submit">{{ 'Save changes' if editing else 'Save work order' }}</button>
-      <a class="btn ghost" href="/maintenance">Cancel</a></div>
+    </details>
+    {% if admin %}<div class="form-actions"><button class="btn" type="submit">Save changes</button></div>{% endif %}
   </form>
-  {% if editing %}{% for item in files %}<form method="post" action="/maintenance/{{ order.id }}/files/{{ item.id }}/delete" id="delete-file-{{ item.id }}" data-confirm="Remove {{ item.name }}?" hidden><input type="hidden" name="csrf" value="{{ session.csrf }}"></form>{% endfor %}{% endif %}
+  {% for item in files %}<form method="post" action="/maintenance/{{ order.id }}/files/{{ item.id }}/delete" id="delete-file-{{ item.id }}" data-confirm="Remove {{ item.name }}?" hidden><input type="hidden" name="csrf" value="{{ session.csrf }}"></form>{% endfor %}
 </section>
 <section class="panel" id="oil-panel" hidden>
   <div class="panel-head"><h2>Which oil</h2></div>
   <div id="oil-body"></div>
 </section>
-<section class="panel" id="shop-panel" hidden{% if editing and order.status != 'done' and not order.vendor %} data-find{% endif %}{% if drive %} data-drive="{{ drive }}"{% endif %}>
+{% if order.truck_id and order.asset_type == 'truck' %}
+<section class="panel" id="shop-panel" hidden{% if order.status not in ('done', 'cancelled') and not order.vendor %} data-find{% endif %}>
   <div class="panel-head"><h2>Where to send it</h2><span class="subtle" id="shop-status"></span></div>
   <div class="progress pad" id="shop-progress" hidden></div>
   <div id="shop-body"></div>
 </section>
-{% set assistant_truck_id = truck_id %}
+{% set assistant_truck_id = order.truck_id %}
 {% include "_assistant.html" %}
-{% if editing %}{% set reminder_entity, reminder_entity_id = "maintenance_order", order.id %}
-{% include "reminders/_panel.html" %}{% endif %}
+{% endif %}
+{% set reminder_entity, reminder_entity_id = "maintenance_order", order.id %}
+{% include "reminders/_panel.html" %}
 {% endblock %}

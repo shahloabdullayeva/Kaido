@@ -22,6 +22,95 @@ PAYMENT_LABELS = dict(PAYMENT_METHODS)
 STATUSES = ["open", "scheduled", "towing", "in_shop", "in_progress", "done", "cancelled"]
 CLOSED = ("done", "cancelled")
 PRIORITIES = ["low", "medium", "high", "urgent"]
+COMMENT_DIR = FILE_DIR / "comments"
+UNIT_JOIN = "left join trucks t on t.id = m.truck_id left join trailers tr on tr.id = m.trailer_id"
+UNIT_COL = "case when m.asset_type = 'trailer' then tr.unit_number else t.unit_number end"
+
+
+def status_text(value):
+    return (value or "").replace("_", " ")
+
+
+def add_comment(company_id, order_id, kind, body, user_id=None, author=None, upload=None):
+    stored = {"path": None, "name": None, "type": None, "bytes": None}
+    if upload is not None and upload.filename:
+        stored, problem = store_upload(company_id, upload, COMMENT_DIR)
+        if problem:
+            return None, problem
+    row = insert(
+        """insert into work_order_comments (company_id, order_id, kind, body, file_path, file_name, content_type,
+             file_bytes, created_by, author_name)
+           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
+        (company_id, order_id, kind, body, stored["path"], stored["name"], stored["type"], stored["bytes"],
+         user_id, author),
+    )
+    return row, None
+
+
+def log_status(company_id, order_id, old, new, user_id, author):
+    if old == new:
+        return
+    add_comment(company_id, order_id, "status", f"changed status from {status_text(old)} to {status_text(new)}",
+                user_id, author)
+
+
+def comments_of(order_id):
+    return rows(
+        """select c.*, coalesce(u.name, c.author_name) as author from work_order_comments c
+           left join users u on u.id = c.created_by
+           where c.order_id = %s order by c.created_at, c.id""",
+        (order_id,),
+    )
+
+
+def comment_path(item):
+    if not item or not item["file_path"]:
+        return None
+    path = (COMMENT_DIR / item["file_path"]).resolve()
+    if COMMENT_DIR.resolve() not in path.parents or not path.is_file():
+        return None
+    return path
+
+
+def store_upload(company_id, upload, base):
+    label = forms.text(upload.filename.replace("\\", "/").rsplit("/", 1)[-1], 160) or "file"
+    head = upload.stream.read(16)
+    upload.stream.seek(0)
+    kind = sniff(head)
+    if not kind:
+        return None, f"{label}: only PDF or photo files (JPG, PNG, WEBP, HEIC) can be attached."
+    suffix, content_type = kind
+    folder = base / str(company_id)
+    folder.mkdir(parents=True, exist_ok=True)
+    name = f"{uuid.uuid4().hex}{suffix}"
+    target = folder / name
+    size = 0
+    with open(target, "wb") as out:
+        while True:
+            block = upload.stream.read(1024 * 1024)
+            if not block:
+                break
+            size += len(block)
+            if size > MAX_FILE_BYTES:
+                out.close()
+                target.unlink(missing_ok=True)
+                return None, f"{label}: larger than {MAX_FILE_BYTES // (1024 * 1024)} MB."
+            out.write(block)
+    return {"path": f"{company_id}/{name}", "name": label, "type": content_type, "bytes": size}, None
+
+
+def delete_order(company_id, order_id):
+    for item in files_of(order_id):
+        path = file_path(item)
+        if path:
+            path.unlink(missing_ok=True)
+    for item in rows("select * from work_order_comments where order_id = %s and file_path is not null", (order_id,)):
+        path = comment_path(item)
+        if path:
+            path.unlink(missing_ok=True)
+    execute("delete from reminders where company_id = %s and entity = 'maintenance_order' and entity_id = %s",
+            (company_id, order_id))
+    execute("delete from maintenance_orders where id = %s and company_id = %s", (order_id, company_id))
 
 
 def parts_from(form):

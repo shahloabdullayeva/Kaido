@@ -722,3 +722,23 @@ body.trip-live { margin: 0; background: var(--bg, #f5f6f8); display: flex; flex-
 .board-card { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; margin-top: 6px; border: 1px solid var(--line-soft, var(--face-dark)); border-radius: 6px; text-decoration: none; color: inherit; overflow-wrap: anywhere; }
 .board-card:hover { border-color: var(--accent, currentColor); }
 .shop-needs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+
+.segmented { display: inline-flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--face-dark); border-radius: 6px; overflow: hidden; }
+.segmented label { padding: 6px 16px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.segmented label + label { border-left: 1px solid var(--face-dark); }
+.segmented label:has(input:checked) { background: var(--shade); font-weight: 600; }
+.field.check { flex-direction: row; align-items: center; gap: 8px; align-self: end; }
+details.wo-more, details.wo-costs { margin-top: 12px; }
+details.wo-more summary, details.wo-costs summary { cursor: pointer; font-weight: 600; padding: 6px 0; color: var(--link); }
+.status-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 12px; }
+.thread { list-style: none; margin: 0; padding: 0 12px; }
+.thread-item { padding: 10px 0; border-bottom: 1px solid var(--face-dark); }
+.thread-item.event { padding: 6px 0; color: var(--muted); font-size: 12px; }
+.thread-meta { font-size: 12px; margin-bottom: 4px; }
+.thread-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.thread-file { margin-top: 6px; }
+.thread-file img { max-width: 260px; max-height: 200px; border-radius: 6px; display: block; }
+.thread-new { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.thread-new textarea { width: 100%; box-sizing: border-box; }
+.thread-new .actions-row { justify-content: space-between; flex-wrap: wrap; }
+form.inline { display: inline; }

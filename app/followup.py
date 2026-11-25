@@ -42,14 +42,14 @@ def build(company, today):
                 soon.append(_unit_line(truck["unit_number"], f"{item['label']}: {item['detail']}"))
 
     breakdowns = rows(
-        """select b.id, b.status, b.reported_at as occurred_at, t.unit_number from maintenance_orders b
-           join trucks t on t.id = b.truck_id
-           where b.company_id = %s and b.breakdown and b.status not in ('done', 'cancelled') order by b.reported_at""",
+        """select m.id, m.status, m.reported_at as occurred_at, case when m.asset_type = 'trailer' then tr.unit_number else t.unit_number end as unit_number from maintenance_orders m
+           left join trucks t on t.id = m.truck_id left join trailers tr on tr.id = m.trailer_id
+           where m.company_id = %s and m.breakdown and m.status not in ('done', 'cancelled') order by m.reported_at""",
         (company_id,),
     )
     work = rows(
-        """select m.id, m.kind, m.scheduled_for, t.unit_number from maintenance_orders m
-           join trucks t on t.id = m.truck_id
+        """select m.id, m.kind, m.scheduled_for, case when m.asset_type = 'trailer' then tr.unit_number else t.unit_number end as unit_number from maintenance_orders m
+           left join trucks t on t.id = m.truck_id left join trailers tr on tr.id = m.trailer_id
            where m.company_id = %s and m.status not in ('done', 'cancelled') and m.scheduled_for <= %s
            order by m.scheduled_for""",
         (company_id, today),
