@@ -12,6 +12,9 @@
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <div class="form-grid">
       {{ field('Unit number', 'unit_number', truck.unit_number, required=True, attrs='maxlength="40" autofocus') }}
+      {{ field('Label', 'unit_label', truck.unit_label or '', attrs='maxlength="60"') }}
+      {{ field('Carrier / group', 'carrier_group', truck.carrier_group or '', attrs='maxlength="60" list="group-list"') }}
+      <datalist id="group-list">{% for name in groups %}<option value="{{ name }}">{% endfor %}</datalist>
       {{ field('VIN', 'vin', truck.vin, attrs='maxlength="24"') }}
       {{ field('Engine', 'engine', truck.engine, attrs='maxlength="80"', hint='For example Detroit DD15 or Cummins X15. Left empty, Kaido reads it from the VIN.') }}
       {{ field('Year', 'year', truck.year, type='number', attrs='min="1980" max="2100"') }}

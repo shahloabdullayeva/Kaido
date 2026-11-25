@@ -764,6 +764,19 @@ order that recorded one.
   missed. Gallons use `IDLE_GALLONS_PER_HOUR` (0.8, a typical heavy-truck idle burn) and dollars use the company's
   average diesel price over 90 days. Fuel → Insights has an Idle hours column per driver.
 
+## Groups and names
+
+Trucks have a **carrier/group** (`carrier_group`: Octane, Mercury, TVC, TCS...) and an optional **label**
+(`unit_label`), both on the truck form. On 25 Nov 2026 the group was filled from the bracketed part of each unit
+name and the unit was cut to its number ("0803 Clarke (Octane)" became 0803, group Octane). Four units kept their old
+name because the bare number is already taken by a duplicate: 107, 111, 5831 and 777. New trucks imported from
+Samsara get the same split. Samsara and fuel matching are unaffected: Samsara links by vehicle id, and the EFS import
+already matched on the number the unit starts with. Trucks, Alerts, Fuel and Safety have a Group filter. Fuel also
+has a Demo purchases filter (show, hide, only demo).
+
+Driver names are tidied by a database trigger (`drivers_tidy_name`): names in all capitals or all lower case become
+Title Case and extra spaces go, whatever writes them (Horizon, Samsara names, the form).
+
 ## Service schedule
 
 Oil is per truck (`oil_interval_miles`), 25,000 miles by default and 15,000 for

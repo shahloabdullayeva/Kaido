@@ -114,3 +114,11 @@ def active_drivers():
            where company_id = %s and status = 'active' order by is_outside, lower(name)""",
         (g.company["id"],),
     )
+
+
+def carrier_groups():
+    return [row["carrier_group"] for row in rows(
+        """select distinct carrier_group from trucks where company_id = %s and carrier_group is not null
+           and status <> 'sold' order by carrier_group""",
+        (g.company["id"],),
+    )]

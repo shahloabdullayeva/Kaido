@@ -27,6 +27,7 @@
           <option value="30" {% if period == '30' %}selected{% endif %}>30 days</option>
         </select>
       </label>
+      {% with groups = carrier_groups, group = carrier %}{% include "_group_filter.html" %}{% endwith %}
     </form>
     <span class="subtle">{{ total }}{% for key, n in counts.items() %} · {{ groups[key] }} {{ n }}{% endfor %}</span>
   </div>

@@ -9,7 +9,7 @@ from ..auth import login_required
 from ..db import execute, insert, one, rows
 from ..queries import attach_last_services, fuel_economy, service_status
 from ..work_types import SEVERE_FACTOR, label as work_label
-from ..tenancy import active_drivers, at_least, company_required, role_required, scoped_truck
+from ..tenancy import active_drivers, at_least, carrier_groups, company_required, role_required, scoped_truck
 
 bp = Blueprint("trucks", __name__)
 
@@ -38,6 +38,8 @@ def form_values(source):
         "annual_inspection_on": forms.day(source.get("annual_inspection_on")),
         "insurance_expires": forms.day(source.get("insurance_expires")),
         "notes": forms.text(source.get("notes"), 2000),
+        "carrier_group": forms.text(source.get("carrier_group"), 60),
+        "unit_label": forms.text(source.get("unit_label"), 60),
     }
 
 
@@ -65,7 +67,12 @@ def index():
         fleet = [t for t in fleet if not t["is_outside"]]
         if status != "all":
             fleet = [t for t in fleet if t["status"] == status]
-    return render_template("trucks/list.html", title="Trucks", active="/trucks", fleet=fleet, status=status, statuses=STATUSES)
+    groups = carrier_groups()
+    group = forms.pick(request.args.get("group"), groups, "")
+    if group:
+        fleet = [t for t in fleet if t.get("carrier_group") == group]
+    return render_template("trucks/list.html", title="Trucks", active="/trucks", fleet=fleet, status=status, statuses=STATUSES,
+                           groups=groups, group=group)
 
 
 def baseline_note(kind):
@@ -314,7 +321,7 @@ def save_services(truck_id):
 @role_required("admin")
 def new():
     return render_template(
-        "trucks/form.html", title="Add truck", active="/trucks",
+        "trucks/form.html", title="Add truck", active="/trucks", groups=carrier_groups(),
         truck={"status": "active", "duty_cycle": "standard", "oil_interval_miles": 25000, "odometer": 0, "tank_gallons": 200},
         drivers=active_drivers(), statuses=STATUSES, duty=DUTY, mode="new",
     )
@@ -338,10 +345,10 @@ def create():
     truck = insert(
         """insert into trucks (company_id, unit_number, vin, engine, engine_source, make, model, year, plate, plate_state, status,
              duty_cycle, odometer, odometer_at, driver_id, fuel_card_last4, tank_gallons, oil_interval_miles,
-             registration_expires, annual_inspection_on, insurance_expires, notes)
+             registration_expires, annual_inspection_on, insurance_expires, notes, carrier_group, unit_label)
            values (%(company_id)s, %(unit_number)s, %(vin)s, %(engine)s, case when %(engine)s::text is null then null else 'manual' end, %(make)s, %(model)s, %(year)s, %(plate)s, %(plate_state)s,
              %(status)s, %(duty_cycle)s, %(odometer)s, now(), %(driver_id)s, %(fuel_card_last4)s, %(tank_gallons)s, %(oil_interval_miles)s,
-             %(registration_expires)s, %(annual_inspection_on)s, %(insurance_expires)s, %(notes)s)
+             %(registration_expires)s, %(annual_inspection_on)s, %(insurance_expires)s, %(notes)s, %(carrier_group)s, %(unit_label)s)
            returning *""",
         {**values, "company_id": g.company["id"]},
     )
@@ -432,7 +439,7 @@ def edit(truck_id):
     if not truck:
         return render_template("errors/404.html"), 404
     return render_template(
-        "trucks/form.html", title=f"Edit unit {truck['unit_number']}", active="/trucks",
+        "trucks/form.html", title=f"Edit unit {truck['unit_number']}", active="/trucks", groups=carrier_groups(),
         truck=truck, drivers=active_drivers(), statuses=STATUSES, duty=DUTY, mode="edit",
     )
 
@@ -446,7 +453,7 @@ def update(truck_id):
         return render_template("errors/404.html"), 404
     values = form_values(request.form)
     execute(
-        """update trucks set unit_number = %(unit_number)s, vin = %(vin)s,
+        """update trucks set unit_number = %(unit_number)s, carrier_group = %(carrier_group)s, unit_label = %(unit_label)s, vin = %(vin)s,
              engine = %(engine)s,
              engine_source = case when %(engine)s::text is null then null
                                   when %(engine)s::text is not distinct from engine then engine_source else 'manual' end,

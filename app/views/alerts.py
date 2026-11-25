@@ -8,7 +8,7 @@ from ..db import rows
 from ..fuel_guard import LABELS as FUEL_LABELS
 from ..health import base_kind, title_of
 from ..safety import INSTANT, NAMES
-from ..tenancy import company_required
+from ..tenancy import carrier_groups, company_required
 
 bp = Blueprint("alerts", __name__)
 
@@ -95,6 +95,11 @@ def index():
                           "link": f"/documents/{doc['id']}"})
     if status != "all":
         items = [i for i in items if (i["open"] is True) == (status == "open")]
+    groups = carrier_groups()
+    carrier = forms.pick(request.args.get("group"), groups, "")
+    if carrier:
+        in_group = {r["id"] for r in rows("select id from trucks where company_id = %s and carrier_group = %s", (company_id, carrier))}
+        items = [i for i in items if i.get("truck_id") in in_group]
     only_truck = forms.integer(request.args.get("truck_id"))
     only_driver = forms.integer(request.args.get("driver_id"))
     if only_truck:
@@ -106,7 +111,8 @@ def index():
     for item in items:
         counts[item["group"]] = counts.get(item["group"], 0) + 1
     return render_template("alerts/index.html", title="Alerts", active="/alerts", items=items[:500], total=len(items),
-                           kind=kind, status=status, period=period, groups=GROUPS, counts=counts)
+                           kind=kind, status=status, period=period, groups=GROUPS, counts=counts,
+                           carrier_groups=groups, carrier=carrier)
 
 
 def safety_detail(row):
@@ -130,6 +136,10 @@ def safety():
         value = forms.integer(request.args.get(key))
         if value:
             clause += f" and e.{key} = {int(value)}"
+    groups = carrier_groups()
+    carrier = forms.pick(request.args.get("group"), groups, "")
+    if carrier:
+        clause += f" and t.carrier_group = '{carrier.replace(chr(39), chr(39) * 2)}'"
     if group != "all":
         clause += " and " + SAFETY_GROUPS[group][1]
     cases = ", ".join(f"count(*) filter (where {sql}) as {key}" for key, (_, sql) in SAFETY_GROUPS.items())
@@ -154,4 +164,5 @@ def safety():
         event["detail"] = safety_detail(event)
         event["serious"] = event["kind"] in INSTANT
     return render_template("alerts/safety.html", title="Safety", active="/trucks", drivers=drivers, events=events,
-                           groups=SAFETY_GROUPS, group=group, period=period)
+                           groups=SAFETY_GROUPS, group=group, period=period,
+                           carrier_groups=groups, carrier=carrier)

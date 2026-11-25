@@ -11,7 +11,7 @@ from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
 from ..logs import get
-from ..tenancy import active_drivers, active_trucks, company_required, role_required
+from ..tenancy import active_drivers, active_trucks, carrier_groups, company_required, role_required
 
 bp = Blueprint("fuel", __name__)
 
@@ -34,6 +34,16 @@ def index():
     if driver_id:
         clause += " and f.driver_id = %s"
         params.append(driver_id)
+    groups = carrier_groups()
+    group = forms.pick(request.args.get("group"), groups, "")
+    if group:
+        clause += " and f.truck_id in (select id from trucks where company_id = f.company_id and carrier_group = %s)"
+        params.append(group)
+    demo = forms.pick(request.args.get("demo"), ["all", "hide", "only"], "all")
+    if demo == "hide":
+        clause += " and f.source <> 'demo'"
+    elif demo == "only":
+        clause += " and f.source = 'demo'"
     entries = rows(
         f"""select f.*, t.unit_number, d.name as driver_name
             from fuel_transactions f
@@ -51,7 +61,8 @@ def index():
         tuple(params),
     )
     return render_template("fuel/list.html", title="Fuel", active="/fuel", entries=entries,
-                           totals=totals, trucks=active_trucks(), truck_id=truck_id, oldest_first=oldest_first)
+                           totals=totals, trucks=active_trucks(), truck_id=truck_id, oldest_first=oldest_first,
+                           groups=groups, group=group, demo=demo)
 
 
 @bp.get("/fuel/new")

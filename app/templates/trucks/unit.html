@@ -11,7 +11,7 @@
 <div class="page-head">
   <div>
     {% if truck %}
-    <h1>Unit {{ truck.unit_number }}</h1>
+    <h1>Unit {{ truck.unit_number }}{% if truck.unit_label %} <span class="subtle">{{ truck.unit_label }}</span>{% endif %}</h1>
     <p>{% if truck.carrier_group %}<span class="badge info">{{ truck.carrier_group }}</span> {% endif %}
       <span class="badge {{ truck.status|tone }}">{{ truck.status|label }}</span>
       {% if truck.is_outside %}<span class="badge info">outside</span> {{ truck.outside_carrier or '' }}{% endif %}

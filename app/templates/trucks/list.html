@@ -22,6 +22,9 @@
             <option value="outside" {% if status == 'outside' %}selected{% endif %}>Outside trucks</option>
           </select>
         </label>
+        {% if groups %}<label class="field"><span>Group</span>
+          <select name="group"><option value="">All</option>{% for name in groups %}<option value="{{ name }}" {% if group == name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+        </label>{% endif %}
       </form>
       <label class="field"><span>Find</span><input data-filter="#truck-table" placeholder="Unit, VIN, driver"></label>
     </div>
@@ -32,7 +35,7 @@
     <tbody>
       {% for truck in fleet %}
       <tr class="clickrow" data-href="/trucks/{{ truck.id }}">
-        <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a>
+        <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a>{% if truck.unit_label %} <span class="subtle">{{ truck.unit_label }}</span>{% endif %}{% if truck.carrier_group %} <span class="badge info">{{ truck.carrier_group }}</span>{% endif %}
           {% if truck.samsara_id %}<div class="subtle">Samsara linked</div>{% endif %}
           {% if truck.is_outside %}<div class="subtle"><span class="badge info">outside</span> {{ truck.outside_carrier or '' }}</div>{% endif %}</td>
         <td>{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}

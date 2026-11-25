@@ -129,12 +129,23 @@ def import_drivers(company_id):
     return {"created": created, "assigned": assigned}
 
 
+LEAD_UNIT = re.compile(r"^\s*([0-9]+[A-Za-z]?)(?=[\s(\[]|$)")
+
+
+def carrier_from_name(name):
+    match = re.search(r"[(\[]\s*([^)\]]+?)\s*[)\]]", name or "")
+    return match.group(1).strip() if match else None
+
+
 def unit_from_name(name):
     if not name:
         return None
     match = UNIT_PATTERN.search(name)
     if match:
         return match.group(1).upper()
+    lead = LEAD_UNIT.match(name)
+    if lead:
+        return lead.group(1).upper()
     bare = name.strip()
     return bare[:40] if bare else None
 
@@ -251,13 +262,13 @@ def import_vehicles(company_id, user_id):
         except (TypeError, ValueError):
             year = None
         truck = insert(
-            """insert into trucks (company_id, unit_number, vin, make, model, year, status, notes)
-               values (%s, %s, %s, %s, %s, %s, 'active', %s) returning id""",
+            """insert into trucks (company_id, unit_number, vin, make, model, year, status, notes, carrier_group)
+               values (%s, %s, %s, %s, %s, %s, 'active', %s, %s) returning id""",
             (
                 company_id, unit, (vehicle.get("vin") or link["external_vin"] or None),
                 (vehicle.get("make") or "").title() or None,
                 (vehicle.get("model") or "").title() or None,
-                year, f"Imported from Samsara as {link['external_name']}",
+                year, f"Imported from Samsara as {link['external_name']}", carrier_from_name(link["external_name"]),
             ),
         )
         execute("update vehicle_links set truck_id = %s where id = %s", (truck["id"], link["id"]))

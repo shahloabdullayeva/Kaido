@@ -1555,3 +1555,26 @@ create policy company_lock on engine_sessions
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
   with check (coalesce(current_setting('kaido.company_id', true), '') = ''
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+alter table trucks add column if not exists carrier_group text;
+alter table trucks add column if not exists unit_label text;
+update trucks set carrier_group = nullif(trim(substring(unit_number from '[\(\[]\s*([^\)\]]+?)\s*[\)\]]')), '')
+ where carrier_group is null and unit_number ~ '[\(\[]';
+update trucks t set unit_number = substring(t.unit_number from '^\s*([0-9]+[A-Za-z]?)(\s|\(|\[|$)'), updated_at = now()
+ where t.unit_number ~ '^\s*[0-9]+[A-Za-z]?\s*[\s\(\[]\s*\S'
+   and not exists (select 1 from trucks o where o.company_id = t.company_id and o.id <> t.id
+                   and lower(o.unit_number) = lower(substring(t.unit_number from '^\s*([0-9]+[A-Za-z]?)(\s|\(|\[|$)')));
+create index if not exists trucks_group_idx on trucks (company_id, carrier_group);
+
+create or replace function tidy_driver_name() returns trigger language plpgsql as $$
+begin
+  new.name := regexp_replace(trim(new.name), '\s+', ' ', 'g');
+  if new.name = upper(new.name) or new.name = lower(new.name) then
+    new.name := initcap(new.name);
+  end if;
+  return new;
+end $$;
+drop trigger if exists drivers_tidy_name on drivers;
+create trigger drivers_tidy_name before insert or update of name on drivers
+  for each row execute function tidy_driver_name();
+update drivers set name = name where name = upper(name) or name = lower(name) or name ~ '\s\s' or name <> trim(name);
