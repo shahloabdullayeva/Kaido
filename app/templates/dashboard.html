@@ -1,6 +1,7 @@
 {% extends "layout.html" %}
 {% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
 {% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/map_layers.js?v={{ cat_version }}"></script>
 <script src="/static/fleet.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
@@ -17,7 +18,7 @@
 <section class="panel map-first">
   <div class="panel-head"><span class="subtle">{{ pins|length }} of {{ fleet_size }} reporting a position</span></div>
   {% if pins %}
-  <div id="fleet-map" data-trucks='{{ pins|json_attr }}'></div>
+  <div id="fleet-map" class="layered-map" data-trucks='{{ pins|json_attr }}' data-traffic-key="{{ traffic_key }}" data-store="dashboard"></div>
   <p class="subtle map-legend">
     <span class="dot bad"></span> breakdown or overdue service
     <span class="dot warn"></span> fault or due soon

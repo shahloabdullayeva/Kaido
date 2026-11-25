@@ -4,6 +4,7 @@ from .. import documents, forms, hos, pm_list, pti, pti_driver, recalls, sheets,
 from .. import fuel as fuel_engine
 from ..audit import audit
 from ..health import title_of
+from ..live import spell as live_spell
 from ..safety import NAMES as SAFETY_NAMES
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -48,7 +49,9 @@ def form_values(source):
 @company_required
 def status_board():
     from ..board import board
-    return render_template("trucks/board.html", title="Status board", active="/trucks", wide=True, columns=board(g.company))
+    from .. import live
+    return render_template("trucks/board.html", title="Status board", active="/trucks", wide=True, columns=board(g.company),
+                           live=live.status(g.company["id"]), spell=live.spell)
 
 
 @bp.get("/trucks")
@@ -80,7 +83,7 @@ def index():
     if recall_filter:
         fleet = [t for t in fleet if t["recalls"]]
     return render_template("trucks/list.html", title="Trucks", active="/trucks", fleet=fleet, status=status, statuses=STATUSES,
-                           groups=groups, group=group, recall_filter=recall_filter)
+                           groups=groups, group=group, recall_filter=recall_filter, live=live_status(), spell=live_spell)
 
 
 def baseline_note(kind):
@@ -426,7 +429,8 @@ def render_unit(truck=None, driver=None):
             context["last_truck"] = unit_page.last_truck(driver["id"])
             context["driver_docs"] = documents.for_owner(g.company["id"], "driver", driver["id"])
     title = f"Unit {truck['unit_number']}" if truck else driver["name"]
-    return render_template("trucks/unit.html", title=title, active="/trucks", alert_title=title_of,
+    from ..config import config
+    return render_template("trucks/unit.html", title=title, active="/trucks", alert_title=title_of, traffic_key=config.TOMTOM_API_KEY,
                            safety_name=lambda e: SAFETY_NAMES.get(e["kind"]) or e["label"] or e["kind"],
                            parked_for=unit_page.parked_for, **context)
 
@@ -572,3 +576,8 @@ def recall_action(recall_id):
         )
         audit("recall.status", "vehicle_recall", recall_id, {"campaign": item["campaign"], "status": action})
     return redirect(back)
+
+
+def live_status():
+    from .. import live
+    return live.status(g.company["id"])

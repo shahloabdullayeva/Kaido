@@ -1,6 +1,7 @@
 from flask import Blueprint, g, redirect, render_template
 
 from .. import hos
+from ..config import config
 from ..db import rows
 from ..filters import ago
 from ..queries import attention_score, company_summary, expiring_documents, service_status, trucks_with_service
@@ -34,7 +35,15 @@ def fleet_pins(fleet, hours=None):
             "tone": "bad" if score >= 3 else ("warn" if score >= 1 else "ok"),
             "lat": float(truck["latitude"]),
             "lon": float(truck["longitude"]),
+            "fuel": float(truck["fuel_percent"]) if truck.get("fuel_percent") is not None else None,
         })
+    from .. import live
+    now = live.status(g.company["id"])
+    for pin in pins:
+        state = now.get(pin["id"], {})
+        pin.update(speed=state.get("speed"), moving=state.get("moving", False), running=state.get("running", False),
+                   engine=state.get("engine"), idle=live.spell(state.get("idle_minutes")),
+                   parked=live.spell(state.get("parked_minutes")), weather=state.get("weather", []))
     return pins
 
 
@@ -83,7 +92,7 @@ def home():
     from .. import downtime
     downtime.refresh(company_id)
     return render_template(
-        "dashboard.html", most_down=downtime.ranking(company_id), title="Dashboard", active="/", summary=summary,
+        "dashboard.html", most_down=downtime.ranking(company_id), traffic_key=config.TOMTOM_API_KEY, title="Dashboard", active="/", summary=summary,
         attention=attention, breakdowns=breakdowns, faults=faults, fuel=fuel, pins=pins,
         upcoming=upcoming, documents=expiring_documents(company_id)[:8], fleet_size=len(fleet),
     )

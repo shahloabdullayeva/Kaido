@@ -721,6 +721,7 @@ body.trip-live { margin: 0; background: var(--bg, #f5f6f8); display: flex; flex-
 .board-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .board-card { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; margin-top: 6px; border: 1px solid var(--line-soft, var(--face-dark)); border-radius: 6px; text-decoration: none; color: inherit; overflow-wrap: anywhere; }
 .board-card:hover { border-color: var(--accent, currentColor); }
+.board-card strong a { color: inherit; }
 .shop-needs { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
 
 .segmented { display: inline-flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--face-dark); border-radius: 6px; overflow: hidden; }
@@ -780,3 +781,13 @@ form.inline { display: inline; }
 .search-drop a span { display: block; font-size: 12px; color: var(--muted); }
 .search-drop a.on, .search-drop a:hover { background: var(--shade); }
 @media (max-width: 800px) { .global-search { order: 5; width: 100%; margin: 6px 0; } .global-search input { width: 100%; box-sizing: border-box; } }
+.map-filter select { border: 0; padding: 4px 6px; font-size: 13px; background: var(--paper); color: inherit; }
+.weather-badge { border-radius: 50%; background: #d97706; border: 2px solid #fff; box-shadow: 0 0 0 1px #00000055; }
+.weather-badge.severe { background: #dc2626; }
+.weather-popup p { margin: 4px 0; font-size: 12px; max-width: 320px; }
+.wx-badge { cursor: pointer; }
+.wx { margin-top: 6px; } .wx summary { list-style: none; cursor: pointer; } .wx-text { font-size: 12px; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+.leaflet-control-layers-toggle, .leaflet-retina .leaflet-control-layers-toggle {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M12 3 2 8l10 5 10-5-10-5z'/%3E%3Cpath d='m2 13 10 5 10-5'/%3E%3Cpath d='m2 17.5 10 5 10-5' opacity='.5'/%3E%3C/svg%3E") !important;
+  background-size: 22px 22px !important; background-repeat: no-repeat; background-position: center;
+}

@@ -322,3 +322,6 @@
 [data-style="modern"] .notif-actions { display: flex; gap: 8px; align-items: center; }
 [data-style="modern"] .notif-old { font-family: var(--sans); }
 [data-style="modern"] .notif-old a { margin-left: 6px; }
+[data-style="modern"] .layered-map .leaflet-tile-pane { filter: none !important; }
+.layered-map .tile-dark { filter: invert(1) hue-rotate(180deg) brightness(.9) contrast(.9); }
+.leaflet-control-layers { font-size: 13px; }

@@ -3,6 +3,7 @@
 {% from "_hos.html" import hos_panel, source_tag %}
 {% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
 {% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/map_layers.js?v={{ cat_version }}"></script>
 <script src="/static/unit_map.js?v={{ cat_version }}"></script>
 <script src="/static/assistant.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
@@ -49,11 +50,13 @@
   <section class="panel unit-where">
     {% set p = truck_info.position %}
     {% if p %}
-    <div class="unit-map" data-unit-map data-lat="{{ p.lat }}" data-lon="{{ p.lon }}" data-label="{{ truck.unit_number }}"></div>
+    <div class="unit-map layered-map" data-unit-map data-lat="{{ p.lat }}" data-lon="{{ p.lon }}" data-label="{{ truck.unit_number }}" data-traffic-key="{{ traffic_key }}"></div>
     <div class="pad">
       <div>{{ p.where or (p.lat|round(4) ~ ', ' ~ p.lon|round(4)) }}</div>
       <div>{% if p.moving %}<span class="badge ok">Moving</span> {{ p.speed|number }} mph{% else %}<span class="badge muted">Parked</span>{% if p.parked_since %} for {{ parked_for(p.parked_since) }}{% endif %}{% endif %}
         <span class="subtle">· updated {{ p.at|ago }}</span></div>
+      {% for w in truck_info.weather %}<details class="wx"><summary><span class="badge {{ 'bad' if w.severe else 'warn' }} wx-badge">{{ w.event }}{% if w.area %}, {{ w.area }}{% endif %}</span></summary>
+        <p class="subtle">{% if w.expires %}Until {{ w.expires[:16]|replace('T', ' ') }} UTC · {% endif %}{{ w.headline }}</p><p class="wx-text">{{ w.text }}</p>{% if w.instruction %}<p class="wx-text">{{ w.instruction }}</p>{% endif %}</details>{% endfor %}
     </div>
     {% else %}<p class="empty">No position reported.</p>{% endif %}
   </section>

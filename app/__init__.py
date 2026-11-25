@@ -58,7 +58,7 @@ def create_app():
                 "font-src 'self' https://fonts.gstatic.com; "
                 "img-src 'self' data: blob: https://*.googleapis.com https://*.gstatic.com https://*.google.com "
                 "https://*.ggpht.com https://*.googleusercontent.com "
-                "https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
+                "https://tile.openstreetmap.org https://*.tile.openstreetmap.org https://server.arcgisonline.com https://opengeo.ncep.noaa.gov https://api.tomtom.com; "
                 "connect-src 'self' https://*.googleapis.com https://*.google.com https://*.gstatic.com; "
                 "frame-src https://*.google.com; worker-src blob:; "
                 "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
@@ -76,7 +76,8 @@ def create_app():
         else:
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; script-src 'self'; style-src 'self'; "
-                "img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org; "
+                "img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org "
+                "https://server.arcgisonline.com https://opengeo.ncep.noaa.gov https://api.tomtom.com; "
                 "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
             )
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -146,10 +147,11 @@ def create_app():
     from .views.documents import bp as documents_bp
     from .views.trailers import bp as trailers_bp
     from .views.search import bp as search_bp
+    from .views.maps import bp as maps_bp
 
     for blueprint in (auth_bp, dashboard_bp, trucks_bp, drivers_bp, fuel_bp, trips_bp, learn_bp,
                       maintenance_bp, breakdowns_bp, faults_bp, integrations_bp,
-                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp, cat_bp, billing_bp, site_bp, alerts_bp, documents_bp, trailers_bp, search_bp):
+                      company_bp, platform_bp, reminders_bp, assistant_bp, reports_bp, pti_bp, settings_bp, cat_bp, billing_bp, site_bp, alerts_bp, documents_bp, trailers_bp, search_bp, maps_bp):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(404)

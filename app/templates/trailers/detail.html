@@ -1,6 +1,7 @@
 {% extends "layout.html" %}
 {% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
 {% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/map_layers.js?v={{ cat_version }}"></script>
 <script src="/static/unit_map.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 {% set admin = at_least(role, 'admin') %}
@@ -23,7 +24,7 @@
   </section>
   <section class="panel unit-where">
     {% if trailer.truck_id and trailer.truck_lat is not none %}
-    <div class="unit-map" data-unit-map data-lat="{{ trailer.truck_lat }}" data-lon="{{ trailer.truck_lon }}" data-label="{{ trailer.truck_unit }}"></div>
+    <div class="unit-map layered-map" data-unit-map data-lat="{{ trailer.truck_lat }}" data-lon="{{ trailer.truck_lon }}" data-label="{{ trailer.truck_unit }}"></div>
     <div class="pad">With {{ trailer.truck_unit }}{% if trailer.truck_location %} · {{ trailer.truck_location }}{% endif %} <span class="subtle">· updated {{ trailer.truck_located_at|ago }}</span></div>
     {% elif dropped %}
     <div class="pad"><div class="stat-label">Dropped at</div><div>{{ dropped.location }}</div>

@@ -65,6 +65,7 @@ class Config:
     ROAD_SPEED_MPH = float(os.environ.get("ROAD_SPEED_MPH", "50"))
     GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
     GOOGLE_MAPS_BROWSER_KEY = os.environ.get("GOOGLE_MAPS_BROWSER_KEY", "") or GOOGLE_MAPS_API_KEY
+    TOMTOM_API_KEY = os.environ.get("TOMTOM_API_KEY", "")
     GOOGLE_DAILY_CALLS = _int("GOOGLE_DAILY_CALLS", 30)
 
 

@@ -242,6 +242,20 @@ clicking opens the driver, the truck, where it is, how long ago it said so, the
 odometer, anything wrong with it, and a link into the truck's page. A company
 with no telematics sees a line saying so instead of an empty map.
 
+Map layers (dashboard and the unit page map, `app/static/map_layers.js`): Dark, Street (OpenStreetMap) and
+Satellite (Esri World Imagery) bases; overlays for weather radar (NOAA/NWS MRMS reflectivity, WMS), weather
+alert areas, saved shops, towing, truck parking and showers (the last three from the shop finder's
+OpenStreetMap search, zoom 6 and closer). Traffic (TomTom flow tiles) appears only when `TOMTOM_API_KEY` is
+set in `.env`; the free tier is 50,000 tile requests a day. The dashboard also filters trucks to all or
+running only. Each browser remembers the last base, overlays and filter. Hover shows the unit, driver,
+moving/idling/parked, fuel and duty status; clicking a truck opens its unit page.
+
+Weather (`app/weather.py`, `manage.py weather`, run by `bin/sync.sh` every 15 minutes): active National
+Weather Service alerts from api.weather.gov (no key) for winter, ice, wind, flood, fog, cold, tornado and
+severe thunderstorm events. Alerts with no polygon are drawn from their forecast zones, cached in
+`weather_zones`. Trucks inside an alert area are stored in `truck_weather` and get a badge on the map, the
+status board and the unit page; clicking the badge shows the alert text and when it ends.
+
 ## Where to send it
 
 Pick a truck on a work order and the form offers to look for shops near it. The

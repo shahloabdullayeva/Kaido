@@ -9,6 +9,7 @@ flock -n 9 || exit 0
   ./venv/bin/python manage.py sync --all || echo "samsara sync failed"
   if [ "${1:-}" = "--with-horizon" ] || [ $(( 10#$(date +%M) % 15 )) -lt 5 ]; then
     ./venv/bin/python manage.py horizon-sync --all
+    ./venv/bin/python manage.py weather || echo "weather failed"
   fi
   ./venv/bin/python manage.py safety || echo "safety pull failed"
 } >> "$LOG" 2>&1

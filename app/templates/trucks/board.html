@@ -7,13 +7,16 @@
   <section class="board-col">
     <div class="board-head"><span class="badge {{ col.tone }}">{{ col.label }}</span><span class="subtle">{{ col['items']|length }}</span></div>
     {% for item in col['items'] %}
-    <a class="board-card" href="/trucks/{{ item.truck.id }}">
+    <div class="board-card">
       <strong><a href="/trucks/{{ item.truck.id }}">{{ item.truck.unit_number }}</a></strong>
       {% if item.truck.driver_name %}<span>{{ item.truck.driver_name|title }}</span>{% endif %}
       {% if item.truck.location %}<span class="subtle">{{ item.truck.location }}</span>{% endif %}
       {% if item.note %}<span class="subtle">{{ item.note }}</span>{% endif %}
       {% if item.trailers %}<span class="subtle">Trailer {{ item.trailers|join(', ') }}</span>{% endif %}
-    </a>
+      {% set now = live.get(item.truck.id) %}{% if now %}<span class="subtle">{% if not now.moving and now.engine == 'Idle' and now.idle_minutes %}idling {{ spell(now.idle_minutes) }}{% if item.truck.fuel_percent is not none %} · {% endif %}{% endif %}{% if item.truck.fuel_percent is not none %}fuel {{ item.truck.fuel_percent|int }}%{% endif %}</span>
+      {% for w in now.weather %}<details class="wx"><summary><span class="badge {{ 'bad' if w.severe else 'warn' }} wx-badge">{{ w.event }}{% if w.area %}, {{ w.area }}{% endif %}</span></summary>
+        <p class="subtle">{% if w.expires %}Until {{ w.expires[:16]|replace('T', ' ') }} UTC · {% endif %}{{ w.headline }}</p><p class="wx-text">{{ w.text }}</p></details>{% endfor %}{% endif %}
+    </div>
     {% endfor %}
   </section>
   {% endfor %}

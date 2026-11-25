@@ -34,7 +34,7 @@
   </div>
   {% if fleet %}
   <div class="table-wrap"><table id="truck-table">
-    <thead><tr><th>Unit</th><th>Vehicle</th><th>Driver</th><th>Status</th><th>Service</th><th class="right">Odometer</th></tr></thead>
+    <thead><tr><th>Unit</th><th>Vehicle</th><th>Driver</th><th>Status</th><th>Now</th><th>Service</th><th class="right">Odometer</th></tr></thead>
     <tbody>
       {% for truck in fleet %}
       <tr class="clickrow" data-href="/trucks/{{ truck.id }}">
@@ -51,6 +51,7 @@
             {% if truck.active_faults %}<span class="badge warn">{{ truck.active_faults }} fault</span>{% endif %}
           </div>
         </td>
+        <td>{% set now = live.get(truck.id) %}{% if now %}{% if now.moving %}<span class="badge ok">{{ now.speed }} mph</span>{% elif now.engine == 'Idle' %}<span class="badge warn">idling {{ spell(now.idle_minutes) }}</span>{% elif now.parked_minutes is not none %}<span class="subtle">parked {{ spell(now.parked_minutes) }}</span>{% endif %}{% for w in now.weather %} <span class="badge {{ 'bad' if w.severe else 'warn' }}" title="{{ w.headline }}">{{ w.event }}</span>{% endfor %}{% endif %}{% if truck.fuel_percent is not none %}<div class="subtle">fuel {{ truck.fuel_percent|int }}%</div>{% endif %}</td>
         <td>
           {% for item in truck.statuses if item.core or item.tone in ['bad', 'warn'] %}
           <div class="subtle"><span class="badge {{ item.tone }}">{{ item.label }}</span> {{ item.detail }}</div>

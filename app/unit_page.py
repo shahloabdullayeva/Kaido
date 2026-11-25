@@ -73,7 +73,9 @@ def truck_section(company_id, truck):
            where m.truck_id = %s and c.dismissed_at is null order by c.created_at desc limit 5""",
         (truck["id"],),
     )
+    from . import weather
     return {"open_orders": open_orders, "recent_orders": recent, "faults": faults, "alerts": alerts,
+            "weather": weather.for_trucks(company_id).get(truck["id"], []),
             "comebacks": flags, "downtime": downtime.truck_totals(truck["id"]),
             "position": position(truck),
             "drivers": rows(

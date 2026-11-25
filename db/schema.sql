@@ -1698,3 +1698,45 @@ create table if not exists recall_checks (
   new_campaigns int,
   linked int
 );
+
+create table if not exists weather_zones (
+  zone_id text primary key,
+  name text,
+  state text,
+  geometry jsonb,
+  bbox numeric[],
+  fetched_at timestamptz not null default now()
+);
+create table if not exists weather_alerts (
+  id text primary key,
+  event text not null,
+  severity text,
+  headline text,
+  description text,
+  instruction text,
+  area text,
+  states text[],
+  onset timestamptz,
+  expires timestamptz,
+  ends timestamptz,
+  zones text[],
+  geometry jsonb,
+  bbox numeric[],
+  active boolean not null default true,
+  fetched_at timestamptz not null default now()
+);
+create table if not exists truck_weather (
+  truck_id int not null references trucks(id) on delete cascade,
+  alert_id text not null references weather_alerts(id) on delete cascade,
+  company_id int not null references companies(id) on delete cascade,
+  since timestamptz not null default now(),
+  primary key (truck_id, alert_id)
+);
+alter table truck_weather enable row level security;
+alter table truck_weather force row level security;
+drop policy if exists company_lock on truck_weather;
+create policy company_lock on truck_weather
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
