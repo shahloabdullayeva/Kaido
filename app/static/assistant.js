@@ -6,9 +6,9 @@ if (box) {
   const field = form.querySelector('textarea[name=question]');
   const button = form.querySelector('button[type=submit]');
   const status = box.querySelector('[data-chat-status]');
-  const truckSelect = document.querySelector('select[name=truck_id]');
-  let truckId = box.dataset.truckId;
+  const pageTruck = () => { const el = document.querySelector('[data-page-truck]'); return el ? el.dataset.pageTruck : ''; };
   let busy = false;
+  let loaded = false;
 
   const bubble = (role, text) => {
     const item = document.createElement('div');
@@ -46,25 +46,22 @@ if (box) {
 
   const setStatus = (text) => { status.textContent = text || ''; };
 
-  const usable = () => truckId && /^\d+$/.test(truckId);
-
-  const refresh = async () => {
-    log.textContent = '';
-    for (const b of document.querySelectorAll('[data-assistant-open]')) b.hidden = !usable();
-    if (!usable()) box.hidden = true;
-    if (!usable()) return;
+  const load = async () => {
+    if (loaded) return;
+    loaded = true;
     try {
-      const response = await fetch('/assistant/' + truckId, { credentials: 'same-origin' });
+      const response = await fetch('/assistant', { credentials: 'same-origin' });
       const data = await response.json();
       for (const message of data.messages || []) bubble(message.role, message.content);
       if (data.available === false) setStatus('The assistant is off: no Anthropic key is set.');
     } catch (err) {
+      loaded = false;
       setStatus('Could not load the conversation.');
     }
   };
 
   const ask = async (question) => {
-    if (busy || !usable() || !question.trim()) return;
+    if (busy || !question.trim()) return;
     busy = true;
     button.disabled = true;
     setStatus('Claude is thinking…');
@@ -73,8 +70,9 @@ if (box) {
     const payload = new FormData();
     payload.append('csrf', box.dataset.csrf);
     payload.append('question', question);
+    payload.append('page_truck_id', pageTruck());
     try {
-      const response = await fetch('/assistant/' + truckId, { method: 'POST', body: payload, credentials: 'same-origin' });
+      const response = await fetch('/assistant', { method: 'POST', body: payload, credentials: 'same-origin' });
       const data = await response.json();
       if (data.answer) {
         bubble('assistant', data.answer);
@@ -93,43 +91,33 @@ if (box) {
     button.disabled = false;
   };
 
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    ask(field.value);
-  });
+  form.addEventListener('submit', (event) => { event.preventDefault(); ask(field.value); });
   field.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      ask(field.value);
-    }
+    if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); ask(field.value); }
   });
   for (const starter of box.querySelectorAll('[data-chat-ask]')) {
     starter.addEventListener('click', () => ask(starter.dataset.chatAsk));
   }
   box.querySelector('[data-chat-clear]').addEventListener('click', async () => {
-    if (!usable()) return;
     const payload = new FormData();
     payload.append('csrf', box.dataset.csrf);
-    await fetch('/assistant/' + truckId + '/clear', { method: 'POST', body: payload, credentials: 'same-origin' });
+    await fetch('/assistant/clear', { method: 'POST', body: payload, credentials: 'same-origin' });
     log.textContent = '';
     setStatus('Started over.');
   });
-  if (truckSelect) {
-    truckSelect.addEventListener('change', () => {
-      truckId = truckSelect.value;
-      refresh();
-    });
-    if (!truckId) truckId = truckSelect.value;
-  }
-  refresh();
-}
 
-const drawer = document.querySelector('.assistant-drawer');
-if (drawer) {
   const opener = document.querySelector('[data-assistant-open]');
-  const open = () => { drawer.hidden = false; document.body.classList.add('drawer-open'); if (opener) opener.setAttribute('aria-expanded', 'true'); const t = drawer.querySelector('textarea'); if (t) t.focus(); };
-  const close = () => { drawer.hidden = true; document.body.classList.remove('drawer-open'); if (opener) { opener.setAttribute('aria-expanded', 'false'); opener.focus(); } };
-  for (const b of document.querySelectorAll('[data-assistant-open]')) b.addEventListener('click', () => (drawer.hidden ? open() : close()));
-  drawer.querySelector('[data-assistant-close]').addEventListener('click', close);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !drawer.hidden) close(); });
+  const open = () => {
+    box.hidden = false;
+    if (opener) opener.setAttribute('aria-expanded', 'true');
+    load();
+    field.focus();
+  };
+  const close = () => {
+    box.hidden = true;
+    if (opener) { opener.setAttribute('aria-expanded', 'false'); opener.focus(); }
+  };
+  for (const b of document.querySelectorAll('[data-assistant-open]')) b.addEventListener('click', () => (box.hidden ? open() : close()));
+  box.querySelector('[data-assistant-close]').addEventListener('click', close);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) close(); });
 }

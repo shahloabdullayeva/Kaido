@@ -761,8 +761,16 @@ The list shows the comment count per order and filters by status, truck/trailer 
 
 Work order page layout: title is the work type and number, a facts strip (driver, shop, reported, downtime,
 total, invoice), the details form on the left, and a Status steps list plus the Activity thread (comments and
-status changes) on the right; on phones the right column moves to the top. No reminders panel. The Claude
-button in the header (work order and unit pages) opens the truck chat in a side drawer; Escape closes it.
+status changes) on the right; on phones the right column moves to the top. No reminders panel. 
+
+Claude: a round button next to the bell on every page opens a chat drawer (Escape closes it). Each question
+sends a fresh snapshot of the whole company from `app/company_context.py` (every truck with status, driver,
+place, moving/idling/parked, fuel, odometer, faults, service due and weather; open work orders; month's
+work-order and fuel spend; active faults; open health alerts; 7-day safety counts; hours of service; active
+trips; expiring documents; open recalls). On a unit or work order page the page marks the truck with
+`data-page-truck`, and that truck's full detail is added. One thread per user per company (`ai_chats.truck_id`
+null), routes `/assistant` and `/assistant/clear`; the per-truck routes are kept but no page uses them. Same
+model and the same `AI_DAILY_USD` cap as before, roughly half a cent a question with 40 trucks.
 
 Look: Inter (variable, self-hosted in `app/static/fonts`, SIL Open Font License) for all text, sentence-case
 badges and table headers, rounded inputs and buttons. The overrides sit at the end of `app/static/modern.css`.

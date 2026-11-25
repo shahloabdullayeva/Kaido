@@ -57,6 +57,7 @@
     <div class="search-drop" hidden></div>
   </form>{% endif %}
   <div class="who">
+    {% if company %}{% include "_assistant_button.html" %}{% endif %}
     {% include "_cat.html" %}
     <details class="who-menu">
       <summary>{{ session.name }}<span class="role">{{ 'platform ' + session.platform_role if session.platform_role else (role or '') }}</span></summary>
@@ -82,6 +83,7 @@
 </main>
 <script src="/static/app.js?v={{ cat_version }}"></script>
 <script src="/static/cat.js?v={{ cat_version }}"></script>
+{% if company %}{% include "_assistant.html" %}<script src="/static/assistant.js?v={{ cat_version }}"></script>{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>

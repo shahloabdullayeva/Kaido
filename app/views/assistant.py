@@ -129,3 +129,50 @@ def clear(truck_id):
     execute("delete from ai_chats where company_id = %s and user_id = %s and truck_id = %s",
             (g.company["id"], g.session["user_id"], truck_id))
     return jsonify({"ok": True})
+
+
+def company_thread():
+    return rows(
+        """select role, content, created_at from ai_chats
+           where company_id = %s and user_id = %s and truck_id is null order by created_at, id""",
+        (g.company["id"], g.session["user_id"]),
+    )
+
+
+@bp.get("/assistant")
+@login_required
+@company_required
+def company_history():
+    return jsonify({"messages": [{"role": m["role"], "content": m["content"]} for m in company_thread()],
+                    "available": advisor.available()})
+
+
+@bp.post("/assistant")
+@login_required
+@company_required
+def company_ask():
+    from .. import company_context
+    question = forms.required(request.form.get("question"), 2000)
+    if not question:
+        return jsonify({"error": "Type a question first."}), 400
+    context = company_context.build(g.company)
+    page_truck = request.form.get("page_truck_id", "")
+    truck = scoped(int(page_truck)) if page_truck.isdigit() else None
+    if truck:
+        context += "\n\nThe user is looking at unit " + str(truck["unit_number"]) + " right now. Its full detail:\n" + truck_context(truck)
+    answer, problem = advisor.chat_reply(context, company_thread(), question, scope="company")
+    if problem:
+        return jsonify({"error": problem}), 200
+    for role, content in (("user", question), ("assistant", answer)):
+        execute("insert into ai_chats (company_id, user_id, truck_id, role, content) values (%s, %s, null, %s, %s)",
+                (g.company["id"], g.session["user_id"], role, content))
+    return jsonify({"answer": answer})
+
+
+@bp.post("/assistant/clear")
+@login_required
+@company_required
+def company_clear():
+    execute("delete from ai_chats where company_id = %s and user_id = %s and truck_id is null",
+            (g.company["id"], g.session["user_id"]))
+    return jsonify({"ok": True})

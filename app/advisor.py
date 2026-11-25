@@ -372,7 +372,15 @@ CHAT_SYSTEM = (
 CHAT_TURNS = 12
 
 
-def chat_reply(context, history, question):
+COMPANY_LEAD = (
+    "This chat covers the whole company, not one truck: below the rules is a snapshot of every truck, open work "
+    "order, fault, alert, hours, trip, document and this month's spend that Kaido has. Answer questions across "
+    "the fleet (which trucks, who, how many, what first) from it; when a unit is on screen its full detail is "
+    "added at the end. The snapshot is current as of this question. "
+)
+
+
+def chat_reply(context, history, question, scope="truck"):
     if not available():
         return None, "The assistant is off because no Anthropic key is set."
     if over_budget():
@@ -383,7 +391,7 @@ def chat_reply(context, history, question):
         response = _client().messages.create(
             model=CHAT_MODEL,
             max_tokens=2000,
-            system=CHAT_SYSTEM + "\n\n" + context,
+            system=(COMPANY_LEAD + CHAT_SYSTEM.replace("the truck being discussed", "this company") if scope == "company" else CHAT_SYSTEM) + "\n\n" + context,
             messages=messages,
             **_effort(CHAT_MODEL),
         )

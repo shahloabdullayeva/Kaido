@@ -4,8 +4,7 @@
 {% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
 {% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
 <script src="/static/map_layers.js?v={{ cat_version }}"></script>
-<script src="/static/unit_map.js?v={{ cat_version }}"></script>
-<script src="/static/assistant.js?v={{ cat_version }}"></script>{% endblock %}
+<script src="/static/unit_map.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 {% set admin = at_least(role, 'admin') %}
 {% set d = driver_info.driver if driver_info else none %}
@@ -23,7 +22,6 @@
     {% endif %}
   </div>
   <div class="actions-row">
-    {% if truck %}{% include "_assistant_button.html" %}{% endif %}
     {% if admin and truck %}
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;breakdown=1">Report a breakdown</a>
@@ -205,8 +203,7 @@
 {% if truck %}
 {% with vin = truck.vin %}{% include "trucks/_recalls.html" %}{% endwith %}
 {% include "trucks/_truck_more.html" %}
-{% set assistant_truck_id = truck.id %}
-{% include "_assistant.html" %}
+<span data-page-truck="{{ truck.id }}" hidden></span>
 {% set reminder_entity, reminder_entity_id = "truck", truck.id %}
 {% include "reminders/_panel.html" %}
 {% elif d %}

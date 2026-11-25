@@ -4,10 +4,8 @@
 {% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
 <script src="/static/place_suggest.js?v={{ cat_version }}"></script>
 <script src="/static/shops.js?v={{ cat_version }}"></script>
-<script src="/static/assistant.js?v={{ cat_version }}"></script>
 <script src="/static/work_order.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
-{% set assistant_truck_id = order.truck_id %}
 {% set admin = at_least(role, 'admin') %}
 {% set unit_href = ('/trailers/' ~ order.trailer_id) if order.asset_type == 'trailer' else ('/trucks/' ~ order.truck_id) %}
 <div class="page-head wo-head">
@@ -18,7 +16,6 @@
       {% if order.breakdown %}<span class="badge bad">breakdown</span>{% endif %}
       {% if comeback_flags|rejectattr('dismissed_at')|list %}<span class="badge bad">possible comeback</span>{% endif %}</div></div>
   <div class="actions-row">
-    {% if order.truck_id and order.asset_type == 'truck' %}{% include "_assistant_button.html" %}{% endif %}
     <a class="btn ghost" href="/maintenance/{{ order.id }}/pdf">PDF</a>
     {% if admin %}<form method="post" action="/maintenance/{{ order.id }}/delete" class="inline" data-confirm="Delete work order #{{ order.id }} with its comments and files? This cannot be undone.">
       <input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost danger" type="submit">Delete</button></form>{% endif %}
@@ -225,5 +222,5 @@
 </section>
 </aside>
 </div>
-{% if order.truck_id and order.asset_type == 'truck' %}{% include "_assistant.html" %}{% endif %}
+{% if order.truck_id %}<span data-page-truck="{{ order.truck_id }}" hidden></span>{% endif %}
 {% endblock %}

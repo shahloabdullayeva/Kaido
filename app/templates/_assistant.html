@@ -1,19 +1,18 @@
-<aside class="assistant-drawer" id="assistant" data-assistant data-truck-id="{{ assistant_truck_id or '' }}" data-csrf="{{ session.csrf }}" hidden aria-label="Ask Claude">
+<aside class="assistant-drawer" id="assistant" data-assistant data-csrf="{{ session.csrf }}" hidden aria-label="Ask Claude">
   <div class="drawer-head"><h2>Claude</h2>
     <div class="actions-row"><button type="button" class="btn ghost small" data-chat-clear>Start over</button>
       <button type="button" class="btn ghost small" data-assistant-close aria-label="Close">Close</button></div></div>
   <div class="drawer-body">
-    <p class="subtle" data-chat-intro>Ask about this truck.</p>
     <div class="chat-log" data-chat-log aria-live="polite"></div>
     <div class="chat-starters">
-      <button type="button" class="btn ghost small" data-chat-ask="What needs doing on this truck, most urgent first?">What needs doing?</button>
-      <button type="button" class="btn ghost small" data-chat-ask="Explain the active fault codes in plain English. Can it keep driving?">Explain the faults</button>
-      <button type="button" class="btn ghost small" data-chat-ask="Write a short message to the driver to bring the truck in for an oil change.">Message the driver</button>
-      <button type="button" class="btn ghost small" data-chat-ask="What should I ask the shop when I call to book this truck in?">What to ask the shop</button>
+      <button type="button" class="btn ghost small" data-chat-ask="What needs my attention today, most urgent first?">What needs attention today?</button>
+      <button type="button" class="btn ghost small" data-chat-ask="Which trucks are low on fuel or parked a long time?">Low fuel and long stops</button>
+      <button type="button" class="btn ghost small" data-chat-ask="Who is running low on hours right now?">Who is low on hours?</button>
+      <button type="button" class="btn ghost small" data-chat-ask="Sum up the open work orders and what each is waiting on.">Open work orders</button>
     </div>
   </div>
   <form class="chat-form" data-chat-form data-no-busy="1">
-    <textarea name="question" rows="2" maxlength="2000" placeholder="Ask about this truck… / Bu truck haqida so‘rang…" aria-label="Your question"></textarea>
+    <textarea name="question" rows="2" maxlength="2000" placeholder="Ask about your fleet… / Flot haqida so‘rang…" aria-label="Your question"></textarea>
     <div class="actions-row"><span class="subtle" data-chat-status></span><button class="btn" type="submit" data-busy="Asking…">Ask</button></div>
   </form>
 </aside>

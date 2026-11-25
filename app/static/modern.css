@@ -404,8 +404,8 @@
   .wo-side { position: static; order: -1; }
   .wo-side .thread { max-height: none; }
 }
-.claude-btn { display: inline-flex; align-items: center; gap: 6px; }
-.claude-btn svg { color: #d97757; }
+.claude-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); color: #d97757; cursor: pointer; padding: 0; margin-right: 8px; }
+.claude-btn:hover, .claude-btn[aria-expanded="true"] { background: color-mix(in srgb, #d97757 14%, var(--paper)); border-color: #d97757; }
 .assistant-drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100vw); z-index: 1200; background: var(--paper); border-left: 1px solid var(--line); box-shadow: var(--shadow-lg); display: flex; flex-direction: column; }
 .assistant-drawer[hidden] { display: none; }
 .drawer-head { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line-soft); }
