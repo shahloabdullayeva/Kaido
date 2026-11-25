@@ -23,6 +23,7 @@
     {% endif %}
   </div>
   <div class="actions-row">
+    {% if truck %}{% include "_assistant_button.html" %}{% endif %}
     {% if admin and truck %}
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;breakdown=1">Report a breakdown</a>

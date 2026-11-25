@@ -34,7 +34,7 @@ for any truck and any driver, including ones from outside the company.
 - **Claude** explains fault codes in plain words, suggests the oil from the engine
   read off the VIN, and answers questions about any truck — under a hard daily cap.
 - **Daily follow-up** on Telegram: open breakdowns, overdue service, work that was
-  due, reminders, new faults, papers expiring. Reminders can be set on any record.
+  due, reminders, new faults, papers expiring. Reminders can be set on any record except work orders.
 - **Fuel**: manual entry and EFS Transaction Report import, matched to trucks by unit number
   (or the number the unit starts with) and then by fuel card. The fuel list sorts newest or oldest first
   from the Date column.
@@ -758,6 +758,14 @@ payment and shop rating folded into "Costs and invoice" (open once the order is 
 change writes "<name> changed status from X to Y" into the thread. Cancelled orders are hidden from the list unless
 the Status filter is Cancelled; Delete asks first and removes the order with its comments, files and reminders.
 The list shows the comment count per order and filters by status, truck/trailer and system.
+
+Work order page layout: title is the work type and number, a facts strip (driver, shop, reported, downtime,
+total, invoice), the details form on the left, and a Status steps list plus the Activity thread (comments and
+status changes) on the right; on phones the right column moves to the top. No reminders panel. The Claude
+button in the header (work order and unit pages) opens the truck chat in a side drawer; Escape closes it.
+
+Look: Inter (variable, self-hosted in `app/static/fonts`, SIL Open Font License) for all text, sentence-case
+badges and table headers, rounded inputs and buttons. The overrides sit at the end of `app/static/modern.css`.
 
 ## Search
 

@@ -7,31 +7,33 @@
 <script src="/static/assistant.js?v={{ cat_version }}"></script>
 <script src="/static/work_order.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
+{% set assistant_truck_id = order.truck_id %}
 {% set admin = at_least(role, 'admin') %}
 {% set unit_href = ('/trailers/' ~ order.trailer_id) if order.asset_type == 'trailer' else ('/trucks/' ~ order.truck_id) %}
-<div class="page-head">
-  <div><h1>Work order #{{ order.id }}</h1>
-    <p><a href="{{ unit_href }}">{{ 'Trailer' if order.asset_type == 'trailer' else 'Unit' }} {{ order.unit_number }}</a>
+<div class="page-head wo-head">
+  <div><h1>{{ order.kind|work }} <span class="wo-no">#{{ order.id }}</span></h1>
+    <div class="wo-sub"><a href="{{ unit_href }}">{{ 'Trailer' if order.asset_type == 'trailer' else 'Unit' }} {{ order.unit_number }}</a>
       <span class="badge {{ order.status|tone }}">{{ order.status|label }}</span>
       <span class="badge {{ order.priority|tone }}">{{ order.priority }} priority</span>
       {% if order.breakdown %}<span class="badge bad">breakdown</span>{% endif %}
-      {% if comeback_flags|rejectattr('dismissed_at')|list %}<span class="badge bad">possible comeback</span>{% endif %}</p></div>
+      {% if comeback_flags|rejectattr('dismissed_at')|list %}<span class="badge bad">possible comeback</span>{% endif %}</div></div>
   <div class="actions-row">
+    {% if order.truck_id and order.asset_type == 'truck' %}{% include "_assistant_button.html" %}{% endif %}
     <a class="btn ghost" href="/maintenance/{{ order.id }}/pdf">PDF</a>
     {% if admin %}<form method="post" action="/maintenance/{{ order.id }}/delete" class="inline" data-confirm="Delete work order #{{ order.id }} with its comments and files? This cannot be undone.">
       <input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="btn ghost danger" type="submit">Delete</button></form>{% endif %}
-    <a class="btn ghost" href="/maintenance">Back</a></div>
+  </div>
 </div>
 
-<div class="stats wo-summary">
-  {% if order.driver_name %}<div class="stat"><div class="stat-label">Driver</div><div class="stat-value small"><a href="/drivers/{{ order.driver_id }}">{{ order.driver_name }}</a></div><div class="stat-hint">{{ order.driver_contact or order.driver_phone or '' }}</div></div>{% endif %}
-  {% if order.asset_type == 'trailer' %}<div class="stat"><div class="stat-label">{{ 'With truck' if order.truck_unit else 'Dropped at' }}</div><div class="stat-value small">{% if order.truck_unit %}<a href="/trucks/{{ order.truck_id }}">{{ order.truck_unit }}</a>{% else %}{{ order.location or 'Not recorded' }}{% endif %}</div></div>{% endif %}
-  {% if order.vendor %}<div class="stat"><div class="stat-label">Shop</div><div class="stat-value small">{{ order.vendor }}</div><div class="stat-hint">{{ order.shop_phone or '' }}</div></div>{% endif %}
-  <div class="stat"><div class="stat-label">Reported</div><div class="stat-value small">{{ order.reported_at|day }}</div>{% if order.scheduled_for %}<div class="stat-hint">scheduled {{ order.scheduled_for|day }}</div>{% endif %}</div>
-  {% if down_days is not none %}<div class="stat {{ 'warn' if not order.down_ended_at else '' }}"><div class="stat-label">Downtime</div><div class="stat-value">{{ down_days|number(1) }} d</div><div class="stat-hint">{% if order.down_ended_at %}ended {{ 'when it moved' if order.down_end_reason == 'moving' else order.down_end_reason }} {{ order.down_ended_at|day }}{% else %}still down{% endif %}</div></div>{% endif %}
-  {% if order.cost is not none %}<div class="stat"><div class="stat-label">Total</div><div class="stat-value">{{ order.cost|money }}</div></div>{% endif %}
-  {% if order.status == 'done' %}<div class="stat {{ '' if files else 'warn' }}"><div class="stat-label">Invoice</div><div class="stat-value">{{ files|length }}</div><div class="stat-hint">{{ 'file' if files|length == 1 else 'files' }}</div></div>{% endif %}
-</div>
+<dl class="wo-facts">
+  {% if order.driver_name %}<div><dt>Driver</dt><dd><a href="/drivers/{{ order.driver_id }}">{{ order.driver_name }}</a><small>{{ order.driver_contact or order.driver_phone or '' }}</small></dd></div>{% endif %}
+  {% if order.asset_type == 'trailer' %}<div><dt>{{ 'With truck' if order.truck_unit else 'Dropped at' }}</dt><dd>{% if order.truck_unit %}<a href="/trucks/{{ order.truck_id }}">{{ order.truck_unit }}</a>{% else %}{{ order.location or 'Not recorded' }}{% endif %}</dd></div>{% endif %}
+  <div><dt>Shop</dt><dd>{{ order.vendor or 'Not chosen' }}<small>{{ order.shop_phone or '' }}</small></dd></div>
+  <div><dt>Reported</dt><dd>{{ order.reported_at|day }}{% if order.scheduled_for %}<small>scheduled {{ order.scheduled_for|day }}</small>{% endif %}</dd></div>
+  {% if down_days is not none %}<div class="{{ 'warn' if not order.down_ended_at else '' }}"><dt>Downtime</dt><dd>{{ down_days|number(1) }} d<small>{% if order.down_ended_at %}ended {{ 'when it moved' if order.down_end_reason == 'moving' else order.down_end_reason }} {{ order.down_ended_at|day }}{% else %}still down{% endif %}</small></dd></div>{% endif %}
+  {% if order.cost is not none %}<div><dt>Total</dt><dd>{{ order.cost|money }}</dd></div>{% endif %}
+  {% if order.status == 'done' %}<div class="{{ '' if files else 'warn' }}"><dt>Invoice</dt><dd>{{ files|length }} {{ 'file' if files|length == 1 else 'files' }}</dd></div>{% endif %}
+</dl>
 
 {% if comeback_flags %}
 <section class="panel comeback">
@@ -48,37 +50,8 @@
   {% endfor %}</ul>
 </section>
 {% endif %}
-{% if admin %}
-<form method="post" action="/maintenance/{{ order.id }}/status" class="panel status-bar">
-  <input type="hidden" name="csrf" value="{{ session.csrf }}">
-  <span class="subtle">Status</span>
-  {% for value in statuses %}<button type="submit" name="status" value="{{ value }}" class="btn small {{ '' if order.status == value else 'ghost' }}" {% if order.status == value %}disabled{% endif %}>{{ value|label }}</button>{% endfor %}
-</form>
-{% endif %}
-
-<section class="panel" id="comments">
-  <div class="panel-head"><h2>Comments</h2><span class="subtle">{{ comments|selectattr('kind', 'equalto', 'comment')|list|length }}</span></div>
-  <ol class="thread">
-    {% for c in comments %}
-    {% if c.kind == 'comment' %}
-    <li class="thread-item">
-      <div class="thread-meta"><strong>{{ c.author or 'Someone' }}</strong> <span class="subtle" title="{{ c.created_at|stamp }}">{{ c.created_at|stamp }}</span></div>
-      {% if c.body %}<div class="thread-body">{{ c.body }}</div>{% endif %}
-      {% if c.file_path %}<div class="thread-file">{% if c.content_type and c.content_type.startswith('image/') and c.content_type != 'image/heic' %}<a href="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" target="_blank" rel="noopener"><img src="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" alt="{{ c.file_name }}" loading="lazy"></a>{% else %}<a href="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" target="_blank" rel="noopener">{{ c.file_name }}</a>{% endif %}</div>{% endif %}
-    </li>
-    {% else %}
-    <li class="thread-item event"><span>{{ c.author or 'Kaido' }} {{ c.body }}</span> <span class="subtle">{{ c.created_at|stamp }}</span></li>
-    {% endif %}
-    {% endfor %}
-  </ol>
-  <form method="post" action="/maintenance/{{ order.id }}/comments" enctype="multipart/form-data" class="thread-new">
-    <input type="hidden" name="csrf" value="{{ session.csrf }}">
-    <textarea name="body" rows="2" maxlength="4000" placeholder="Add a comment" aria-label="Comment"></textarea>
-    <div class="actions-row"><input type="file" name="file" accept="application/pdf,image/*" aria-label="Attach a photo or file">
-      <button class="btn" type="submit">Comment</button></div>
-  </form>
-</section>
-
+<div class="wo-layout">
+<div class="wo-main">
 <section class="panel">
   <div class="panel-head"><h2>Details</h2></div>
   <form method="post" action="/maintenance/{{ order.id }}" data-truck-fill enctype="multipart/form-data" class="work-order">
@@ -209,9 +182,48 @@
   <div class="progress pad" id="shop-progress" hidden></div>
   <div id="shop-body"></div>
 </section>
-{% set assistant_truck_id = order.truck_id %}
-{% include "_assistant.html" %}
 {% endif %}
-{% set reminder_entity, reminder_entity_id = "maintenance_order", order.id %}
-{% include "reminders/_panel.html" %}
+</div>
+<aside class="wo-side">
+{% if admin %}
+<section class="panel">
+  <div class="panel-head"><h2>Status</h2></div>
+  <form method="post" action="/maintenance/{{ order.id }}/status">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    {% set flow = ['open', 'scheduled', 'towing', 'in_shop', 'in_progress', 'done'] %}
+    {% set here = flow.index(order.status) if order.status in flow else -1 %}
+    <ol class="wo-steps">
+      {% for value in statuses %}
+      <li class="{{ value }}{% if value == 'cancelled' %} aside{% endif %}{% if value == order.status %} now{% elif value in flow and flow.index(value) < here %} past{% endif %}">
+        <button type="submit" name="status" value="{{ value }}"{% if value == order.status %} aria-current="step" disabled{% endif %}>{{ value|label|capitalize }}</button></li>
+      {% endfor %}
+    </ol>
+  </form>
+</section>
+{% endif %}
+<section class="panel" id="comments">
+  <div class="panel-head"><h2>Activity</h2><span class="subtle">{% set n = comments|selectattr('kind', 'equalto', 'comment')|list|length %}{{ n }} comment{{ '' if n == 1 else 's' }}</span></div>
+  <ol class="thread">
+    {% for c in comments %}
+    {% if c.kind == 'comment' %}
+    <li class="thread-item">
+      <div class="thread-meta"><strong>{{ c.author or 'Someone' }}</strong> <span class="subtle">{{ c.created_at|stamp }}</span></div>
+      {% if c.body %}<div class="thread-body">{{ c.body }}</div>{% endif %}
+      {% if c.file_path %}<div class="thread-file">{% if c.content_type and c.content_type.startswith('image/') and c.content_type != 'image/heic' %}<a href="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" target="_blank" rel="noopener"><img src="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" alt="{{ c.file_name }}" loading="lazy"></a>{% else %}<a href="/maintenance/{{ order.id }}/comments/{{ c.id }}/file" target="_blank" rel="noopener">{{ c.file_name }}</a>{% endif %}</div>{% endif %}
+    </li>
+    {% else %}
+    <li class="thread-item event"><span>{{ c.author or 'Kaido' }} {{ c.body }}</span> <span class="subtle">· {{ c.created_at|stamp }}</span></li>
+    {% endif %}
+    {% endfor %}
+  </ol>
+  <form method="post" action="/maintenance/{{ order.id }}/comments" enctype="multipart/form-data" class="thread-new">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <textarea name="body" rows="2" maxlength="4000" placeholder="Write an update" aria-label="Comment"></textarea>
+    <div class="actions-row"><label class="attach"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 11-8.6 8.6a5 5 0 0 1-7-7l8.5-8.6a3.4 3.4 0 0 1 4.8 4.8l-8.6 8.6a1.7 1.7 0 0 1-2.4-2.4l7.9-7.9"/></svg><span data-attach-name>Attach</span><input type="file" name="file" accept="application/pdf,image/*" aria-label="Attach a photo or file"></label>
+      <button class="btn" type="submit">Comment</button></div>
+  </form>
+</section>
+</aside>
+</div>
+{% if order.truck_id and order.asset_type == 'truck' %}{% include "_assistant.html" %}{% endif %}
 {% endblock %}

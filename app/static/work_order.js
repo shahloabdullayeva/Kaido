@@ -98,3 +98,9 @@ if (workOrder) {
 
   recalc();
 }
+
+for (const attach of document.querySelectorAll('.attach')) {
+  const input = attach.querySelector('input[type=file]');
+  const name = attach.querySelector('[data-attach-name]');
+  input.addEventListener('change', () => { name.textContent = input.files.length ? input.files[0].name : 'Attach'; });
+}

@@ -50,7 +50,8 @@ if (box) {
 
   const refresh = async () => {
     log.textContent = '';
-    box.hidden = !usable();
+    for (const b of document.querySelectorAll('[data-assistant-open]')) b.hidden = !usable();
+    if (!usable()) box.hidden = true;
     if (!usable()) return;
     try {
       const response = await fetch('/assistant/' + truckId, { credentials: 'same-origin' });
@@ -121,4 +122,14 @@ if (box) {
     if (!truckId) truckId = truckSelect.value;
   }
   refresh();
+}
+
+const drawer = document.querySelector('.assistant-drawer');
+if (drawer) {
+  const opener = document.querySelector('[data-assistant-open]');
+  const open = () => { drawer.hidden = false; document.body.classList.add('drawer-open'); if (opener) opener.setAttribute('aria-expanded', 'true'); const t = drawer.querySelector('textarea'); if (t) t.focus(); };
+  const close = () => { drawer.hidden = true; document.body.classList.remove('drawer-open'); if (opener) { opener.setAttribute('aria-expanded', 'false'); opener.focus(); } };
+  for (const b of document.querySelectorAll('[data-assistant-open]')) b.addEventListener('click', () => (drawer.hidden ? open() : close()));
+  drawer.querySelector('[data-assistant-close]').addEventListener('click', close);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !drawer.hidden) close(); });
 }
