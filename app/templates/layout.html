@@ -26,12 +26,12 @@
 <link rel="stylesheet" href="/static/modern.css?v={{ cat_version }}">
 <script src="/static/boot.js?v={{ cat_version }}"></script>
 <script src="/static/search.js?v={{ cat_version }}" defer></script>
-<link rel="icon" href="/static/favicon.svg?v=2">
+<link rel="icon" href="/static/favicon.svg?v=3">
 {% block head %}{% endblock %}
 </head>
 <body>
 <header class="topbar">
-  <a class="brand" href="/">Kai<span>do</span></a>
+  <a class="brand" href="/">{% include "_logo.html" %}</a>
   {% if companies|length > 1 %}
   <form method="post" action="/company/switch" class="switcher" data-autosubmit>
     <input type="hidden" name="csrf" value="{{ session.csrf }}">

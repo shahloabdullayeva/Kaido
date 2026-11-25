@@ -7,11 +7,11 @@
 <title>{{ title }} · Kaido</title>
 <link rel="stylesheet" href="/static/app.css?v={{ cat_version }}">
 <link rel="stylesheet" href="/static/modern.css?v={{ cat_version }}">
-<link rel="icon" href="/static/favicon.svg?v=2">
+<link rel="icon" href="/static/favicon.svg?v=3">
 </head>
 <body class="pti-public">
 <div class="pti-card">
-  <div class="auth-brand">Kai<span>do</span></div>
+  <div class="auth-brand">{% include "_logo.html" %}</div>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}
   {% endwith %}

@@ -778,6 +778,8 @@ of 10 MB each go with a question, stored in `uploads/assistant/<company>/` (`ai_
 follow-up so Claude can still see them; images are shrunk to 1568 px first. Chats from before 25 Nov were
 imported as "Unit N" conversations. The Fuel menu opens on Insights.
 
+Logo: `app/templates/_logo.html`, inline SVG made from her file (`app/static/kaido-logo-original.svg`, which has a dark background), so KAI follows the theme ink and DO is navy in light and light blue in dark; used in the top bar, sign-in and driver PTI pages. The favicon is the K square from the same file.
+
 Look: Inter (variable, self-hosted in `app/static/fonts`, SIL Open Font License) for all text, sentence-case
 badges and table headers, rounded inputs and buttons. The overrides sit at the end of `app/static/modern.css`.
 

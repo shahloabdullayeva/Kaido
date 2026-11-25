@@ -447,3 +447,14 @@
 .wo-head h1 a:hover { color: var(--accent); }
 .wo-plus { color: var(--muted); font-weight: 400; margin: 0 2px; }
 .wo-sub > span:first-child { font-weight: 500; }
+.logo { height: 26px; width: auto; display: block; }
+.logo .lg-sq { fill: #1F3A8A; }
+.logo .lg-k { fill: #FFFFFF; }
+.logo .lg-kai { fill: var(--ink); }
+.logo .lg-do { fill: #1F3A8A; }
+[data-theme="dark"] .logo .lg-do { fill: #8FA8FF; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo .lg-do { fill: #8FA8FF; } }
+[data-style="modern"] .brand { display: flex; align-items: center; letter-spacing: 0; }
+[data-style="modern"] .brand:hover { text-decoration: none; opacity: .9; }
+[data-style="modern"] .auth-brand { display: flex; justify-content: center; border-bottom: 0; }
+.auth-brand .logo { height: 34px; }
