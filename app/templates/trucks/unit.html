@@ -199,6 +199,7 @@
 </div>
 
 {% if truck %}
+{% with vin = truck.vin %}{% include "trucks/_recalls.html" %}{% endwith %}
 {% include "trucks/_truck_more.html" %}
 {% set assistant_truck_id = truck.id %}
 {% include "_assistant.html" %}

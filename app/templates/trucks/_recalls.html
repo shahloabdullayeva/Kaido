@@ -1,0 +1,31 @@
+<section class="panel" id="recalls">
+  <div class="panel-head"><h2>Recalls</h2>
+    <span class="subtle">{{ recalls|selectattr('status', 'equalto', 'open')|list|length }} open · by make, model and year: may apply, confirm with dealer ·
+      {% if recall_lookup and vin %}<a href="{{ recall_lookup }}" target="_blank" rel="noopener">Check this VIN on NHTSA</a>{% endif %}</span></div>
+  {% if recalls %}
+  <ul class="unit-list recall-list">{% for r in recalls %}
+    <li{% if r.status != 'open' %} class="subtle"{% endif %}>
+      <details>
+        <summary><span class="mono">{{ r.campaign }}</span> {{ (r.component or '')|replace(':', ' · ')|title }}
+          {% if r.park_it %}<span class="badge bad">park it</span>{% endif %}
+          {% if r.status == 'done' %}<span class="badge ok">done {{ r.done_on|day }}{% if r.done_shop %} at {{ r.done_shop }}{% endif %}</span>
+          {% elif r.status == 'not_applicable' %}<span class="badge muted">not applicable</span>
+          {% else %}<span class="badge warn">may apply</span>{% endif %}
+          {% if r.work_order_id %}<a class="badge info" href="/maintenance/{{ r.work_order_id }}">WO #{{ r.work_order_id }}</a>{% endif %}
+          <span class="subtle">{{ r.report_date|day }}</span></summary>
+        <p>{{ r.summary }}</p>
+        {% if r.remedy %}<p><strong>Remedy:</strong> {{ r.remedy }}</p>{% endif %}
+        {% if at_least(role, 'admin') %}
+        <form method="post" action="/recalls/{{ r.id }}" class="actions-row">
+          <input type="hidden" name="csrf" value="{{ session.csrf }}">
+          {% if r.status == 'open' %}
+          <button class="btn small" name="action" value="work_order">{{ 'Open work order' if r.work_order_id else 'Make work order' }}</button>
+          <input type="date" name="done_on" aria-label="Done on"><input name="done_shop" placeholder="Shop" maxlength="160" aria-label="Shop">
+          <button class="btn ghost small" name="action" value="done">Mark done</button>
+          <button class="btn ghost small" name="action" value="not_applicable">Not applicable</button>
+          {% else %}<button class="btn ghost small" name="action" value="open">Reopen</button>{% endif %}
+        </form>{% endif %}
+      </details>
+    </li>{% endfor %}</ul>
+  {% else %}<p class="empty">{{ 'No recalls found.' if vin else 'No VIN on file.' }}</p>{% endif %}
+</section>

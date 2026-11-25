@@ -1,6 +1,6 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import documents, forms, hos, pm_list, pti, pti_driver, sheets, unit_page
+from .. import documents, forms, hos, pm_list, pti, pti_driver, recalls, sheets, unit_page, work_orders
 from .. import fuel as fuel_engine
 from ..audit import audit
 from ..health import title_of
@@ -71,8 +71,16 @@ def index():
     group = forms.pick(request.args.get("group"), groups, "")
     if group:
         fleet = [t for t in fleet if t.get("carrier_group") == group]
+    open_recalls = {r["truck_id"]: r["n"] for r in rows(
+        "select truck_id, count(*) as n from vehicle_recalls where company_id = %s and status = 'open' and truck_id is not null group by 1",
+        (g.company["id"],))}
+    for truck in fleet:
+        truck["recalls"] = open_recalls.get(truck["id"], 0)
+    recall_filter = forms.pick(request.args.get("recalls"), ["open"], "")
+    if recall_filter:
+        fleet = [t for t in fleet if t["recalls"]]
     return render_template("trucks/list.html", title="Trucks", active="/trucks", fleet=fleet, status=status, statuses=STATUSES,
-                           groups=groups, group=group)
+                           groups=groups, group=group, recall_filter=recall_filter)
 
 
 def baseline_note(kind):
@@ -400,6 +408,7 @@ def truck_context(truck):
         group_truck=pti_driver.one_truck(g.company["id"], truck_id),
         docs=documents.for_owner(g.company["id"], "truck", truck_id),
         trailers=rows("select id, unit_number from trailers where truck_id = %s order by unit_number", (truck_id,)),
+        recalls=recalls.for_vehicle("truck_id", truck_id), recall_lookup=recalls.lookup_url(truck.get("vin")),
         readings=rows(
             """select r.*, u.name as by_name from odometer_readings r left join users u on u.id = r.created_by
                where r.truck_id = %s order by r.read_at desc, r.id desc limit 8""",
@@ -520,3 +529,46 @@ def delete_reading(truck_id, reading_id):
     audit("truck.odometer_deleted", "truck", truck_id, {"miles": reading["miles"], "source": reading["source"]})
     flash(f"Removed the {reading['miles']:,} mi reading.", "ok")
     return redirect(f"/trucks/{truck_id}#odometer")
+
+
+@bp.post("/recalls/<int:recall_id>")
+@login_required
+@role_required("admin")
+def recall_action(recall_id):
+    item = one(
+        """select v.*, c.component, c.summary, coalesce(t.unit_number, r.unit_number) as unit from vehicle_recalls v
+           join recall_campaigns c on c.campaign = v.campaign left join trucks t on t.id = v.truck_id
+           left join trailers r on r.id = v.trailer_id where v.id = %s and v.company_id = %s""",
+        (recall_id, g.company["id"]),
+    )
+    if not item:
+        return render_template("errors/404.html"), 404
+    back = f"/trucks/{item['truck_id']}#recalls" if item["truck_id"] else f"/trailers/{item['trailer_id']}#recalls"
+    action = forms.pick(request.form.get("action"), ["done", "not_applicable", "open", "work_order"], None)
+    if action == "work_order":
+        if item["work_order_id"]:
+            return redirect(f"/maintenance/{item['work_order_id']}")
+        asset = "truck" if item["truck_id"] else "trailer"
+        order = insert(
+            """insert into maintenance_orders (company_id, asset_type, truck_id, trailer_id, kind, status, priority,
+                 reported_at, description, created_by)
+               values (%s, %s, %s, %s, 'warranty', 'open', 'medium', now(), %s, %s) returning *""",
+            (g.company["id"], asset, item["truck_id"], item["trailer_id"],
+             f"Recall {item['campaign']}: {(item['component'] or '').replace(':', ' ').title()}\n{item['summary'] or ''}"[:2000],
+             g.session["user_id"]),
+        )
+        work_orders.add_comment(g.company["id"], order["id"], "event", f"opened this work order from recall {item['campaign']}",
+                                g.session["user_id"], g.session.get("name"))
+        execute("update vehicle_recalls set work_order_id = %s, updated_by = %s, updated_at = now() where id = %s",
+                (order["id"], g.session["user_id"], recall_id))
+        audit("recall.work_order", "maintenance_order", order["id"], {"campaign": item["campaign"]})
+        return redirect(f"/maintenance/{order['id']}")
+    if action:
+        execute(
+            """update vehicle_recalls set status = %s, done_on = %s, done_shop = %s, updated_by = %s, updated_at = now()
+               where id = %s""",
+            (action, forms.day(request.form.get("done_on")) if action == "done" else None,
+             forms.text(request.form.get("done_shop"), 160) if action == "done" else None, g.session["user_id"], recall_id),
+        )
+        audit("recall.status", "vehicle_recall", recall_id, {"campaign": item["campaign"], "status": action})
+    return redirect(back)

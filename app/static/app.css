@@ -770,3 +770,4 @@ form.inline { display: inline; }
 .suggest-list li.on, .suggest-list li:hover { background: var(--shade); }
 .threshold { align-items: end; } .threshold input { width: 80px; }
 .comeback { border-color: #cc4444; }
+.recall-list summary { cursor: pointer; } .recall-list p { margin: 6px 0; font-size: 13px; } .recall-list input { max-width: 150px; }

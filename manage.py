@@ -638,11 +638,19 @@ def cmd_demo(args):
     return 0
 
 
+def cmd_recalls(args):
+    from app import recalls
+    print(recalls.run(notify=not args.quiet))
+
+
 def main():
     parser = argparse.ArgumentParser(description="Kaido fleet management")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("migrate", help="apply db/schema.sql").set_defaults(func=cmd_migrate)
+    recall_parser = sub.add_parser("recalls", help="check NHTSA recalls for every VIN")
+    recall_parser.add_argument("--quiet", action="store_true")
+    recall_parser.set_defaults(func=cmd_recalls)
 
     boot = sub.add_parser("bootstrap", help="create the first platform owner")
     boot.add_argument("--email", required=True)

@@ -1647,3 +1647,54 @@ update maintenance_orders m set down_ended_at = mv.at, down_end_reason = 'moving
                        and p.recorded_at > m2.down_started_at + interval '30 minutes') as at
           from maintenance_orders m2 where m2.down_started_at is not null and m2.asset_type = 'truck') mv
  where mv.id = m.id and mv.at is not null and mv.at < coalesce(m.down_ended_at, 'infinity') and m.down_end_reason is distinct from 'moving';
+
+create table if not exists recall_campaigns (
+  campaign text primary key,
+  manufacturer text,
+  make text,
+  model text,
+  model_year int,
+  component text,
+  summary text,
+  consequence text,
+  remedy text,
+  notes text,
+  report_date date,
+  park_it boolean not null default false,
+  first_seen_at timestamptz not null default now(),
+  fetched_at timestamptz not null default now()
+);
+create table if not exists vehicle_recalls (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int references trucks(id) on delete cascade,
+  trailer_id int references trailers(id) on delete cascade,
+  campaign text not null references recall_campaigns(campaign) on delete cascade,
+  status text not null default 'open' check (status in ('open', 'done', 'not_applicable')),
+  done_on date,
+  done_shop text,
+  work_order_id bigint references maintenance_orders(id) on delete set null,
+  first_seen_at timestamptz not null default now(),
+  updated_by int references users(id) on delete set null,
+  updated_at timestamptz not null default now(),
+  check (truck_id is not null or trailer_id is not null)
+);
+create unique index if not exists vehicle_recalls_truck_key on vehicle_recalls (truck_id, campaign) where truck_id is not null;
+create unique index if not exists vehicle_recalls_trailer_key on vehicle_recalls (trailer_id, campaign) where trailer_id is not null;
+create index if not exists vehicle_recalls_company_idx on vehicle_recalls (company_id, status);
+alter table vehicle_recalls enable row level security;
+alter table vehicle_recalls force row level security;
+drop policy if exists company_lock on vehicle_recalls;
+create policy company_lock on vehicle_recalls
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+create table if not exists recall_checks (
+  id bigserial primary key,
+  ran_at timestamptz not null default now(),
+  vehicles int,
+  lookups int,
+  new_campaigns int,
+  linked int
+);

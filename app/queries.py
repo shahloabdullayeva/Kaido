@@ -163,6 +163,8 @@ def company_summary(company_id):
             (select count(*) from drivers where company_id = %(c)s and status = 'active' and not is_outside) as drivers_active,
             (select count(*) from maintenance_orders where company_id = %(c)s and breakdown and status not in ('done', 'cancelled')) as breakdowns_open,
             (select count(*) from fault_events where company_id = %(c)s and cleared_at is null) as faults_active,
+            (select count(*) from vehicle_recalls where company_id = %(c)s and status = 'open') as recalls_open,
+            (select count(distinct coalesce(truck_id, -trailer_id)) from vehicle_recalls where company_id = %(c)s and status = 'open') as recall_units,
             (select coalesce(sum(total), 0) from fuel_transactions
               where company_id = %(c)s and purchased_at >= date_trunc('month', now())) as fuel_month,
             (select coalesce(sum(cost), 0) from maintenance_orders

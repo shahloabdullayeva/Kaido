@@ -745,6 +745,21 @@ change writes "<name> changed status from X to Y" into the thread. Cancelled ord
 the Status filter is Cancelled; Delete asks first and removes the order with its comments, files and reminders.
 The list shows the comment count per order and filters by status, truck/trailer and system.
 
+## Recalls
+
+`manage.py recalls` (cron, Mondays 05:30 server time; `app/recalls.py`) checks every truck and trailer with a VIN.
+Missing make, model or year is filled from NHTSA's vPIC VIN decoder, then NHTSA's free recalls API
+(`api.nhtsa.gov/recalls/recallsByVehicle`, no key) is asked by make, model and year. Volvo trucks are looked up as
+"VOLVO" when "VOLVO TRUCK" finds nothing. **The public API has no exact-VIN lookup**, so every recall is shown as "may
+apply, confirm with dealer", with a link to NHTSA's own VIN check (`nhtsa.gov/recalls?vin=...`). The nhtsa.gov docs
+page refuses automated readers, so the endpoint and its fields were confirmed by calling the API itself on 25 Nov 2026.
+
+Campaigns are kept in `recall_campaigns`, and each unit's recalls in `vehicle_recalls` (open, done with date and shop,
+or not applicable; one click makes a warranty work order linked to it). Shown on the unit page (Recalls section), as
+a count on the dashboard, and as a "With open recalls" filter and badge on Trucks. The first run on 25 Nov linked 1,244
+possible recalls to 72 trucks (about 17 per truck, since many apply only to some build dates) and sent nothing. Later
+runs send "New safety recall" to the office (alerts group or admins' DMs) only for campaigns not seen before.
+
 ## Comebacks and downtime
 
 **Comebacks** (`app/comebacks.py`): when a work order is opened, saved or marked done, Kaido looks for a done work
