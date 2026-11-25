@@ -189,6 +189,8 @@ def import_drivers(company_id, client):
             "select * from driver_links where company_id = %s and provider = 'horizoneld' and external_id = %s",
             (company_id, external_id),
         )
+        if link and link["ignored"]:
+            continue
         driver_id = link["driver_id"] if link else None
         if driver_id is None:
             match = one(

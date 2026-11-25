@@ -17,7 +17,7 @@ for any truck and any driver, including ones from outside the company.
 - **Service schedule** by miles or by date: oil, DOT annual, PM-A, PM-B, PM-C, air
   dryer, transmission fluid, differential fluid, coolant and DPF cleaning. Each
   company sets its own intervals; severe-duty trucks come due sooner.
-- **Samsara sync** every 15 minutes: odometer, GPS, J1939/OBD-II fault codes, DVIR
+- **Samsara sync** every 5 minutes (Horizon every 15): odometer, GPS, J1939/OBD-II fault codes, DVIR
   defects. Stop-lamp faults go to Telegram the moment they are seen.
 - **Horizon ELD sync** every 15 minutes, next to Samsara: drivers, duty status and
   the four HOS clocks (break, drive, shift, cycle), and which driver is in which truck.

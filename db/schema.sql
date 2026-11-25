@@ -1584,3 +1584,5 @@ create table if not exists place_suggestions (
   results jsonb not null default '[]',
   fetched_at timestamptz not null default now()
 );
+
+alter table driver_links add column if not exists ignored boolean not null default false;
