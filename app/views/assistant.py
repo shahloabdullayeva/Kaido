@@ -31,8 +31,8 @@ def truck_context(truck):
         (truck["id"],),
     )
     breakdowns = rows(
-        """select id, status, occurred_at, description, location from breakdowns
-           where truck_id = %s and status <> 'resolved' order by occurred_at desc limit 5""",
+        """select id, status, reported_at as occurred_at, description, location from maintenance_orders
+           where truck_id = %s and breakdown and status not in ('done', 'cancelled') order by reported_at desc limit 5""",
         (truck["id"],),
     )
     reminders = rows(
@@ -71,7 +71,7 @@ def truck_context(truck):
         if extra:
             lines[-1] += f": {extra}"
     for item in breakdowns:
-        lines.append(f"Open breakdown #{item['id']} ({item['status'].replace('_', ' ')}) since "
+        lines.append(f"Open breakdown, work order #{item['id']} ({item['status'].replace('_', ' ')}) since "
                      f"{item['occurred_at']:%d %b %Y}: {item['description'][:200]}")
     for item in reminders:
         lines.append(f"Reminder set for {item['remind_at']:%d %b %Y}: {item['note'][:160]}")

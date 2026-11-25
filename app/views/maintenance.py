@@ -15,7 +15,7 @@ from ..tenancy import active_drivers, active_trucks, company_required, role_requ
 bp = Blueprint("maintenance", __name__)
 log = get("maintenance")
 
-STATUSES = ["scheduled", "in_progress", "done"]
+STATUSES = work_orders.STATUSES
 
 
 def outside_truck(form):
@@ -125,7 +125,7 @@ def index():
     params = [g.company["id"]]
     clause = ""
     if status == "open":
-        clause = " and m.status <> 'done'"
+        clause = " and m.status not in ('done', 'cancelled')"
     elif status != "all":
         clause = " and m.status = %s"
         params.append(status)
@@ -141,7 +141,7 @@ def index():
             join trucks t on t.id = m.truck_id
             left join drivers d on d.id = m.driver_id
             where m.company_id = %s{clause}
-            order by coalesce(m.performed_on, m.scheduled_for) desc nulls first, m.id desc limit 200""",
+            order by coalesce(m.performed_on, m.scheduled_for, m.reported_at::date) desc nulls first, m.id desc limit 200""",
         tuple(params),
     )
     spend = one(
@@ -165,6 +165,7 @@ def new():
                            truck_id=forms.integer(request.args.get("truck_id")), order=None,
                            prefill_description=forms.text(request.args.get("description"), 2000),
                            pti_id=forms.integer(request.args.get("pti")),
+                           breakdown=request.args.get("breakdown") == "1",
                            drive=forms.pick(request.args.get("drive"), ["yes", "no"], None), **form_choices())
 
 
@@ -215,6 +216,8 @@ def create():
             forms.pick(request.form.get("paid_with"), list(work_orders.PAYMENT_LABELS), None),
         ),
     )
+    if forms.checkbox(request.form.get("breakdown")):
+        execute("update maintenance_orders set breakdown = true, priority = 'high' where id = %s", (order["id"],))
     store_extras(order["id"], parts, request.form)
     save_rating(order["id"])
     apply_completion(order, truck)

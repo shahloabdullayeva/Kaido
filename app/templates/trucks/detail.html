@@ -18,7 +18,7 @@
     <a class="btn ghost" href="/fuel/new?truck_id={{ truck.id }}">Log fuel</a>
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
     <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;find=1#shop-panel">Nearby shops (map)</a>
-    <a class="btn ghost" href="/breakdowns/new?truck_id={{ truck.id }}">Open a case</a>
+    <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;breakdown=1">Report a breakdown</a>
     {% endif %}
     {% if at_least(role, 'admin') %}<a class="btn" href="/trucks/{{ truck.id }}/edit">Edit</a>{% endif %}
   </div>
@@ -218,22 +218,6 @@
     {% else %}<p class="empty">No fuel suggestions sent to this truck yet.</p>{% endif %}
   </section>
 
-  <section class="panel">
-    <div class="panel-head"><h2>Cases</h2></div>
-    {% if breakdowns %}
-    <div class="table-wrap"><table>
-      <thead><tr><th>When</th><th>What</th><th>Status</th><th class="right">Cost</th></tr></thead>
-      <tbody>
-        {% for item in breakdowns %}
-        <tr class="clickrow" data-href="/breakdowns/{{ item.id }}"><td>{{ item.occurred_at|day }}</td>
-          <td><a class="rowlink" href="/breakdowns/{{ item.id }}">{{ (item.description or '')[:50] }}</a></td>
-          <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
-          <td class="right">{{ ((item.repair_cost or 0) + (item.towing_cost or 0))|money }}</td></tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-    {% else %}<p class="empty">No cases.</p>{% endif %}
-  </section>
 </div>
 
 {% if truck.notes %}

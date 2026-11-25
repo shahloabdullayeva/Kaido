@@ -1367,3 +1367,100 @@ create table if not exists alert_topics (
   primary key (chat_id, topic)
 );
 alter table companies add column if not exists alerts_group boolean not null default false;
+
+alter table maintenance_orders add column if not exists priority text not null default 'medium';
+alter table maintenance_orders add column if not exists reported_at timestamptz;
+update maintenance_orders set reported_at = created_at where reported_at is null;
+alter table maintenance_orders alter column reported_at set default now();
+alter table maintenance_orders alter column reported_at set not null;
+alter table maintenance_orders add column if not exists breakdown boolean not null default false;
+alter table maintenance_orders add column if not exists location text;
+alter table maintenance_orders add column if not exists latitude numeric(9,6);
+alter table maintenance_orders add column if not exists longitude numeric(9,6);
+alter table maintenance_orders add column if not exists cause text;
+alter table maintenance_orders add column if not exists resolution text;
+alter table maintenance_orders add column if not exists load_number text;
+alter table maintenance_orders add column if not exists towing_cost numeric(12,2);
+alter table maintenance_orders add column if not exists resolved_at timestamptz;
+alter table maintenance_orders add column if not exists from_breakdown_id bigint unique;
+alter table maintenance_orders drop constraint if exists maintenance_orders_status_check;
+alter table maintenance_orders add constraint maintenance_orders_status_check
+  check (status in ('open','scheduled','towing','in_shop','in_progress','done','cancelled'));
+alter table maintenance_orders drop constraint if exists maintenance_orders_priority_check;
+alter table maintenance_orders add constraint maintenance_orders_priority_check
+  check (priority in ('low','medium','high','urgent'));
+create index if not exists maint_reported_idx on maintenance_orders (company_id, reported_at desc);
+
+create table if not exists work_order_comments (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  order_id bigint not null references maintenance_orders(id) on delete cascade,
+  kind text not null default 'comment' check (kind in ('comment','status','event')),
+  body text,
+  file_path text,
+  file_name text,
+  content_type text,
+  file_bytes int,
+  created_by int references users(id) on delete set null,
+  author_name text,
+  created_at timestamptz not null default now()
+);
+create index if not exists work_order_comments_idx on work_order_comments (order_id, created_at, id);
+alter table work_order_comments enable row level security;
+alter table work_order_comments force row level security;
+drop policy if exists company_lock on work_order_comments;
+create policy company_lock on work_order_comments
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+do $$
+declare
+  b record;
+  target bigint;
+  new_status text;
+begin
+  for b in select * from breakdowns x
+           where not exists (select 1 from maintenance_orders m where m.from_breakdown_id = x.id)
+           order by x.id loop
+    new_status := case b.status when 'resolved' then 'done' else b.status end;
+    select id into target from maintenance_orders
+     where breakdown_id = b.id and from_breakdown_id is null and company_id = b.company_id
+     order by id limit 1;
+    if target is not null then
+      update maintenance_orders set
+        breakdown = true, from_breakdown_id = b.id, priority = b.severity,
+        reported_at = least(reported_at, b.occurred_at),
+        driver_id = coalesce(driver_id, b.driver_id),
+        location = coalesce(location, b.location), latitude = coalesce(latitude, b.latitude),
+        longitude = coalesce(longitude, b.longitude), cause = coalesce(cause, b.cause),
+        resolution = coalesce(resolution, b.resolution), load_number = coalesce(load_number, b.load_number),
+        towing_cost = coalesce(towing_cost, b.towing_cost), resolved_at = coalesce(resolved_at, b.resolved_at),
+        description = case when description like 'Repair from breakdown #%' then
+          b.description || E'\n' || regexp_replace(description, '^Repair from breakdown #[0-9]+: ', 'Repair: ')
+          else description end
+      where id = target;
+    else
+      insert into maintenance_orders (company_id, truck_id, driver_id, kind, status, priority, reported_at,
+          performed_on, cost, description, breakdown, location, latitude, longitude, cause, resolution,
+          load_number, towing_cost, resolved_at, from_breakdown_id, breakdown_id, created_by, created_at, updated_at)
+      values (b.company_id, b.truck_id, b.driver_id, 'repair', new_status, b.severity, b.occurred_at,
+          b.resolved_at::date, b.repair_cost, b.description, true, b.location, b.latitude, b.longitude,
+          b.cause, b.resolution, b.load_number, b.towing_cost, b.resolved_at, b.id, b.id, b.created_by,
+          b.created_at, b.updated_at)
+      returning id into target;
+    end if;
+    insert into work_order_comments (company_id, order_id, kind, body, created_by, author_name, created_at)
+    values (b.company_id, target, 'event', 'Reported as case #' || b.id, b.created_by,
+            (select name from users where id = b.created_by), b.occurred_at);
+    insert into work_order_comments (company_id, order_id, kind, body, created_by, author_name, created_at)
+    select u.company_id, target, case when u.status is not null and u.note like 'Status changed to %' then 'status' else 'comment' end,
+           case when u.status is not null and u.note like 'Status changed to %'
+                then 'changed status to ' || replace(case u.status when 'resolved' then 'done' else u.status end, '_', ' ')
+                else u.note end,
+           u.created_by, (select name from users where id = u.created_by), u.created_at
+      from breakdown_updates u where u.breakdown_id = b.id order by u.created_at;
+    update reminders set entity = 'maintenance_order', entity_id = target where entity = 'breakdown' and entity_id = b.id;
+  end loop;
+end $$;

@@ -281,3 +281,8 @@ rather than an empty map.
 - 23 Nov: document alerts are off for every company (her request: nothing is logged yet). Turn on from the Documents page; existing papers then start from their current step instead of sending every missed one.
 - 23 Nov: alerts group with one Telegram topic per issue (README → Alerts group). She made the group and the bot admin; it links when she sends /alerts there, then the past 314 alerts, follow-ups and summaries (both companies) are replayed. Office alerts then go to the group instead of DMs. Tire pressure alert added; Samsara accepts the `tirePressure` stat but no truck in either fleet reports it.
 - 23 Nov: alerts group limited to BOOKIT at her request (`companies.alerts_group`, set true only for BOOKIT). LLAP alerts stay in DMs.
+
+## Redesign along Fleetio lines (25 Nov 2026)
+- Backup before starting: `/root/backups/fleet/pre-redesign-20261125.sql.gz` (database) and `pre-redesign-uploads-20261125.tar.gz`; git tag `pre-redesign-20261125` is the code before any change.
+- Stage 1: Cases merged into work orders (README → Work orders). Cases tab removed from the menu. The old tables stay as an archive.
+

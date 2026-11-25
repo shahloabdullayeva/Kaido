@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 
-from flask import Blueprint, Response, g, render_template, request
+from flask import Blueprint, Response, g, redirect, render_template, request
 
 from .. import forms, reports, work_orders
 from ..audit import audit
@@ -147,32 +147,6 @@ def order_pdf(order_id):
 @login_required
 @company_required
 def breakdown_pdf(breakdown_id):
-    item = one(
-        """select b.*, t.unit_number, t.make, t.model, t.year, d.name as driver_name, d.phone as driver_phone
-           from breakdowns b join trucks t on t.id = b.truck_id left join drivers d on d.id = b.driver_id
-           where b.id = %s and b.company_id = %s""",
-        (breakdown_id, g.company["id"]),
-    )
-    if not item:
-        return render_template("errors/404.html"), 404
-    updates = rows(
-        """select u.created_at, u.note, u.status, us.name as author from breakdown_updates u
-           left join users us on us.id = u.created_by where u.breakdown_id = %s order by u.created_at""",
-        (breakdown_id,),
-    )
-    cell = reports.cell_text
-    fields = [
-        ("Truck", f"Unit {item['unit_number']} · " + " ".join(str(p) for p in [item["year"], item["make"], item["model"]] if p)),
-        ("Driver", " · ".join(p for p in [item["driver_name"], item["driver_phone"]] if p)),
-        ("Reported", cell(item["occurred_at"], "datetime")), ("Resolved", cell(item["resolved_at"], "datetime")),
-        ("Severity", item["severity"]), ("Status", item["status"].replace("_", " ")),
-        ("Where", item["location"]), ("Load", item["load_number"]),
-        ("Towing", cell(item["towing_cost"], "money")), ("Repair", cell(item["repair_cost"], "money")),
-    ]
-    timeline = "\n".join(f"{u['created_at']:%d %b %Y %H:%M} · {u['author'] or 'system'}: {u['note']}" for u in updates)
-    body = reports.record_pdf(f"Case #{breakdown_id}", g.company["name"], fields, [
-        ("What happened", item["description"]), ("Cause", item["cause"]),
-        ("What fixed it", item["resolution"]), ("Timeline", timeline)])
-    audit("report.downloaded", "breakdown", breakdown_id, {"format": "pdf"})
-    return Response(body, mimetype="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="breakdown-{breakdown_id}.pdf"'})
+    order = one("select id from maintenance_orders where from_breakdown_id = %s and company_id = %s",
+                (breakdown_id, g.company["id"]))
+    return redirect(f"/maintenance/{order['id']}/pdf" if order else "/maintenance")

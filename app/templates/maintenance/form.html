@@ -26,6 +26,7 @@
   <form method="post" action="{{ '/maintenance/' ~ order.id if editing else '/maintenance' }}" data-truck-fill enctype="multipart/form-data" class="work-order">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <input type="hidden" name="shop_where" value="{{ order.shop_where or '' if editing else '' }}">
+    {% if breakdown and not editing %}<input type="hidden" name="breakdown" value="1">{% endif %}
     {% if pti_id and not editing %}<input type="hidden" name="pti_id" value="{{ pti_id }}">{% endif %}
     <input type="hidden" name="shop_lat" value="{{ order.shop_lat if editing and order.shop_lat is not none else '' }}">
     <input type="hidden" name="shop_lon" value="{{ order.shop_lon if editing and order.shop_lon is not none else '' }}">

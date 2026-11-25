@@ -19,6 +19,9 @@ PAYMENT_METHODS = [
     ("other", "Other"),
 ]
 PAYMENT_LABELS = dict(PAYMENT_METHODS)
+STATUSES = ["open", "scheduled", "towing", "in_shop", "in_progress", "done", "cancelled"]
+CLOSED = ("done", "cancelled")
+PRIORITIES = ["low", "medium", "high", "urgent"]
 
 
 def parts_from(form):

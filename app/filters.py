@@ -9,7 +9,7 @@ from . import work_types
 TONES = {
     "active": "ok", "done": "ok", "resolved": "ok", "connected": "ok",
     "shop": "warn", "in_progress": "warn", "towing": "warn", "in_shop": "warn",
-    "scheduled": "info", "medium": "warn", "low": "info",
+    "scheduled": "info", "medium": "warn", "low": "info", "urgent": "bad", "cancelled": "muted",
     "out_of_service": "bad", "open": "bad", "high": "bad", "error": "bad",
     "sold": "muted", "inactive": "muted", "disconnected": "muted", "unknown": "muted",
 }

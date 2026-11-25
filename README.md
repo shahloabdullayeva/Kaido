@@ -6,6 +6,9 @@ for any truck and any driver, including ones from outside the company.
 
 ## What it does
 
+- **One list for all work**: breakdowns and maintenance are the same record, a work
+  order. It can start as a reported problem (unit, summary, priority, date) and grow into
+  the full job once a shop is involved. README → Work orders.
 - **Work orders** in 81 work types across 13 systems: preventive maintenance,
   inspections and compliance, engine, aftertreatment (DPF, DEF, SCR/NOx), transmission
   and drivetrain, brakes and air, tires and wheels, steering and suspension,
@@ -584,8 +587,8 @@ documents. Samsara has no trailers on either account, so they are entered by han
 
 **Status board** (Trucks → Status board, `app/board.py`): every truck sorted into En route (5 mph or more), Stopped
 (with how long since it last moved), Home (within 2 mi of the home yard set on the Company page), In shop (truck
-status, a work order in progress, or a case in the shop), Broken down (open case), Accident (Samsara crash in 72 h or
-a case that says accident/crash/collision), No signal (6 h) and Inactive. Hooked trailers are shown.
+status, or a work order in shop or in progress), Broken down (open breakdown work order), Accident (Samsara crash in 72 h or
+a breakdown that says accident/crash/collision), No signal (6 h) and Inactive. Hooked trailers are shown.
 
 **Shop finder extras**: a row of place types (truck repair, towing, tires, mobile mechanic, reefer repair, trailer
 repair, truck parking, truck wash), each with its own Google queries or OpenStreetMap filter. Each shop has
@@ -715,6 +718,15 @@ go to `logs/errors.log`, with bot tokens and API keys stripped out. It is rotate
 with the other logs (`deploy/kaido.logrotate`, installed at `/etc/logrotate.d/kaido`).
 
     tail -f logs/errors.log
+
+## Work orders
+
+Maintenance → one list (`maintenance_orders`, `app/views/maintenance.py`). Cases (breakdowns) were merged into it
+on 25 Nov 2026: each old case became a work order with `breakdown = true` and `from_breakdown_id` set (case 12 joined
+the work order already made from it, #30; case 13 became #34), and the case updates became comments. The old
+`breakdowns` and `breakdown_updates` tables are kept untouched as an archive; `/breakdowns/...` links redirect to the
+matching work order. Statuses: open, scheduled, towing, in shop, in progress, done, cancelled. Priority: low, medium,
+high, urgent. "Report a breakdown" on a truck page opens a work order flagged as a breakdown.
 
 ## Service schedule
 

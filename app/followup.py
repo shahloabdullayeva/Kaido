@@ -42,14 +42,15 @@ def build(company, today):
                 soon.append(_unit_line(truck["unit_number"], f"{item['label']}: {item['detail']}"))
 
     breakdowns = rows(
-        """select b.id, b.status, b.occurred_at, t.unit_number from breakdowns b join trucks t on t.id = b.truck_id
-           where b.company_id = %s and b.status <> 'resolved' order by b.occurred_at""",
+        """select b.id, b.status, b.reported_at as occurred_at, t.unit_number from maintenance_orders b
+           join trucks t on t.id = b.truck_id
+           where b.company_id = %s and b.breakdown and b.status not in ('done', 'cancelled') order by b.reported_at""",
         (company_id,),
     )
     work = rows(
         """select m.id, m.kind, m.scheduled_for, t.unit_number from maintenance_orders m
            join trucks t on t.id = m.truck_id
-           where m.company_id = %s and m.status <> 'done' and m.scheduled_for <= %s
+           where m.company_id = %s and m.status not in ('done', 'cancelled') and m.scheduled_for <= %s
            order by m.scheduled_for""",
         (company_id, today),
     )

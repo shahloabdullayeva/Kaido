@@ -29,11 +29,12 @@ def board(company):
         (company_id,),
     )
     cases = {}
-    for case in rows("select * from breakdowns where company_id = %s and status <> 'resolved' order by occurred_at desc",
+    for case in rows("""select *, reported_at as occurred_at from maintenance_orders where company_id = %s and breakdown
+                             and status not in ('done', 'cancelled') order by reported_at desc""",
                      (company_id,)):
         cases.setdefault(case["truck_id"], case)
     shop = {r["truck_id"] for r in rows(
-        "select distinct truck_id from maintenance_orders where company_id = %s and status = 'in_progress'", (company_id,))}
+        "select distinct truck_id from maintenance_orders where company_id = %s and status in ('in_shop', 'in_progress')", (company_id,))}
     crashes = {r["truck_id"]: r["happened_at"] for r in rows(
         """select truck_id, max(happened_at) as happened_at from safety_events where company_id = %s and kind in ('crash', 'rollover')
              and happened_at > now() - make_interval(hours => %s) group by truck_id""", (company_id, ACCIDENT_HOURS))}

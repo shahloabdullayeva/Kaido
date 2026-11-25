@@ -61,12 +61,8 @@ def describe(company_id, entity, entity_id):
         return (f"Work order #{entity_id} · unit {row['unit_number']} · {work_types.label(row['kind'])}",
                 f"/maintenance/{entity_id}")
     if entity == "breakdown":
-        row = one(
-            """select t.unit_number from breakdowns b join trucks t on t.id = b.truck_id
-               where b.id = %s and b.company_id = %s""",
-            (entity_id, company_id),
-        )
-        return (f"Breakdown #{entity_id} · unit {row['unit_number']}", f"/breakdowns/{entity_id}") if row else None
+        row = one("select id from maintenance_orders where from_breakdown_id = %s and company_id = %s", (entity_id, company_id))
+        return describe(company_id, "maintenance_order", row["id"]) if row else None
     if entity == "fault_event":
         row = one(
             """select f.dtc_code, f.spn, f.fmi, t.unit_number from fault_events f join trucks t on t.id = f.truck_id

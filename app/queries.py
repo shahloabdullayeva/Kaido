@@ -13,7 +13,7 @@ def trucks_with_service(company_id):
                where m.truck_id = t.id and m.kind = 'oil' and m.status = 'done' and m.odometer is not null) as last_oil_odometer,
              (select max(m.performed_on) from maintenance_orders m
                where m.truck_id = t.id and m.kind = 'oil' and m.status = 'done') as last_oil_on,
-             (select count(*) from breakdowns b where b.truck_id = t.id and b.status <> 'resolved') as open_breakdowns,
+             (select count(*) from maintenance_orders b where b.truck_id = t.id and b.breakdown and b.status not in ('done', 'cancelled')) as open_breakdowns,
              (select count(*) from fault_events f where f.truck_id = t.id and f.cleared_at is null) as active_faults,
              (select external_id from vehicle_links v where v.truck_id = t.id limit 1) as samsara_id
            from trucks t
@@ -161,7 +161,7 @@ def company_summary(company_id):
             (select count(*) from trucks where company_id = %(c)s and status = 'shop' and not is_outside) as trucks_shop,
             (select count(*) from trucks where company_id = %(c)s and status = 'out_of_service' and not is_outside) as trucks_down,
             (select count(*) from drivers where company_id = %(c)s and status = 'active' and not is_outside) as drivers_active,
-            (select count(*) from breakdowns where company_id = %(c)s and status <> 'resolved') as breakdowns_open,
+            (select count(*) from maintenance_orders where company_id = %(c)s and breakdown and status not in ('done', 'cancelled')) as breakdowns_open,
             (select count(*) from fault_events where company_id = %(c)s and cleared_at is null) as faults_active,
             (select coalesce(sum(total), 0) from fuel_transactions
               where company_id = %(c)s and purchased_at >= date_trunc('month', now())) as fuel_month,

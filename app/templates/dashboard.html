@@ -71,19 +71,19 @@
       </tbody>
     </table></div>
     {% else %}
-    <p class="empty">Nothing overdue, no open cases, no active faults.</p>
+    <p class="empty">Nothing overdue, no open breakdowns, no active faults.</p>
     {% endif %}
   </section>
 
   <section class="panel">
-    <div class="panel-head"><h2>Open breakdowns</h2><a class="btn ghost small" href="/breakdowns">All</a></div>
+    <div class="panel-head"><h2>Open breakdowns</h2><a class="btn ghost small" href="/maintenance?status=open">All</a></div>
     {% if breakdowns %}
     <div class="table-wrap"><table>
       <thead><tr><th>Unit</th><th>Status</th><th>Where</th><th>When</th></tr></thead>
       <tbody>
         {% for item in breakdowns %}
-        <tr class="clickrow" data-href="/breakdowns/{{ item.id }}">
-          <td><a class="rowlink" href="/breakdowns/{{ item.id }}">{{ item.unit_number }}</a>
+        <tr class="clickrow" data-href="/maintenance/{{ item.id }}">
+          <td><a class="rowlink" href="/maintenance/{{ item.id }}">{{ item.unit_number }}</a>
             <div class="subtle">{{ item.driver_name or 'No driver' }}</div></td>
           <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
           <td>{{ item.location or '—' }}</td>

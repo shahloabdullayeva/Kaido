@@ -35,8 +35,8 @@
         <td>{{ order.vendor or '—' }}{% if order.shop_phone %}<div class="subtle">{{ order.shop_phone }}</div>{% endif %}</td>
         <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.kind|work }}</a>
           <div class="subtle">{{ (order.description or '')[:70] }}</div></td>
-        <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
-        <td>{{ (order.performed_on or order.scheduled_for)|day }}</td>
+        <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span>{% if order.breakdown %} <span class="badge bad">breakdown</span>{% endif %}</td>
+        <td>{{ (order.performed_on or order.scheduled_for or order.reported_at)|day }}</td>
         <td class="right">{{ order.odometer|number }}</td>
         <td class="right">{{ order.cost|money }}</td>
         <td>{% if order.files %}<span class="badge ok">{{ order.files }} file{{ 's' if order.files != 1 }}</span>{% elif order.status == 'done' %}<span class="badge warn">missing</span>{% else %}<span class="subtle">—</span>{% endif %}</td>

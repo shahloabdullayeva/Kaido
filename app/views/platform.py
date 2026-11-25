@@ -24,7 +24,7 @@ def _index():
              (select count(*) from trucks t where t.company_id = c.id and t.status <> 'sold') as truck_count,
              (select count(*) from drivers d where d.company_id = c.id and d.status = 'active') as driver_count,
              (select count(*) from memberships m where m.company_id = c.id) as member_count,
-             (select count(*) from breakdowns b where b.company_id = c.id and b.status <> 'resolved') as open_breakdowns,
+             (select count(*) from maintenance_orders b where b.company_id = c.id and b.breakdown and b.status not in ('done', 'cancelled')) as open_breakdowns,
              (select count(*) from fault_events f where f.company_id = c.id and f.cleared_at is null) as active_faults,
              (select status from integrations i where i.company_id = c.id and i.provider = 'samsara') as samsara_status,
              (select last_sync_at from integrations i where i.company_id = c.id and i.provider = 'samsara') as last_sync_at
@@ -43,7 +43,7 @@ def _index():
     totals = one(
         """select (select count(*) from companies where status = 'active') as companies,
                   (select count(*) from trucks where status <> 'sold') as trucks,
-                  (select count(*) from breakdowns where status <> 'resolved') as breakdowns,
+                  (select count(*) from maintenance_orders where breakdown and status not in ('done', 'cancelled')) as breakdowns,
                   (select count(*) from fault_events where cleared_at is null) as faults"""
     )
     return render_template("platform/index.html", title="Platform", active="/platform",

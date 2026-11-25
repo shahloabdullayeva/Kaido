@@ -394,7 +394,6 @@ def detail(truck_id):
         (truck_id, g.company["id"]),
     )
     faults = rows("select * from fault_events where truck_id = %s order by last_seen_at desc limit 10", (truck_id,))
-    breakdowns = rows("select * from breakdowns where truck_id = %s order by occurred_at desc limit 10", (truck_id,))
     link = one("select * from vehicle_links where truck_id = %s", (truck_id,))
     inspections = rows("select * from inspections where truck_id = %s order by submitted_at desc limit 8", (truck_id,))
     pti_link = pti.link_for(pti.ensure_token(truck)) if at_least(g.role, "admin") else None
@@ -402,7 +401,7 @@ def detail(truck_id):
     return render_template(
         "trucks/detail.html", title=f"Unit {truck['unit_number']}", active="/trucks",
         truck=truck, statuses=service_status(enriched), history=history, fuel=fuel,
-        faults=faults, breakdowns=breakdowns, economy=fuel_economy(truck_id), link=link,
+        faults=faults, economy=fuel_economy(truck_id), link=link,
         last_oil=last_oil, inspections=inspections, pti_link=pti_link, pti_kinds=pti.KINDS,
         group_code=group_code, group_truck=pti_driver.one_truck(g.company["id"], truck_id),
         hours=hours, links=links, mpg=mpg, tank=tank, fuel_offers=fuel_offers,

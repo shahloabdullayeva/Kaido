@@ -91,15 +91,15 @@ def fuel(filters):
 
 
 def breakdowns(filters):
-    where, params = _where("b.company_id", filters, "b.occurred_at", "b.driver_id")
+    where, params = _where("b.company_id", filters, "b.reported_at", "b.driver_id")
     data = rows(
-        f"""select b.id, b.occurred_at as day, t.unit_number, d.name as driver, b.severity, b.status, b.location,
+        f"""select b.id, b.reported_at as day, t.unit_number, d.name as driver, b.priority as severity, b.status, b.location,
               case when b.resolved_at is not null
-                   then round(extract(epoch from (b.resolved_at - b.occurred_at)) / 3600.0, 1) end as down_hours,
-              b.towing_cost, b.repair_cost, b.description, b.cause, b.resolution
-            from breakdowns b join trucks t on t.id = b.truck_id
+                   then round(extract(epoch from (b.resolved_at - b.reported_at)) / 3600.0, 1) end as down_hours,
+              b.towing_cost, b.cost as repair_cost, b.description, b.cause, b.resolution
+            from maintenance_orders b join trucks t on t.id = b.truck_id
             left join drivers d on d.id = b.driver_id
-            where {where} order by b.occurred_at desc""",
+            where b.breakdown and {where} order by b.reported_at desc""",
         params,
     )
     for row in data:
