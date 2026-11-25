@@ -258,6 +258,8 @@ status board and the unit page; clicking the badge shows the alert text and when
 
 ## Where to send it
 
+On a work order the panel opens with two buttons, Find shop and Find towing; it no longer asks whether the truck can drive.
+
 Pick a truck on a work order and the form offers to look for shops near it. The
 truck's position comes from Samsara on every sync, and the map shows where the
 driver is. **A truck with no Samsara feed is not a dead end**: type an address,
