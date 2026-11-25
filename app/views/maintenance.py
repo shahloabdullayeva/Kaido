@@ -589,7 +589,7 @@ def detail(order_id):
                                                    or order["invoice_no"] or order["paid_with"] or order["shop_rating"])
     downtime.refresh(g.company["id"])
     order = load_order(order_id)
-    return render_template("maintenance/form.html", title=f"Work order #{order['id']}", active="/maintenance",
+    return render_template("maintenance/form.html", title=" + ".join(x for x in [order["truck_unit"], f"Trailer {order['trailer_unit']}" if order["trailer_unit"] else None] if x) or str(order["unit_number"]), active="/maintenance",
                            comeback_flags=comebacks.flags_for(order_id), down_days=downtime.days(order),
                            groups=pm_list.groups(g.company["id"], order["kind"]), statuses=work_orders.STATUSES,
                            order=order, truck_id=order["truck_id"], parts=parts, files=files,

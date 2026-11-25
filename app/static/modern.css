@@ -420,3 +420,30 @@
 .wo-head .actions-row form.inline { display: flex; }
 .wo-head .actions-row .btn { margin: 0; }
 .drawer-title { display: flex; align-items: center; gap: 8px; }
+.assistant-drawer .drawer-body[hidden] { display: none; }
+.drawer-title span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px; }
+.chat-files { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chat-files img { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.chat-file-pdf { font-size: 12.5px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; }
+.chat-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chat-chips[hidden] { display: none; }
+.chat-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; padding: 2px 4px 2px 10px; border-radius: 999px; background: var(--face-light); max-width: 220px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.chat-chip button { all: unset; cursor: pointer; padding: 0 6px; color: var(--muted); }
+.chat-chip button:hover { color: var(--bad); }
+.assistant-drawer .chat-form .actions-row { gap: 10px; }
+.chat-status { flex: 1; min-width: 0; }
+.chat-history { padding: 8px; }
+.chat-history > p { padding: 10px; }
+.chat-history-row { display: flex; align-items: center; border-radius: 8px; }
+.chat-history-row:hover, .chat-history-row.on { background: var(--hover); }
+.chat-history-open { all: unset; box-sizing: border-box; flex: 1; min-width: 0; padding: 9px 10px; cursor: pointer; display: flex; flex-direction: column; }
+.chat-history-open span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; }
+.chat-history-open small { color: var(--muted); font-size: 12px; }
+.chat-history-open:focus-visible, .chat-history-del:focus-visible { outline: 2px solid var(--accent); border-radius: 8px; }
+.chat-history-del { all: unset; cursor: pointer; font-size: 12px; color: var(--muted); padding: 6px 10px; visibility: hidden; }
+.chat-history-row:hover .chat-history-del, .chat-history-row:focus-within .chat-history-del { visibility: visible; }
+.chat-history-del:hover { color: var(--bad); }
+.wo-head h1 a { color: inherit; }
+.wo-head h1 a:hover { color: var(--accent); }
+.wo-plus { color: var(--muted); font-weight: 400; margin: 0 2px; }
+.wo-sub > span:first-child { font-weight: 500; }

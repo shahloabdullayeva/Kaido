@@ -9,7 +9,7 @@ const FUEL_TONES = [
 if (fuelNode && typeof L !== 'undefined') {
   let stations = [];
   try { stations = JSON.parse(fuelNode.dataset.stations || '[]'); } catch (err) { stations = []; }
-  const map = L.map(fuelNode, { scrollWheelZoom: false });
+  const map = L.map(fuelNode, { scrollWheelZoom: true, wheelPxPerZoomLevel: 90 });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 17,
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

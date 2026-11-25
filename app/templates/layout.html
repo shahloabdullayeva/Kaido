@@ -48,7 +48,7 @@
   <nav>
     {% for href, text, minimum in nav_items %}
       {% if not minimum or at_least(role, minimum) %}
-      <a href="{{ href }}" {% if href == active %}class="on"{% endif %}>{{ text }}</a>
+      <a href="{{ '/fuel/insights' if href == '/fuel' else href }}" {% if href == active %}class="on"{% endif %}>{{ text }}</a>
       {% endif %}
     {% endfor %}
   </nav>

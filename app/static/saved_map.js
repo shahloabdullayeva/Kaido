@@ -30,7 +30,7 @@ if (savedNode && typeof L !== 'undefined') {
   let trucks = [];
   try { shops = JSON.parse(savedNode.dataset.shops || '[]'); } catch (err) { shops = []; }
   try { trucks = JSON.parse(savedNode.dataset.trucks || '[]'); } catch (err) { trucks = []; }
-  const map = L.map(savedNode, { scrollWheelZoom: false, preferCanvas: true });
+  const map = L.map(savedNode, { scrollWheelZoom: true, wheelPxPerZoomLevel: 90, preferCanvas: true });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 17,
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

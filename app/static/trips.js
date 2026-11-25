@@ -14,7 +14,7 @@ const tripNode = document.getElementById('trip-map');
 if (tripNode && typeof L !== 'undefined') {
   let trip = {};
   try { trip = JSON.parse(tripNode.dataset.trip || '{}'); } catch (err) { trip = {}; }
-  const map = L.map(tripNode, { scrollWheelZoom: false });
+  const map = L.map(tripNode, { scrollWheelZoom: true, wheelPxPerZoomLevel: 90 });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 17,
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

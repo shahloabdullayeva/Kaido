@@ -236,7 +236,7 @@ const popupFor = (pin) => {
 // Two map engines behind one shape: Leaflet with OpenStreetMap tiles, or Google Maps when the
 // shops came from Google (Google's terms require its places to be shown on a Google map).
 const leafletMap = (node) => {
-  const view = L.map(node, { scrollWheelZoom: false });
+  const view = L.map(node, { scrollWheelZoom: true, wheelPxPerZoomLevel: 90 });
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

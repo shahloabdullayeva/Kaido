@@ -1740,3 +1740,58 @@ create policy company_lock on truck_weather
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
   with check (coalesce(current_setting('kaido.company_id', true), '') = ''
     or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+create table if not exists ai_conversations (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  user_id int references users(id) on delete cascade,
+  title text not null default 'New chat',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists ai_conversations_user_idx on ai_conversations (company_id, user_id, updated_at desc);
+alter table ai_chats add column if not exists conversation_id bigint references ai_conversations(id) on delete cascade;
+create index if not exists ai_chats_conversation_idx on ai_chats (conversation_id, created_at, id);
+create table if not exists ai_chat_files (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  chat_id bigint not null references ai_chats(id) on delete cascade,
+  file_path text not null,
+  file_name text not null,
+  content_type text not null,
+  file_bytes int,
+  created_at timestamptz not null default now()
+);
+create index if not exists ai_chat_files_chat_idx on ai_chat_files (chat_id);
+do $$
+declare
+  tenant text;
+begin
+  foreach tenant in array array['ai_conversations', 'ai_chat_files'] loop
+    execute format('alter table %I enable row level security', tenant);
+    execute format('alter table %I force row level security', tenant);
+    execute format('drop policy if exists company_lock on %I', tenant);
+    execute format(
+      'create policy company_lock on %I using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+      'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+      'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)', tenant);
+  end loop;
+end $$;
+do $$
+declare
+  g record;
+  conv bigint;
+begin
+  for g in select c.company_id, c.user_id, c.truck_id, min(c.created_at) as first_at, max(c.created_at) as last_at
+           from ai_chats c where c.conversation_id is null group by 1, 2, 3 loop
+    insert into ai_conversations (company_id, user_id, title, created_at, updated_at)
+    values (g.company_id, g.user_id,
+            coalesce('Unit ' || (select unit_number from trucks where id = g.truck_id), 'Chat'),
+            g.first_at, g.last_at)
+    returning id into conv;
+    update ai_chats set conversation_id = conv
+     where conversation_id is null and company_id = g.company_id
+       and user_id is not distinct from g.user_id and truck_id is not distinct from g.truck_id;
+  end loop;
+end $$;

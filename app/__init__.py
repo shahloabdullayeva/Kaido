@@ -76,7 +76,7 @@ def create_app():
         else:
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; script-src 'self'; style-src 'self'; "
-                "img-src 'self' data: https://tile.openstreetmap.org https://*.tile.openstreetmap.org "
+                "img-src 'self' data: blob: https://tile.openstreetmap.org https://*.tile.openstreetmap.org "
                 "https://server.arcgisonline.com https://opengeo.ncep.noaa.gov https://api.tomtom.com; "
                 "form-action 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'"
             )

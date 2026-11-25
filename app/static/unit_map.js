@@ -3,7 +3,7 @@ const unitMap = document.querySelector('[data-unit-map]');
 if (unitMap && typeof L !== 'undefined') {
   const lat = parseFloat(unitMap.dataset.lat);
   const lon = parseFloat(unitMap.dataset.lon);
-  const map = L.map(unitMap, { scrollWheelZoom: false, zoomControl: true });
+  const map = L.map(unitMap, { scrollWheelZoom: true, wheelPxPerZoomLevel: 90, zoomControl: true });
   if (window.KaidoMap) {
     window.KaidoMap.attach(map, { trafficKey: unitMap.dataset.trafficKey, store: 'unit' });
   } else {

@@ -380,13 +380,40 @@ COMPANY_LEAD = (
 )
 
 
-def chat_reply(context, history, question, scope="truck"):
+def _attachment_blocks(attachments):
+    import base64
+    import io
+
+    blocks = []
+    for content_type, data in attachments or []:
+        if content_type == "application/pdf":
+            blocks.append({"type": "document", "source": {"type": "base64", "media_type": "application/pdf",
+                                                          "data": base64.b64encode(data).decode()}})
+            continue
+        try:
+            from PIL import Image, ImageOps
+            image = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
+        except Exception:
+            continue
+        image.thumbnail((1568, 1568))
+        out = io.BytesIO()
+        image.save(out, "JPEG", quality=85)
+        blocks.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                   "data": base64.b64encode(out.getvalue()).decode()}})
+    return blocks
+
+
+def chat_reply(context, history, question, scope="truck", attachments=None):
     if not available():
         return None, "The assistant is off because no Anthropic key is set."
     if over_budget():
         return None, "Today's AI budget is used up. The assistant is back tomorrow."
-    messages = [{"role": turn["role"], "content": turn["content"]} for turn in history[-CHAT_TURNS:]]
-    messages.append({"role": "user", "content": question})
+    messages = []
+    for turn in history[-CHAT_TURNS:]:
+        earlier = _attachment_blocks(turn.get("attachments")) if turn["role"] == "user" else []
+        messages.append({"role": turn["role"], "content": earlier + [{"type": "text", "text": turn["content"]}] if earlier else turn["content"]})
+    blocks = _attachment_blocks(attachments)
+    messages.append({"role": "user", "content": blocks + [{"type": "text", "text": question}] if blocks else question})
     try:
         response = _client().messages.create(
             model=CHAT_MODEL,

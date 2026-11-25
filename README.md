@@ -247,7 +247,7 @@ Satellite (Esri World Imagery) bases; overlays for weather radar (NOAA/NWS MRMS 
 alert areas, saved shops, towing, truck parking and showers (the last three from the shop finder's
 OpenStreetMap search, zoom 6 and closer). Traffic (TomTom flow tiles) appears only when `TOMTOM_API_KEY` is
 set in `.env`; the free tier is 50,000 tile requests a day. The dashboard also filters trucks to all or
-running only. Each browser remembers the last base, overlays and filter. Hover shows the unit, driver,
+running only. Each browser remembers the last base, overlays and filter. The mouse wheel zooms every map while the pointer is on it. Hover shows the unit, driver,
 moving/idling/parked, fuel and duty status; clicking a truck opens its unit page.
 
 Weather (`app/weather.py`, `manage.py weather`, run by `bin/sync.sh` every 15 minutes): active National
@@ -771,6 +771,12 @@ trips; expiring documents; open recalls). On a unit or work order page the page 
 `data-page-truck`, and that truck's full detail is added. One thread per user per company (`ai_chats.truck_id`
 null), routes `/assistant` and `/assistant/clear`; the per-truck routes are kept but no page uses them. Same
 model and the same `AI_DAILY_USD` cap as before, roughly half a cent a question with 40 trucks.
+History and attachments: each chat is a row in `ai_conversations` (titled from the first question); History in the
+drawer lists them, New chat starts one, Delete removes it with its files. Up to 5 photos (JPG, PNG, WEBP) or PDFs
+of 10 MB each go with a question, stored in `uploads/assistant/<company>/` (`ai_chat_files`) and served at
+`/assistant/files/<id>` to the user who sent them. The 4 most recent attachments are sent again with every
+follow-up so Claude can still see them; images are shrunk to 1568 px first. Chats from before 25 Nov were
+imported as "Unit N" conversations. The Fuel menu opens on Insights.
 
 Look: Inter (variable, self-hosted in `app/static/fonts`, SIL Open Font License) for all text, sentence-case
 badges and table headers, rounded inputs and buttons. The overrides sit at the end of `app/static/modern.css`.

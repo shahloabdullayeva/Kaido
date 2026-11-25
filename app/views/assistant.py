@@ -1,8 +1,9 @@
-from flask import Blueprint, g, jsonify, render_template, request
+from flask import Blueprint, g, jsonify, render_template, request, send_file
 
 from .. import advisor, forms, work_types
 from ..auth import login_required
-from ..db import execute, one, rows
+from ..config import ROOT
+from ..db import execute, insert, one, rows
 from ..queries import attach_last_services, service_status
 from ..tenancy import company_required
 
@@ -131,20 +132,85 @@ def clear(truck_id):
     return jsonify({"ok": True})
 
 
-def company_thread():
-    return rows(
-        """select role, content, created_at from ai_chats
-           where company_id = %s and user_id = %s and truck_id is null order by created_at, id""",
-        (g.company["id"], g.session["user_id"]),
-    )
+
+CHAT_DIR = ROOT / "uploads" / "assistant"
+MAX_CHAT_FILES = 5
+CHAT_FILE_BYTES = 10 * 1024 * 1024
+RESEND_FILES = 4
 
 
-@bp.get("/assistant")
+def conversation(conversation_id):
+    return one("select * from ai_conversations where id = %s and company_id = %s and user_id = %s",
+               (conversation_id, g.company["id"], g.session["user_id"]))
+
+
+def messages_of(conversation_id):
+    chats = rows("select id, role, content, created_at from ai_chats where conversation_id = %s order by created_at, id",
+                 (conversation_id,))
+    files = {}
+    for f in rows("""select f.id, f.chat_id, f.file_name, f.content_type from ai_chat_files f
+                     join ai_chats c on c.id = f.chat_id where c.conversation_id = %s order by f.id""", (conversation_id,)):
+        files.setdefault(f["chat_id"], []).append({"id": f["id"], "name": f["file_name"], "type": f["content_type"]})
+    return [dict(m, files=files.get(m["id"], [])) for m in chats]
+
+
+def chat_file_path(item):
+    path = (CHAT_DIR / item["file_path"]).resolve()
+    if CHAT_DIR.resolve() not in path.parents or not path.is_file():
+        return None
+    return path
+
+
+@bp.get("/assistant/conversations")
 @login_required
 @company_required
-def company_history():
-    return jsonify({"messages": [{"role": m["role"], "content": m["content"]} for m in company_thread()],
-                    "available": advisor.available()})
+def conversations():
+    items = rows("""select id, title, updated_at from ai_conversations where company_id = %s and user_id = %s
+                    order by updated_at desc limit 100""", (g.company["id"], g.session["user_id"]))
+    return jsonify({"conversations": [{"id": c["id"], "title": c["title"], "when": c["updated_at"].strftime("%d %b %Y")}
+                                      for c in items], "available": advisor.available()})
+
+
+@bp.get("/assistant/c/<int:conversation_id>")
+@login_required
+@company_required
+def conversation_messages(conversation_id):
+    item = conversation(conversation_id)
+    if not item:
+        return jsonify({"error": "Chat not found."}), 404
+    return jsonify({"id": item["id"], "title": item["title"],
+                    "messages": [{"role": m["role"], "content": m["content"], "files": m["files"]} for m in messages_of(item["id"])]})
+
+
+@bp.post("/assistant/c/<int:conversation_id>/delete")
+@login_required
+@company_required
+def conversation_delete(conversation_id):
+    item = conversation(conversation_id)
+    if not item:
+        return jsonify({"error": "Chat not found."}), 404
+    for f in rows("""select f.* from ai_chat_files f join ai_chats c on c.id = f.chat_id
+                     where c.conversation_id = %s""", (conversation_id,)):
+        path = chat_file_path(f)
+        if path:
+            path.unlink(missing_ok=True)
+    execute("delete from ai_conversations where id = %s", (conversation_id,))
+    return jsonify({"ok": True})
+
+
+@bp.get("/assistant/files/<int:file_id>")
+@login_required
+@company_required
+def chat_file(file_id):
+    item = one("""select f.* from ai_chat_files f join ai_chats c on c.id = f.chat_id
+                  where f.id = %s and f.company_id = %s and c.user_id = %s""", (file_id, g.company["id"], g.session["user_id"]))
+    path = chat_file_path(item) if item else None
+    if not path:
+        return jsonify({"error": "File not found."}), 404
+    inline = item["content_type"] in ("application/pdf", "image/jpeg", "image/png", "image/webp")
+    response = send_file(path, mimetype=item["content_type"], as_attachment=not inline, download_name=item["file_name"], max_age=0)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @bp.post("/assistant")
@@ -152,27 +218,67 @@ def company_history():
 @company_required
 def company_ask():
     from .. import company_context
-    question = forms.required(request.form.get("question"), 2000)
-    if not question:
+    from ..work_orders import store_upload
+    question = forms.text(request.form.get("question"), 2000) or ""
+    uploads = [u for u in request.files.getlist("files") if u and u.filename][:MAX_CHAT_FILES]
+    if not question and not uploads:
         return jsonify({"error": "Type a question first."}), 400
+    if not question:
+        question = "Take a look at what I attached."
+    stored, attachments = [], []
+    for upload in uploads:
+        item, problem = store_upload(g.company["id"], upload, CHAT_DIR)
+        if problem:
+            return jsonify({"error": problem}), 200
+        stored.append(item)
+        path = CHAT_DIR / item["path"]
+        if item["type"] == "image/heic":
+            path.unlink(missing_ok=True)
+            return jsonify({"error": f"{item['name']}: HEIC photos cannot be read. Send it as JPG or PNG."}), 200
+        if item["bytes"] > CHAT_FILE_BYTES:
+            path.unlink(missing_ok=True)
+            return jsonify({"error": f"{item['name']}: larger than 10 MB."}), 200
+        attachments.append((item["type"], path.read_bytes()))
+    conv = None
+    if (request.form.get("conversation_id") or "").isdigit():
+        conv = conversation(int(request.form["conversation_id"]))
+    history = []
+    if conv:
+        budget = RESEND_FILES
+        past = messages_of(conv["id"])
+        for m in reversed(past):
+            turn = {"role": m["role"], "content": m["content"], "attachments": []}
+            for f in reversed(m["files"]):
+                path = chat_file_path(one("select file_path from ai_chat_files where id = %s", (f["id"],)) or {"file_path": ""})
+                if budget and path:
+                    turn["attachments"].insert(0, (f["type"], path.read_bytes()))
+                    budget -= 1
+            history.insert(0, turn)
     context = company_context.build(g.company)
     page_truck = request.form.get("page_truck_id", "")
     truck = scoped(int(page_truck)) if page_truck.isdigit() else None
     if truck:
         context += "\n\nThe user is looking at unit " + str(truck["unit_number"]) + " right now. Its full detail:\n" + truck_context(truck)
-    answer, problem = advisor.chat_reply(context, company_thread(), question, scope="company")
+    answer, problem = advisor.chat_reply(context, history, question, scope="company", attachments=attachments)
     if problem:
+        for item in stored:
+            (CHAT_DIR / item["path"]).unlink(missing_ok=True)
         return jsonify({"error": problem}), 200
-    for role, content in (("user", question), ("assistant", answer)):
-        execute("insert into ai_chats (company_id, user_id, truck_id, role, content) values (%s, %s, null, %s, %s)",
-                (g.company["id"], g.session["user_id"], role, content))
-    return jsonify({"answer": answer})
-
-
-@bp.post("/assistant/clear")
-@login_required
-@company_required
-def company_clear():
-    execute("delete from ai_chats where company_id = %s and user_id = %s and truck_id is null",
-            (g.company["id"], g.session["user_id"]))
-    return jsonify({"ok": True})
+    if not conv:
+        title = " ".join(question.split())[:60] or "Chat"
+        conv = insert("""insert into ai_conversations (company_id, user_id, title) values (%s, %s, %s) returning *""",
+                   (g.company["id"], g.session["user_id"], title))
+    asked = insert("""insert into ai_chats (company_id, user_id, truck_id, role, content, conversation_id)
+                   values (%s, %s, %s, 'user', %s, %s) returning id""",
+                (g.company["id"], g.session["user_id"], truck["id"] if truck else None, question, conv["id"]))
+    files = []
+    for item in stored:
+        row = insert("""insert into ai_chat_files (company_id, chat_id, file_path, file_name, content_type, file_bytes)
+                     values (%s, %s, %s, %s, %s, %s) returning id, file_name, content_type""",
+                  (g.company["id"], asked["id"], item["path"], item["name"], item["type"], item["bytes"]))
+        files.append({"id": row["id"], "name": row["file_name"], "type": row["content_type"]})
+    execute("""insert into ai_chats (company_id, user_id, truck_id, role, content, conversation_id)
+               values (%s, %s, %s, 'assistant', %s, %s)""",
+            (g.company["id"], g.session["user_id"], truck["id"] if truck else None, answer, conv["id"]))
+    execute("update ai_conversations set updated_at = now() where id = %s", (conv["id"],))
+    return jsonify({"answer": answer, "conversation_id": conv["id"], "title": conv["title"], "files": files})

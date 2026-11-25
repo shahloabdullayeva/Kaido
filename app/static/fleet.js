@@ -49,7 +49,7 @@ const weatherPopup = (alerts) => {
 if (node && typeof L !== 'undefined' && window.KaidoMap) {
   let trucks = [];
   try { trucks = JSON.parse(node.dataset.trucks || '[]'); } catch (err) { trucks = []; }
-  const map = L.map(node, { scrollWheelZoom: false });
+  const map = L.map(node, { scrollWheelZoom: true, wheelPxPerZoomLevel: 90 });
   const memory = window.KaidoMap.attach(map, { trafficKey: node.dataset.trafficKey, store: node.dataset.store || 'dashboard' });
   const truckLayer = L.layerGroup().addTo(map);
   let show = memory.read().trucks === 'running' ? 'running' : 'all';
