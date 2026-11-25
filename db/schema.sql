@@ -1586,3 +1586,5 @@ create table if not exists place_suggestions (
 );
 
 alter table driver_links add column if not exists ignored boolean not null default false;
+
+alter table drivers add column if not exists name_locked boolean not null default false;

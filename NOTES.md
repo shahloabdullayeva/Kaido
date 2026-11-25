@@ -292,3 +292,4 @@ rather than an empty map.
 - 25 Nov, her request: place suggestions while typing in Where to send it, typo-tolerant (README → Where to send it).
 - 25 Nov: Samsara sync and safety pull every 5 minutes (was 15); Horizon stays every 15 minutes because it is an unofficial API. `bin/sync.sh` runs Horizon only on the quarter hour and holds a lock so runs never overlap. A run takes 5 to 10 seconds.
 - 25 Nov: test driver "Testtesttesttestc" deleted; its Horizon login is marked `driver_links.ignored` so Horizon does not bring it back. Kept at her request: work orders, trips and duplicate units. Driver 138 "Sdfsdfds Sdfsdfsdfsd" is linked to Horizon logins bawar2781 and bawar278 (likely Bawar Qodratullah, unit 1022), so it was not deleted; asked her.
+- 25 Nov: driver 138 renamed to Bawar Qodratullah and the name locked, at her request (Horizon still has the junk name on logins bawar2781/bawar278).

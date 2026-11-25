@@ -782,7 +782,9 @@ already matched on the number the unit starts with. Trucks, Alerts, Fuel and Saf
 has a Demo purchases filter (show, hide, only demo).
 
 Driver names are tidied by a database trigger (`drivers_tidy_name`): names in all capitals or all lower case become
-Title Case and extra spaces go, whatever writes them (Horizon, Samsara names, the form).
+Title Case and extra spaces go, whatever writes them (Horizon, Samsara names, the form). A name changed by hand on
+the driver form is locked (`drivers.name_locked`) so the Horizon sync no longer overwrites it. A Horizon login marked
+`driver_links.ignored` is skipped by the sync.
 
 ## Service schedule
 

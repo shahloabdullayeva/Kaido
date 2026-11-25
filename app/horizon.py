@@ -208,7 +208,7 @@ def import_drivers(company_id, client):
                 driver_id = row["id"]
                 created += 1
         else:
-            execute("update drivers set name = %s, updated_at = now() where id = %s", (name, driver_id))
+            execute("update drivers set name = %s, updated_at = now() where id = %s and not name_locked", (name, driver_id))
         execute(
             """insert into driver_links (company_id, driver_id, provider, external_id, external_username, last_seen_at)
                values (%s, %s, 'horizoneld', %s, %s, now())

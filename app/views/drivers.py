@@ -117,7 +117,7 @@ def update(driver_id):
              telegram_username = %(telegram_username)s, license_number = %(license_number)s,
              license_state = %(license_state)s, license_expires = %(license_expires)s,
              medical_expires = %(medical_expires)s, hired_on = %(hired_on)s, status = %(status)s,
-             notes = %(notes)s, updated_at = now()
+             notes = %(notes)s, name_locked = name_locked or name is distinct from %(name)s, updated_at = now()
            where id = %(id)s and company_id = %(company_id)s""",
         {**values, "id": driver_id, "company_id": g.company["id"]},
     )
