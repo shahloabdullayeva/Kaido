@@ -165,6 +165,7 @@ const askFirst = () => {
     if (event.key === 'Enter') { event.preventDefault(); go(); }
   });
   row.append(input, button);
+  if (window.placeSuggest) window.placeSuggest(input, (place) => load(trucks.value, place));
   const note = document.createElement('p');
   note.className = 'subtle';
   note.textContent = saved
@@ -475,6 +476,7 @@ const wireSearch = () => {
   const input = body.querySelector('#shop-where');
   const button = body.querySelector('[data-shop-search]');
   if (!input || !button) return;
+  if (window.placeSuggest) window.placeSuggest(input, (place) => load(trucks.value, place));
   const go = () => {
     const asked = input.value.trim();
     if (asked) load(trucks.value, { q: asked });

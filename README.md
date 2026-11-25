@@ -297,6 +297,13 @@ cent.
     manage.py ai-spend                    what it has cost, per day and all time
     manage.py ai-spend --credit 5         how far a given amount of credit goes
 
+**Place suggestions while typing** (`app/places.py`, `static/place_suggest.js`): both boxes in Where to send it show
+up to 7 matches as you type. Two letters can match a state ("OK" gives Oklahoma). Towns and addresses come from
+Photon (photon.komoot.io, free OpenStreetMap search made for type-ahead, no key), restricted to North America, towns
+ranked first. Typos are fixed by Photon's own fuzzy match plus a second try with each word corrected against the 50
+states and the ~1,150 truck-stop cities in `fuel_stations` ("amarilo tx" gives Amarillo, "memphs" gives Memphis).
+Answers are cached 30 days in `place_suggestions`. Picking one searches for shops at that spot.
+
 ## Google Maps and saved shops
 
 With `GOOGLE_MAPS_API_KEY` set, the shop finder asks Google Places instead of

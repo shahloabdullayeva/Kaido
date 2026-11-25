@@ -761,3 +761,10 @@ form.inline { display: inline; }
 .filter-note { margin: 0 0 10px; font-size: 12px; color: var(--muted); }
 .idle-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 12px; }
 .idle-hours { font-size: 20px; font-weight: 600; }
+.suggest-wrap { position: relative; flex: 1 1 auto; min-width: 0; }
+.suggest-wrap > input { width: 100%; box-sizing: border-box; }
+.suggest-list { position: absolute; z-index: 1200; left: 0; right: 0; top: 100%; margin: 2px 0 0; padding: 4px 0; list-style: none;
+  background: var(--paper); color: var(--ink, inherit); border: 1px solid var(--face-dark); border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.25); max-height: 280px; overflow-y: auto; }
+.suggest-list li { padding: 6px 10px; cursor: pointer; }
+.suggest-list li span { color: var(--muted); font-size: 12px; }
+.suggest-list li.on, .suggest-list li:hover { background: var(--shade); }

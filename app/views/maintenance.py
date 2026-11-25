@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, send_file
 
-from .. import advisor, forms, google_places, pm_list, shops as shop_search, vehicles, work_orders
+from .. import advisor, forms, google_places, places, pm_list, shops as shop_search, vehicles, work_orders
 from ..work_types import CUSTOM_PREFIX, GROUP_LABELS, kinds_in
 from ..audit import audit
 from ..auth import login_required
@@ -512,6 +512,14 @@ def shops_advice(truck_id):
         return jsonify({"state": "none"})
     return jsonify({"state": "ok", "pick": advice.pick, "why": advice.why,
                     "notes": {str(note.number): note.note for note in advice.notes}})
+
+
+@bp.get("/maintenance/places")
+@login_required
+@company_required
+def place_suggestions():
+    return jsonify({"places": [{key: item.get(key) for key in ("label", "detail", "lat", "lon")}
+                               for item in places.suggest(request.args.get("q"))]})
 
 
 @bp.get("/maintenance/shops/address")

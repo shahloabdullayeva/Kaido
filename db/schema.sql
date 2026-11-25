@@ -1578,3 +1578,9 @@ drop trigger if exists drivers_tidy_name on drivers;
 create trigger drivers_tidy_name before insert or update of name on drivers
   for each row execute function tidy_driver_name();
 update drivers set name = name where name = upper(name) or name = lower(name) or name ~ '\s\s' or name <> trim(name);
+
+create table if not exists place_suggestions (
+  query text primary key,
+  results jsonb not null default '[]',
+  fetched_at timestamptz not null default now()
+);

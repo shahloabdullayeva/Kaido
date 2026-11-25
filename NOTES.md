@@ -289,3 +289,4 @@ rather than an empty map.
 - Stages 3 and 9: one page for unit and driver, trailer pages, See-all links filtered to the unit or driver, unit numbers and driver names linked on the dashboard, lists, trips, board and alerts (README → Unit and driver page).
 - Stage 10: idle time on the unit/driver page and in Fuel insights, from the engine state the sync already gets. No new Samsara endpoint, so counting starts 25 Nov 2026 (README → Unit and driver page).
 - Stage 4: carrier group and label on trucks, unit names cut to the number, Group filters on Trucks/Alerts/Fuel/Safety, Demo filter on Fuel, driver names in Title Case. Test junk listed for Charlotte; nothing deleted (README → Groups and names).
+- 25 Nov, her request: place suggestions while typing in Where to send it, typo-tolerant (README → Where to send it).
