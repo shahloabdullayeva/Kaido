@@ -37,7 +37,7 @@
           {% if truck.is_outside %}<div class="subtle"><span class="badge info">outside</span> {{ truck.outside_carrier or '' }}</div>{% endif %}</td>
         <td>{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}
           <div class="subtle mono">{{ truck.vin or '' }}</div></td>
-        <td>{{ truck.driver_name or '—' }}</td>
+        <td>{% if truck.driver_id %}<a href="/drivers/{{ truck.driver_id }}">{{ truck.driver_name or '—' }}</a>{% else %}{{ truck.driver_name or '—' }}{% endif %}</td>
         <td>
           <div class="pill-row">
             <span class="badge {{ truck.status|tone }}">{{ truck.status|label }}</span>

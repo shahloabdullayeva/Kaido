@@ -49,7 +49,7 @@
         <td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.unit_number or '—' }}</a>
           {% if item.source == 'samsara' %}<div class="subtle">from Samsara</div>{% endif %}</td>
         <td>{{ kinds.get(item.kind, 'Inspection') }}</td>
-        <td>{{ item.driver_name or '—' }}</td>
+        <td>{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ item.driver_name or '—' }}</a>{% else %}{{ item.driver_name or '—' }}{% endif %}</td>
         <td>{% if not item.defect_count %}<span class="badge ok">no defects</span>
             {% elif item.safe_to_drive is false %}<span class="badge bad">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, unsafe</span>
             {% else %}<span class="badge warn">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}</span>{% endif %}</td>

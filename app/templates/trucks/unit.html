@@ -1,0 +1,187 @@
+{% extends "layout.html" %}
+{% from "_macros.html" import field %}
+{% from "_hos.html" import hos_panel, source_tag %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/unit_map.js?v={{ cat_version }}"></script>
+<script src="/static/assistant.js?v={{ cat_version }}"></script>{% endblock %}
+{% block body %}
+{% set admin = at_least(role, 'admin') %}
+{% set d = driver_info.driver if driver_info else none %}
+<div class="page-head">
+  <div>
+    {% if truck %}
+    <h1>Unit {{ truck.unit_number }}</h1>
+    <p>{% if truck.carrier_group %}<span class="badge info">{{ truck.carrier_group }}</span> {% endif %}
+      <span class="badge {{ truck.status|tone }}">{{ truck.status|label }}</span>
+      {% if truck.is_outside %}<span class="badge info">outside</span> {{ truck.outside_carrier or '' }}{% endif %}
+      {% if d %}· <strong>{{ d.name }}</strong>{% else %}· No driver assigned{% endif %}</p>
+    {% else %}
+    <h1>{{ d.name }}</h1>
+    <p>No truck assigned{% if last_truck %} · last truck <a href="/trucks/{{ last_truck.id }}">{{ last_truck.unit_number }}</a>{% if last_truck.ended_at %} until {{ last_truck.ended_at|day }}{% endif %}{% endif %}</p>
+    {% endif %}
+  </div>
+  <div class="actions-row">
+    {% if admin and truck %}
+    <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
+    <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;breakdown=1">Report a breakdown</a>
+    <a class="btn ghost" href="/fuel/new?truck_id={{ truck.id }}">Log fuel</a>
+    <a class="btn" href="/trucks/{{ truck.id }}/edit">Edit truck</a>
+    {% endif %}
+    {% if admin and d %}<a class="btn {{ 'ghost' if truck else '' }}" href="/drivers/{{ d.id }}/edit">Edit driver</a>{% endif %}
+  </div>
+</div>
+
+{% if truck %}
+<div class="unit-top">
+  <section class="panel unit-facts">
+    <dl class="facts">
+      <dt>VIN</dt><dd class="mono">{{ truck.vin or '—' }}</dd>
+      <dt>Plate</dt><dd>{{ truck.plate or '—' }}{% if truck.plate_state %} {{ truck.plate_state }}{% endif %}</dd>
+      <dt>Vehicle</dt><dd>{{ [truck.year, truck.make, truck.model]|select|join(' ') or '—' }}{% if truck.engine %} · {{ truck.engine }}{% endif %}</dd>
+      <dt>Group</dt><dd>{{ truck.carrier_group or '—' }}</dd>
+      <dt>Odometer</dt><dd>{{ truck.odometer|number }} mi <span class="subtle">{{ truck.odometer_at|ago if truck.odometer_at else '' }}</span></dd>
+      <dt>Driver</dt><dd>{% if d %}{{ d.name }}{% else %}No driver assigned{% endif %}</dd>
+      {% if truck.fuel_percent is not none %}<dt>Fuel</dt><dd>{{ truck.fuel_percent|number }}%{% if tank %} · ~{{ tank.range|number }} mi range{% endif %}</dd>{% endif %}
+      {% if trailers %}<dt>Trailer</dt><dd>{% for tr in trailers %}<a href="/trailers/{{ tr.id }}">{{ tr.unit_number }}</a> {% endfor %}</dd>{% endif %}
+    </dl>
+  </section>
+  <section class="panel unit-where">
+    {% set p = truck_info.position %}
+    {% if p %}
+    <div class="unit-map" data-unit-map data-lat="{{ p.lat }}" data-lon="{{ p.lon }}" data-label="{{ truck.unit_number }}"></div>
+    <div class="pad">
+      <div>{{ p.where or (p.lat|round(4) ~ ', ' ~ p.lon|round(4)) }}</div>
+      <div>{% if p.moving %}<span class="badge ok">Moving</span> {{ p.speed|number }} mph{% else %}<span class="badge muted">Parked</span>{% if p.parked_since %} for {{ parked_for(p.parked_since) }}{% endif %}{% endif %}
+        <span class="subtle">· updated {{ p.at|ago }}</span></div>
+    </div>
+    {% else %}<p class="empty">No position reported.</p>{% endif %}
+  </section>
+</div>
+{% endif %}
+
+<div class="grid-2 unit-cols">
+{% if truck %}
+<div>
+  <section class="panel">
+    <div class="panel-head"><h2>Open issues</h2><a class="btn ghost small" href="/maintenance?status=open&amp;truck_id={{ truck.id }}">See all</a></div>
+    {% if truck_info.open_orders %}
+    <ul class="unit-list">{% for o in truck_info.open_orders %}
+      <li class="clickrow" data-href="/maintenance/{{ o.id }}"><a href="/maintenance/{{ o.id }}">#{{ o.id }} {{ (o.description or '')[:70] }}</a>
+        <span><span class="badge {{ o.status|tone }}">{{ o.status|label }}</span> <span class="badge {{ o.priority|tone }}">{{ o.priority }}</span>{% if o.breakdown %} <span class="badge bad">breakdown</span>{% endif %}{% if o.comments %} <span class="subtle">{{ o.comments }} comments</span>{% endif %}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">None open.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Work order history</h2><a class="btn ghost small" href="/maintenance?truck_id={{ truck.id }}">See all</a></div>
+    {% if truck_info.recent_orders %}
+    <ul class="unit-list">{% for o in truck_info.recent_orders %}
+      <li class="clickrow" data-href="/maintenance/{{ o.id }}"><a href="/maintenance/{{ o.id }}">{{ o.kind|work }}</a> <span class="subtle">{{ (o.description or '')[:50] }}</span>
+        <span>{{ (o.performed_on or o.scheduled_for or o.reported_at)|day }} <span class="badge {{ o.status|tone }}">{{ o.status|label }}</span>{% if o.cost is not none %} {{ o.cost|money }}{% endif %}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">None yet.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Active fault codes</h2><a class="btn ghost small" href="/faults?truck_id={{ truck.id }}">See all</a></div>
+    {% if truck_info.faults %}
+    <ul class="unit-list">{% for f in truck_info.faults %}
+      <li class="clickrow" data-href="/faults/{{ f.id }}"><a class="mono" href="/faults/{{ f.id }}">{{ f.dtc_code or ('SPN ' ~ f.spn ~ '/' ~ f.fmi) }}</a> <span class="subtle">{{ (f.description or '')[:60] }}</span>
+        <span><span class="badge {{ f.severity|tone }}">{{ f.severity }}</span> {{ f.last_seen_at|ago }}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">None active.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Recent alerts</h2><a class="btn ghost small" href="/alerts?truck_id={{ truck.id }}">See all</a></div>
+    {% if truck_info.alerts %}
+    <ul class="unit-list">{% for a in truck_info.alerts %}
+      <li>{{ alert_title(a.kind) }} <span class="subtle">{{ (a.detail or '')[:60] }}</span>
+        <span>{{ a.opened_at|ago }} {% if a.cleared_at %}<span class="badge muted">cleared</span>{% else %}<span class="badge warn">open</span>{% endif %}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">None.</p>{% endif %}
+  </section>
+  {% block truck_extra %}{% endblock %}
+</div>
+{% endif %}
+
+<div>
+{% if driver_info %}
+  {% set di = driver_info %}
+  <section class="panel">
+    <div class="panel-head"><h2>Driver{% if truck %} · {{ d.name }}{% endif %}</h2></div>
+    <dl class="facts pad">
+      <dt>Phone</dt><dd>{% if d.phone %}<a href="tel:{{ d.phone }}">{{ d.phone }}</a>{% else %}—{% endif %}</dd>
+      <dt>Telegram</dt><dd>{% if d.telegram_username %}<a href="https://t.me/{{ d.telegram_username }}" rel="noopener">@{{ d.telegram_username }}</a>{% elif d.telegram_user_id %}connected{% else %}not connected{% endif %}</dd>
+      {% for label, paper in [('CDL', di.cdl), ('Medical card', di.medical)] %}
+      <dt>{{ label }}</dt><dd>{% if paper.state == 'missing' %}<span class="badge bad">missing</span>{% elif paper.doc.expires_on %}<span class="badge {{ {'expired': 'bad', 'soon': 'warn'}.get(paper.state, 'ok') }}">{{ 'expired' if paper.state == 'expired' else 'expires' }} {{ paper.doc.expires_on|day }}</span>{% else %}on file{% endif %}</dd>
+      {% endfor %}
+    </dl>
+  </section>
+  {% if hours %}{{ hos_panel(hours, 'Hours') }}{% endif %}
+  <section class="panel">
+    <div class="panel-head"><h2>Hours alerts</h2><a class="btn ghost small" href="/alerts?kind=hours&amp;driver_id={{ d.id }}">See all</a></div>
+    {% if di.hours %}
+    <ul class="unit-list">{% for a in di.hours %}
+      <li>{{ alert_title(a.kind) }} <span class="subtle">unit {{ a.unit_number }}</span><span>{{ a.opened_at|stamp }}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">None.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Safety events</h2><a class="btn ghost small" href="/safety?driver_id={{ d.id }}">See all</a></div>
+    {% if di.safety %}
+    <ul class="unit-list">{% for e in di.safety %}
+      <li>{{ safety_name(e) }} <span class="subtle">{% if e.speed_mph %}{{ e.speed_mph|int }} in {{ (e.limit_mph or 0)|int }}{% endif %} {{ e.place or '' }}</span><span>{{ e.happened_at|stamp }}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">None.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>PTI, last {{ di.pti|length }} days</h2><a class="btn ghost small" href="/pti?driver_id={{ d.id }}">See all</a></div>
+    <ul class="pti-days">{% for day in di.pti %}
+      <li class="pti-day {{ day.state }}" title="{{ day.day|day }}">
+        <span>{{ day.day.strftime('%a %d') }}</span>
+        {% if day.pti %}<a href="/pti/report/{{ day.pti.id }}" class="badge {{ 'bad' if day.pti.defect_count and not day.pti.certified_at else 'ok' }}">{{ day.pti.defect_count ~ ' defects' if day.pti.defect_count else 'done' }}</a>
+        {% elif day.state == 'missing' %}<span class="badge bad">missing</span>{% else %}<span class="subtle">no driving</span>{% endif %}
+      </li>{% endfor %}</ul>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Fuel</h2><a class="btn ghost small" href="/fuel?driver_id={{ d.id }}">See all</a></div>
+    {% if di.fuel %}
+    <ul class="unit-list">{% for f in di.fuel %}
+      <li>{{ f.location or '—' }} <span class="subtle">{{ f.gallons|number(0) }} gal · {{ f.total|money }}{% if f.demo %} · demo{% endif %}</span>
+        <span>{{ f.purchased_at|day }} {% if f.offer_id is none %}<span class="subtle">no suggestion</span>{% elif f.followed %}<span class="badge ok">took suggestion</span>{% elif f.followed is sameas false %}<span class="badge warn">fuelled elsewhere</span>{% else %}<span class="badge muted">suggested</span>{% endif %}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">No purchases.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Trucks driven</h2></div>
+    {% if di.trucks %}
+    <ul class="unit-list">{% for t in di.trucks %}
+      <li><a href="/trucks/{{ t.truck_id }}">{{ t.unit_number }}</a><span class="subtle">{{ t.first_at|day }} to {{ t.last_at|day if t.last_at else 'now' }}</span></li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty">None recorded.</p>{% endif %}
+  </section>
+  {% block driver_extra %}{% endblock %}
+{% elif truck %}
+  <section class="panel"><div class="panel-head"><h2>Driver</h2></div><p class="empty">No driver assigned.</p>
+  {% if truck_info.drivers %}<ul class="unit-list">{% for a in truck_info.drivers %}<li><a href="/drivers/{{ a.driver_id }}">{{ a.name }}</a><span class="subtle">{{ a.started_at|day }} to {{ a.ended_at|day if a.ended_at else 'now' }}</span></li>{% endfor %}</ul>{% endif %}
+  </section>
+{% endif %}
+{% if truck and truck_info.drivers and driver_info %}
+  <section class="panel">
+    <div class="panel-head"><h2>Drivers of this truck</h2></div>
+    <ul class="unit-list">{% for a in truck_info.drivers %}<li><a href="/drivers/{{ a.driver_id }}">{{ a.name }}</a><span class="subtle">{{ a.started_at|day }} to {{ a.ended_at|day if a.ended_at else 'now' }}</span></li>{% endfor %}</ul>
+  </section>
+{% endif %}
+</div>
+</div>
+
+{% if truck %}
+{% include "trucks/_truck_more.html" %}
+{% set assistant_truck_id = truck.id %}
+{% include "_assistant.html" %}
+{% set reminder_entity, reminder_entity_id = "truck", truck.id %}
+{% include "reminders/_panel.html" %}
+{% elif d %}
+{% from "documents/_panel.html" import documents_panel %}
+{{ documents_panel(driver_docs, 'driver', d.id, '/drivers/' ~ d.id) }}
+{% endif %}
+{% endblock %}

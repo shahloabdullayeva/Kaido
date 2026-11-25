@@ -174,6 +174,11 @@ def index():
     if asset:
         clause += " and m.asset_type = %s"
         params.append(asset)
+    for key in ("truck_id", "trailer_id", "driver_id"):
+        value = forms.integer(request.args.get(key))
+        if value:
+            clause += f" and m.{key} = %s"
+            params.append(value)
     if group:
         clause += " and (m.kind = any(%s) or m.kind like %s)" if group == "pm" else " and m.kind = any(%s)"
         params.append(kinds_in(group))

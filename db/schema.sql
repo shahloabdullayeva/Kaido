@@ -1472,3 +1472,62 @@ alter table maintenance_orders drop constraint if exists maintenance_orders_asse
 alter table maintenance_orders add constraint maintenance_orders_asset_check
   check ((asset_type = 'truck' and truck_id is not null) or (asset_type = 'trailer' and trailer_id is not null));
 create index if not exists maint_trailer_idx on maintenance_orders (trailer_id, performed_on desc);
+
+create table if not exists driver_assignments (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  driver_id int not null references drivers(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  started_at timestamptz not null default now(),
+  ended_at timestamptz,
+  source text not null default 'assigned'
+);
+create index if not exists driver_assignments_driver_idx on driver_assignments (driver_id, started_at desc);
+create index if not exists driver_assignments_truck_idx on driver_assignments (truck_id, started_at desc);
+alter table driver_assignments enable row level security;
+alter table driver_assignments force row level security;
+drop policy if exists company_lock on driver_assignments;
+create policy company_lock on driver_assignments
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+create or replace function track_driver_assignment() returns trigger language plpgsql as $$
+begin
+  if tg_op = 'UPDATE' and new.driver_id is not distinct from old.driver_id then
+    return new;
+  end if;
+  if tg_op = 'UPDATE' and old.driver_id is not null then
+    update driver_assignments set ended_at = now()
+     where truck_id = new.id and driver_id = old.driver_id and ended_at is null;
+  end if;
+  if new.driver_id is not null then
+    insert into driver_assignments (company_id, driver_id, truck_id, started_at)
+    select new.company_id, new.driver_id, new.id, now()
+     where not exists (select 1 from driver_assignments a
+                        where a.truck_id = new.id and a.driver_id = new.driver_id and a.ended_at is null);
+  end if;
+  return new;
+end $$;
+drop trigger if exists trucks_driver_assignment on trucks;
+create trigger trucks_driver_assignment after insert or update of driver_id on trucks
+  for each row execute function track_driver_assignment();
+
+do $$ begin
+  if not exists (select 1 from driver_assignments) then
+    insert into driver_assignments (company_id, driver_id, truck_id, started_at, ended_at, source)
+    select company_id, driver_id, truck_id, min(at), max(at), 'history' from (
+      select company_id, driver_id, truck_id, happened_at as at from safety_events where driver_id is not null and truck_id is not null
+      union all select company_id, driver_id, truck_id, purchased_at from fuel_transactions where driver_id is not null
+      union all select company_id, driver_id, truck_id, submitted_at from inspections where driver_id is not null and truck_id is not null
+    ) seen group by company_id, driver_id, truck_id;
+    insert into driver_assignments (company_id, driver_id, truck_id, started_at, source)
+    select t.company_id, t.driver_id, t.id, coalesce(t.updated_at, now()), 'assigned' from trucks t where t.driver_id is not null;
+  end if;
+end $$;
+
+alter table health_alerts add column if not exists driver_id int references drivers(id) on delete set null;
+create index if not exists health_alerts_driver_idx on health_alerts (driver_id, opened_at desc);
+update health_alerts a set driver_id = t.driver_id from trucks t
+ where a.truck_id = t.id and a.driver_id is null and a.kind like 'hos%' and t.driver_id is not null;

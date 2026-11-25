@@ -88,6 +88,32 @@ def create():
 @login_required
 @company_required
 def detail(trailer_id):
+    trailer = one("""select r.*, t.unit_number as truck_unit, t.location as truck_location, t.located_at as truck_located_at,
+                            t.latitude as truck_lat, t.longitude as truck_lon
+                     from trailers r left join trucks t on t.id = r.truck_id where r.id = %s and r.company_id = %s""",
+                  (trailer_id, g.company["id"]))
+    if not trailer:
+        return render_template("errors/404.html"), 404
+    orders = rows(
+        """select m.*, (select count(*) from work_order_comments c where c.order_id = m.id and c.kind = 'comment') as comments
+           from maintenance_orders m where m.trailer_id = %s and m.company_id = %s
+           order by (m.status in ('done', 'cancelled')), m.reported_at desc limit 30""",
+        (trailer_id, g.company["id"]),
+    )
+    dropped = one(
+        """select location, reported_at, updated_at, id from maintenance_orders
+           where trailer_id = %s and location is not null and location <> '' order by updated_at desc limit 1""",
+        (trailer_id,),
+    )
+    return render_template("trailers/detail.html", title=f"Trailer {trailer['unit_number']}", active="/trucks",
+                           trailer=trailer, kinds=KINDS, orders=orders, dropped=dropped,
+                           docs=documents.for_owner(g.company["id"], "trailer", trailer_id))
+
+
+@bp.get("/trailers/<int:trailer_id>/edit")
+@login_required
+@company_required
+def edit(trailer_id):
     trailer = one("""select r.*, t.unit_number as truck_unit, t.location as truck_location, t.located_at as truck_located_at
                      from trailers r left join trucks t on t.id = r.truck_id where r.id = %s and r.company_id = %s""",
                   (trailer_id, g.company["id"]))

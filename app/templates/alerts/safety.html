@@ -45,7 +45,7 @@
       <tr>
         <td>{{ e.happened_at|day }}<div class="subtle">{{ e.happened_at|ago }}</div></td>
         <td>{% if e.truck_id %}<a href="/trucks/{{ e.truck_id }}">{{ e.unit_number }}</a>{% else %}—{% endif %}</td>
-        <td>{{ (e.driver_name or '—')|title }}</td>
+        <td>{% if e.driver_id %}<a href="/drivers/{{ e.driver_id }}">{{ (e.driver_name or '—')|title }}</a>{% else %}{{ (e.driver_name or '—')|title }}{% endif %}</td>
         <td><span class="badge {{ 'bad' if e.serious else 'muted' }}">{{ e.title }}</span></td>
         <td>{{ e.detail or '' }}</td>
         <td>{% if e.latitude %}<a href="https://www.google.com/maps?q={{ e.latitude }},{{ e.longitude }}" target="_blank" rel="noopener">Map</a>{% endif %}</td>

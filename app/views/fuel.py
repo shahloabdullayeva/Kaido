@@ -30,6 +30,10 @@ def index():
     if truck_id:
         clause = " and f.truck_id = %s"
         params.append(truck_id)
+    driver_id = forms.integer(request.args.get("driver_id"))
+    if driver_id:
+        clause += " and f.driver_id = %s"
+        params.append(driver_id)
     entries = rows(
         f"""select f.*, t.unit_number, d.name as driver_name
             from fuel_transactions f

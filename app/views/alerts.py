@@ -50,8 +50,8 @@ def index():
     items = []
     if kind in ("all", "health", "engine", "hours", "service", "mpg"):
         for row in rows(
-            f"""select a.*, t.unit_number, d.name as driver_name from health_alerts a join trucks t on t.id = a.truck_id
-                left join drivers d on d.id = t.driver_id
+            f"""select a.*, t.unit_number, d.name as driver_name, coalesce(a.driver_id, t.driver_id) as driver_id from health_alerts a join trucks t on t.id = a.truck_id
+                left join drivers d on d.id = coalesce(a.driver_id, t.driver_id)
                 where a.company_id = %s{period_clause(period, 'a.opened_at')}
                 order by a.opened_at desc limit 500""",
             (company_id,),
@@ -61,7 +61,7 @@ def index():
                 continue
             items.append({"at": row["opened_at"], "group": group, "title": title_of(row["kind"]), "detail": row["detail"],
                           "truck_id": row["truck_id"], "unit": row["unit_number"], "driver": row["driver_name"],
-                          "open": row["cleared_at"] is None, "link": f"/faults/{row['fault_id']}" if row["fault_id"] else None})
+                          "driver_id": row["driver_id"], "open": row["cleared_at"] is None, "link": f"/faults/{row['fault_id']}" if row["fault_id"] else None})
     if kind in ("all", "safety"):
         for row in rows(
             f"""select e.*, t.unit_number, d.name as driver_name from safety_events e
@@ -72,7 +72,7 @@ def index():
         ):
             items.append({"at": row["happened_at"], "group": "safety", "title": NAMES.get(row["kind"]) or row["label"],
                           "detail": safety_detail(row), "truck_id": row["truck_id"], "unit": row["unit_number"],
-                          "driver": row["driver_name"], "open": None, "link": "/safety"})
+                          "driver": row["driver_name"], "driver_id": row["driver_id"], "open": None, "link": "/safety"})
     if kind in ("all", "fuel"):
         for row in rows(
             f"""select a.*, t.unit_number, d.name as driver_name from fuel_alerts a left join trucks t on t.id = a.truck_id
@@ -95,6 +95,12 @@ def index():
                           "link": f"/documents/{doc['id']}"})
     if status != "all":
         items = [i for i in items if (i["open"] is True) == (status == "open")]
+    only_truck = forms.integer(request.args.get("truck_id"))
+    only_driver = forms.integer(request.args.get("driver_id"))
+    if only_truck:
+        items = [i for i in items if i.get("truck_id") == only_truck]
+    if only_driver:
+        items = [i for i in items if i.get("driver_id") == only_driver]
     items.sort(key=lambda i: i["at"], reverse=True)
     counts = {}
     for item in items:
@@ -120,6 +126,10 @@ def safety():
     period = forms.pick(request.args.get("period"), list(PERIODS), "all")
     company_id = g.company["id"]
     clause = period_clause(period, "e.happened_at")
+    for key in ("truck_id", "driver_id"):
+        value = forms.integer(request.args.get(key))
+        if value:
+            clause += f" and e.{key} = {int(value)}"
     if group != "all":
         clause += " and " + SAFETY_GROUPS[group][1]
     cases = ", ".join(f"count(*) filter (where {sql}) as {key}" for key, (_, sql) in SAFETY_GROUPS.items())

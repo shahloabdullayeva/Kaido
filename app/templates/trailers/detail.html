@@ -1,0 +1,46 @@
+{% extends "layout.html" %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/unit_map.js?v={{ cat_version }}"></script>{% endblock %}
+{% block body %}
+{% set admin = at_least(role, 'admin') %}
+<div class="page-head">
+  <div><h1>Trailer {{ trailer.unit_number }}</h1>
+    <p><span class="badge {{ trailer.status|tone }}">{{ trailer.status|label }}</span> {{ kinds.get(trailer.kind, trailer.kind) }}</p></div>
+  <div class="actions-row">
+    {% if admin %}<a class="btn ghost" href="/maintenance/new?trailer_id={{ trailer.id }}">Work order</a>
+    <a class="btn" href="/trailers/{{ trailer.id }}/edit">Edit trailer</a>{% endif %}
+    <a class="btn ghost" href="/trailers">Back</a></div>
+</div>
+<div class="unit-top">
+  <section class="panel unit-facts">
+    <dl class="facts">
+      <dt>VIN</dt><dd class="mono">{{ trailer.vin or '—' }}</dd>
+      <dt>Plate</dt><dd>{{ trailer.plate or '—' }}{% if trailer.plate_state %} {{ trailer.plate_state }}{% endif %}</dd>
+      <dt>Trailer</dt><dd>{{ [trailer.year, trailer.make]|select|join(' ') or '—' }}{% if trailer.length_ft %} · {{ trailer.length_ft }} ft{% endif %}</dd>
+      <dt>With truck</dt><dd>{% if trailer.truck_id %}<a href="/trucks/{{ trailer.truck_id }}">{{ trailer.truck_unit }}</a>{% else %}None, dropped{% endif %}</dd>
+    </dl>
+  </section>
+  <section class="panel unit-where">
+    {% if trailer.truck_id and trailer.truck_lat is not none %}
+    <div class="unit-map" data-unit-map data-lat="{{ trailer.truck_lat }}" data-lon="{{ trailer.truck_lon }}" data-label="{{ trailer.truck_unit }}"></div>
+    <div class="pad">With {{ trailer.truck_unit }}{% if trailer.truck_location %} · {{ trailer.truck_location }}{% endif %} <span class="subtle">· updated {{ trailer.truck_located_at|ago }}</span></div>
+    {% elif dropped %}
+    <div class="pad"><div class="stat-label">Dropped at</div><div>{{ dropped.location }}</div>
+      <div class="subtle">from <a href="/maintenance/{{ dropped.id }}">work order #{{ dropped.id }}</a>, {{ dropped.updated_at|day }}</div></div>
+    {% else %}<p class="empty">No location recorded.</p>{% endif %}
+  </section>
+</div>
+<section class="panel">
+  <div class="panel-head"><h2>Work orders</h2><a class="btn ghost small" href="/maintenance?trailer_id={{ trailer.id }}">See all</a></div>
+  {% if orders %}
+  <ul class="unit-list">{% for o in orders %}
+    <li class="clickrow" data-href="/maintenance/{{ o.id }}"><a href="/maintenance/{{ o.id }}">#{{ o.id }} {{ (o.description or '')[:70] }}</a>
+      <span>{{ o.reported_at|day }} <span class="badge {{ o.status|tone }}">{{ o.status|label }}</span>{% if o.comments %} <span class="subtle">{{ o.comments }} comments</span>{% endif %}</span></li>
+  {% endfor %}</ul>
+  {% else %}<p class="empty">None yet.</p>{% endif %}
+</section>
+{% if trailer.notes %}<section class="panel"><div class="panel-head"><h2>Notes</h2></div><p class="pad">{{ trailer.notes }}</p></section>{% endif %}
+{% from "documents/_panel.html" import documents_panel %}
+{{ documents_panel(docs, 'trailer', trailer.id, '/trailers/' ~ trailer.id) }}
+{% endblock %}

@@ -22,7 +22,7 @@
 </div>
 
 <div class="stats wo-summary">
-  {% if order.driver_name %}<div class="stat"><div class="stat-label">Driver</div><div class="stat-value small">{{ order.driver_name }}</div><div class="stat-hint">{{ order.driver_contact or order.driver_phone or '' }}</div></div>{% endif %}
+  {% if order.driver_name %}<div class="stat"><div class="stat-label">Driver</div><div class="stat-value small"><a href="/drivers/{{ order.driver_id }}">{{ order.driver_name }}</a></div><div class="stat-hint">{{ order.driver_contact or order.driver_phone or '' }}</div></div>{% endif %}
   {% if order.asset_type == 'trailer' %}<div class="stat"><div class="stat-label">{{ 'With truck' if order.truck_unit else 'Dropped at' }}</div><div class="stat-value small">{% if order.truck_unit %}<a href="/trucks/{{ order.truck_id }}">{{ order.truck_unit }}</a>{% else %}{{ order.location or 'Not recorded' }}{% endif %}</div></div>{% endif %}
   {% if order.vendor %}<div class="stat"><div class="stat-label">Shop</div><div class="stat-value small">{{ order.vendor }}</div><div class="stat-hint">{{ order.shop_phone or '' }}</div></div>{% endif %}
   <div class="stat"><div class="stat-label">Reported</div><div class="stat-value small">{{ order.reported_at|day }}</div>{% if order.scheduled_for %}<div class="stat-hint">scheduled {{ order.scheduled_for|day }}</div>{% endif %}</div>

@@ -230,9 +230,9 @@ def open_alert(truck, kind, value, detail, dry=False):
     if dry:
         return True
     alert = insert(
-        """insert into health_alerts (company_id, truck_id, kind, value, detail) values (%s, %s, %s, %s, %s)
+        """insert into health_alerts (company_id, truck_id, driver_id, kind, value, detail) values (%s, %s, %s, %s, %s, %s)
            on conflict do nothing returning id""",
-        (truck["company_id"], truck["id"], kind, value, detail),
+        (truck["company_id"], truck["id"], truck.get("driver_id"), kind, value, detail),
     )
     if alert and deliver(truck, kind, detail):
         execute("update health_alerts set sent_at = now() where id = %s", (alert["id"],))

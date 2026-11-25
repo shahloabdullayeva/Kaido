@@ -738,6 +738,25 @@ change writes "<name> changed status from X to Y" into the thread. Cancelled ord
 the Status filter is Cancelled; Delete asks first and removes the order with its comments, files and reminders.
 The list shows the comment count per order and filters by status, truck/trailer and system.
 
+## Unit and driver page
+
+`/trucks/<id>` is one page for the truck and whoever drives it (`app/unit_page.py`, `trucks/unit.html`). `/drivers/<id>`
+opens the same page when the driver has a truck; a driver with no truck gets only the driver section, "No truck
+assigned" and their last truck. Driver edit moved to `/drivers/<id>/edit`. Trailers have their own page
+(`/trailers/<id>`, edit at `/trailers/<id>/edit`) with work orders and the dropped location from the latest work
+order that recorded one.
+
+- Truck: VIN, plate, year/make/model, group, odometer, fuel, hooked trailer, a small map with the address, moving or
+  parked (and for how long, from `truck_positions`), speed and the last update. Open issues, work order history,
+  active fault codes and recent alerts (non-hours), latest 10 each.
+- Driver: phone, Telegram, CDL and medical card from Documents ("missing" when not on file), hours panel, hours
+  alerts, safety events (light speeding left out), PTI done or missing for each of the last 10 days (missing = one of
+  their trucks moved that day with no PTI), diesel purchases and whether they took the fuel suggestion, trucks driven.
+- Every section has "See all", which opens the list filtered by `truck_id`, `trailer_id` or `driver_id`.
+- `driver_assignments` keeps who drove which truck and when. A trigger on `trucks.driver_id` opens and closes the rows,
+  so history stays right when drivers switch trucks. The past was filled in from safety events, fuel purchases and
+  PTIs. Hours alerts now carry `driver_id`; the 143 older ones got the truck's current driver.
+
 ## Service schedule
 
 Oil is per truck (`oil_interval_miles`), 25,000 miles by default and 15,000 for

@@ -1,8 +1,10 @@
 from flask import Blueprint, flash, g, redirect, render_template, request
 
-from .. import documents, forms, hos, pm_list, pti, pti_driver, sheets
+from .. import documents, forms, hos, pm_list, pti, pti_driver, sheets, unit_page
 from .. import fuel as fuel_engine
 from ..audit import audit
+from ..health import title_of
+from ..safety import NAMES as SAFETY_NAMES
 from ..auth import login_required
 from ..db import execute, insert, one, rows
 from ..queries import attach_last_services, fuel_economy, service_status
@@ -354,24 +356,8 @@ def create():
     return redirect(f"/trucks/{truck['id']}")
 
 
-@bp.get("/trucks/<int:truck_id>")
-@login_required
-@company_required
-def detail(truck_id):
-    truck = scoped_truck(truck_id)
-    if not truck:
-        return render_template("errors/404.html"), 404
-    truck["driver_name"] = None
-    hours = hos.for_drivers(g.company["id"], [truck["driver_id"]]).get(truck["driver_id"]) if truck["driver_id"] else None
-    links = rows("select provider, external_name, external_id, last_seen_at from vehicle_links where truck_id = %s order by provider",
-                 (truck_id,))
-    if truck["driver_id"]:
-        driver = one("select name from drivers where id = %s", (truck["driver_id"],))
-        truck["driver_name"] = driver["name"] if driver else None
-    history = rows(
-        "select * from maintenance_orders where truck_id = %s order by coalesce(performed_on, scheduled_for) desc nulls last, id desc limit 20",
-        (truck_id,),
-    )
+def truck_context(truck):
+    truck_id = truck["id"]
     last_oil = one(
         """select max(odometer) as odometer, max(performed_on) as performed_on
            from maintenance_orders where truck_id = %s and kind = 'oil' and status = 'done'""",
@@ -380,7 +366,6 @@ def detail(truck_id):
     enriched = dict(truck)
     enriched["last_oil_odometer"] = last_oil["odometer"] if last_oil else None
     attach_last_services([enriched], g.company["id"])
-    fuel = rows("select * from fuel_transactions where truck_id = %s order by purchased_at desc limit 10", (truck_id,))
     mpg = fuel_engine.truck_mpg(truck_id)
     tank = None
     if truck["fuel_percent"] is not None:
@@ -388,30 +373,55 @@ def detail(truck_id):
         usable = max(0.0, float(truck["fuel_percent"]) - float(setup["fuel_reserve_percent"])) / 100
         tank = {"range": int(usable * float(truck["tank_gallons"] or 200) * (mpg or float(setup["fuel_default_mpg"]))),
                 "gallons": float(truck["fuel_percent"]) / 100 * float(truck["tank_gallons"] or 200)}
-    fuel_offers = rows(
-        """select o.*, s.name as chosen_name from fuel_offers o left join fuel_stations s on s.id = o.chosen_station_id
-           where o.truck_id = %s and o.company_id = %s order by o.created_at desc limit 5""",
-        (truck_id, g.company["id"]),
-    )
-    faults = rows("select * from fault_events where truck_id = %s order by last_seen_at desc limit 10", (truck_id,))
-    link = one("select * from vehicle_links where truck_id = %s", (truck_id,))
-    inspections = rows("select * from inspections where truck_id = %s order by submitted_at desc limit 8", (truck_id,))
     pti_link = pti.link_for(pti.ensure_token(truck)) if at_least(g.role, "admin") else None
-    group_code = pti_driver.link_code(truck) if pti_link and not truck["telegram_chat_id"] else None
-    return render_template(
-        "trucks/detail.html", title=f"Unit {truck['unit_number']}", active="/trucks",
-        truck=truck, statuses=service_status(enriched), history=history, fuel=fuel,
-        faults=faults, economy=fuel_economy(truck_id), link=link,
-        last_oil=last_oil, inspections=inspections, pti_link=pti_link, pti_kinds=pti.KINDS,
-        group_code=group_code, group_truck=pti_driver.one_truck(g.company["id"], truck_id),
-        hours=hours, links=links, mpg=mpg, tank=tank, fuel_offers=fuel_offers,
+    return dict(
+        truck=truck, statuses=service_status(enriched), last_oil=last_oil, mpg=mpg, tank=tank,
+        truck_info=unit_page.truck_section(g.company["id"], truck),
+        links=rows("select provider, external_name, external_id, last_seen_at from vehicle_links where truck_id = %s order by provider",
+                   (truck_id,)),
+        fuel=rows("select * from fuel_transactions where truck_id = %s order by purchased_at desc limit 10", (truck_id,)),
+        fuel_offers=rows(
+            """select o.*, s.name as chosen_name from fuel_offers o left join fuel_stations s on s.id = o.chosen_station_id
+               where o.truck_id = %s and o.company_id = %s order by o.created_at desc limit 5""",
+            (truck_id, g.company["id"]),
+        ),
+        inspections=rows("select * from inspections where truck_id = %s order by submitted_at desc limit 8", (truck_id,)),
+        pti_link=pti_link, pti_kinds=pti.KINDS,
+        group_code=pti_driver.link_code(truck) if pti_link and not truck["telegram_chat_id"] else None,
+        group_truck=pti_driver.one_truck(g.company["id"], truck_id),
         docs=documents.for_owner(g.company["id"], "truck", truck_id),
+        trailers=rows("select id, unit_number from trailers where truck_id = %s order by unit_number", (truck_id,)),
         readings=rows(
             """select r.*, u.name as by_name from odometer_readings r left join users u on u.id = r.created_by
                where r.truck_id = %s order by r.read_at desc, r.id desc limit 8""",
             (truck_id,),
         ),
     )
+
+
+def render_unit(truck=None, driver=None):
+    context = truck_context(truck) if truck else {"truck": None}
+    if driver:
+        context["driver_info"] = unit_page.driver_section(g.company["id"], driver)
+        context["hours"] = hos.for_drivers(g.company["id"], [driver["id"]]).get(driver["id"])
+        if not truck:
+            context["last_truck"] = unit_page.last_truck(driver["id"])
+            context["driver_docs"] = documents.for_owner(g.company["id"], "driver", driver["id"])
+    title = f"Unit {truck['unit_number']}" if truck else driver["name"]
+    return render_template("trucks/unit.html", title=title, active="/trucks", alert_title=title_of,
+                           safety_name=lambda e: SAFETY_NAMES.get(e["kind"]) or e["label"] or e["kind"],
+                           parked_for=unit_page.parked_for, **context)
+
+
+@bp.get("/trucks/<int:truck_id>")
+@login_required
+@company_required
+def detail(truck_id):
+    truck = scoped_truck(truck_id)
+    if not truck:
+        return render_template("errors/404.html"), 404
+    driver = one("select * from drivers where id = %s and company_id = %s", (truck["driver_id"], g.company["id"])) if truck["driver_id"] else None
+    return render_unit(truck, driver)
 
 
 @bp.get("/trucks/<int:truck_id>/edit")

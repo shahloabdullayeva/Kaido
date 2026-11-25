@@ -742,3 +742,20 @@ details.wo-more summary, details.wo-costs summary { cursor: pointer; font-weight
 .thread-new textarea { width: 100%; box-sizing: border-box; }
 .thread-new .actions-row { justify-content: space-between; flex-wrap: wrap; }
 form.inline { display: inline; }
+
+.unit-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 16px; margin-bottom: 16px; }
+.unit-top .panel { margin: 0; }
+.unit-map { height: 220px; border-radius: 6px 6px 0 0; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; padding: 12px; }
+.facts dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; align-self: center; }
+.facts dd { margin: 0; overflow-wrap: anywhere; }
+.unit-cols { align-items: start; }
+.unit-list { list-style: none; margin: 0; padding: 0 12px; }
+.unit-list li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; padding: 8px 0; border-bottom: 1px solid var(--face-dark); }
+.unit-list li:last-child { border-bottom: 0; }
+.unit-list li > .subtle { flex: 1 1 140px; }
+.pti-days { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; padding: 12px; margin: 0; }
+.pti-day { display: flex; flex-direction: column; gap: 4px; font-size: 12px; padding: 6px; border: 1px solid var(--face-dark); border-radius: 6px; }
+.pti-day.missing { border-color: #cc4444; }
+@media (max-width: 800px) { .unit-top { grid-template-columns: 1fr; } .pti-days { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.filter-note { margin: 0 0 10px; font-size: 12px; color: var(--muted); }

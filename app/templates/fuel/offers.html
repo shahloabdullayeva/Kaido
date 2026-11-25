@@ -23,7 +23,7 @@
       <tr>
         <td>{{ entry.created_at|ago }}<div class="subtle">{{ 'asked with /fuel' if entry.reason == 'asked' else 'low tank' if entry.reason == 'low' else entry.reason }}</div></td>
         <td><a href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
-        <td>{{ entry.driver_name or '—' }}</td>
+        <td>{% if entry.driver_id %}<a href="/drivers/{{ entry.driver_id }}">{{ entry.driver_name or '—' }}</a>{% else %}{{ entry.driver_name or '—' }}{% endif %}</td>
         <td class="right">{% if entry.fuel_percent is not none %}{{ entry.fuel_percent|number }}%{% if entry.range_miles %}<div class="subtle">{{ entry.range_miles|number }} mi left</div>{% endif %}{% else %}—{% endif %}</td>
         <td><ol class="fuel-options">
           {% for option in (entry.options or [])[:3] %}

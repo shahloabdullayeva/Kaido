@@ -72,6 +72,7 @@
   <div class="flash {{ category }}">{{ message }}</div>
   {% endfor %}
 {% endwith %}
+{% if request.args.get('truck_id') or request.args.get('driver_id') or request.args.get('trailer_id') %}{% if request.path in ('/maintenance', '/faults', '/alerts', '/safety', '/fuel', '/pti') %}<p class="filter-note">Showing one {{ 'driver' if request.args.get('driver_id') else ('trailer' if request.args.get('trailer_id') else 'unit') }} only · <a href="{{ request.path }}">Show everything</a></p>{% endif %}{% endif %}
 {% block body %}{% endblock %}
 </main>
 <script src="/static/app.js?v={{ cat_version }}"></script>

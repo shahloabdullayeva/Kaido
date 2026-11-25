@@ -14,8 +14,8 @@
       <tr class="clickrow" data-href="/trips/{{ trip.id }}">
         <td>{{ trip.created_at|day }}</td>
         <td><a class="rowlink" href="/trips/{{ trip.id }}">{{ trip.load_number or ('#' ~ trip.id) }}</a></td>
-        <td>{{ trip.unit }}</td>
-        <td>{{ trip.who or '—' }}</td>
+        <td><a href="/trucks/{{ trip.truck_id }}">{{ trip.unit }}</a></td>
+        <td>{% if trip.driver_id %}<a href="/drivers/{{ trip.driver_id }}">{{ trip.who or '—' }}</a>{% else %}{{ trip.who or '—' }}{% endif %}</td>
         <td>{{ trip.from_city }} <span class="subtle">to</span> {{ trip.to_city }}</td>
         <td class="right">{{ trip.distance_miles|number }}</td>
         <td class="right">{% if trip.summary.fuel_cost is not none %}{{ trip.summary.fuel_cost|money }}{% else %}—{% endif %}</td>

@@ -29,13 +29,19 @@ def index():
         clause = " and i.defect_count > 0"
     elif show == "review":
         clause = " and i.review_status is null"
+    params = [g.company["id"]]
+    for key in ("truck_id", "driver_id"):
+        value = forms.integer(request.args.get(key))
+        if value:
+            clause += f" and i.{key} = %s"
+            params.append(value)
     items = rows(
         f"""select i.*, t.unit_number,
                    (select count(*) from inspection_photos p where p.inspection_id = i.id and p.kind = 'photo') as photo_count,
                    (select count(*) from inspection_photos p where p.inspection_id = i.id and p.kind = 'video') as video_count
             from inspections i left join trucks t on t.id = i.truck_id
             where i.company_id = %s{clause} order by i.submitted_at desc limit 300""",
-        (g.company["id"],),
+        tuple(params),
     )
     return render_template(
         "pti/list.html", title="PTI", active="/pti", items=items, show=show, board=board, day=day,

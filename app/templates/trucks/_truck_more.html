@@ -1,56 +1,3 @@
-{% extends "layout.html" %}
-{% from "_macros.html" import field %}
-{% from "_hos.html" import hos_panel, source_tag %}
-{% block scripts %}<script src="/static/assistant.js?v={{ cat_version }}"></script>{% endblock %}
-{% block body %}
-<div class="page-head">
-  <div>
-    <h1>Unit {{ truck.unit_number }}</h1>
-    <p>{{ truck.year or '' }} {{ truck.make or '' }} {{ truck.model or '' }}
-      {% if truck.vin %}· <span class="mono">{{ truck.vin }}</span>{% endif %}
-      {% if truck.engine %}· {{ truck.engine }}{% endif %}
-      {% if truck.is_outside %}· <span class="badge info">outside</span> {{ truck.outside_carrier or '' }}{% endif %}
-      {% for item in links %}· {{ source_tag(item.provider) }} {{ item.external_name or item.external_id }} {% endfor %}</p>
-    {% if truck.latitude is not none %}<p class="subtle">Position {{ truck.located_at|ago }}{% if truck.location %} · {{ truck.location }}{% endif %} · from {{ source_tag(truck.location_source) }}</p>{% endif %}
-  </div>
-  <div class="actions-row">
-    {% if at_least(role, 'admin') %}
-    <a class="btn ghost" href="/fuel/new?truck_id={{ truck.id }}">Log fuel</a>
-    <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}">Work order</a>
-    <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;find=1#shop-panel">Nearby shops (map)</a>
-    <a class="btn ghost" href="/maintenance/new?truck_id={{ truck.id }}&amp;breakdown=1">Report a breakdown</a>
-    {% endif %}
-    {% if at_least(role, 'admin') %}<a class="btn" href="/trucks/{{ truck.id }}/edit">Edit</a>{% endif %}
-  </div>
-</div>
-
-<div class="stats">
-  <div class="stat"><div class="stat-label">Status</div><div class="stat-value" style="font-size:20px">
-    <span class="badge {{ truck.status|tone }}">{{ truck.status|label }}</span></div>
-    <div class="stat-hint">{% if truck.driver_id %}<a href="/drivers/{{ truck.driver_id }}">{{ truck.driver_name }}</a> · {{ source_tag(truck.driver_source) }}{% else %}No driver assigned{% endif %}</div></div>
-  <div class="stat"><div class="stat-label">Odometer</div><div class="stat-value">{{ truck.odometer|number }}</div>
-    <div class="stat-hint">{{ truck.odometer_at|ago if truck.odometer_at else 'never updated' }}</div></div>
-  {% for item in statuses if item.core %}
-  <div class="stat {{ item.tone if item.tone in ['bad','warn'] else '' }}">
-    <div class="stat-label">{{ item.label }}</div>
-    <div class="stat-value" style="font-size:20px"><span class="badge {{ item.tone }}">{{ item.detail }}</span></div>
-    <div class="stat-hint">{% if item.due is not none %}{% if item.label == 'Oil service' %}due at {{ item.due|number }} mi{% else %}due {{ item.due|day }}{% endif %}{% else %}no baseline yet{% endif %}</div>
-  </div>
-  {% endfor %}
-  <div class="stat fuel-tank {{ 'warn' if truck.fuel_percent is not none and truck.fuel_percent <= 25 else '' }}"><div class="stat-label">Fuel tank</div>
-    {% if truck.fuel_percent is not none %}<div class="stat-value">{{ truck.fuel_percent|number }}%</div>
-    <div class="fuel-gauge" role="img" aria-label="Tank {{ truck.fuel_percent|number }} percent"><span style="width: {{ [[truck.fuel_percent, 0]|max, 100]|min }}%"></span></div>
-    <div class="stat-hint">~{{ tank.gallons|number }} of {{ truck.tank_gallons }} gal · ~{{ tank.range|number }} mi range · {{ truck.fuel_percent_at|ago }}</div>
-    {% else %}<div class="stat-value">—</div><div class="stat-hint">{{ truck.tank_gallons }} gal tank · level not reported by telematics</div>{% endif %}</div>
-  {% if mpg %}<div class="stat"><div class="stat-label">MPG from fill-ups</div><div class="stat-value">{{ mpg|number(1) }}</div></div>{% endif %}
-  {% if economy %}
-  <div class="stat"><div class="stat-label">Fuel economy</div><div class="stat-value">{{ economy.latest|number(1) }}</div>
-    <div class="stat-hint">recent MPG · {{ economy.average|number(1) }} average</div></div>
-  {% endif %}
-</div>
-
-{% if hours %}{{ hos_panel(hours, 'Driver hours · ' ~ truck.driver_name) }}{% endif %}
-
 <section class="panel">
   <div class="panel-head"><h2>Service schedule</h2>
     {% if at_least(role, 'admin') %}<a class="btn ghost small" href="/trucks/{{ truck.id }}/services">Edit list</a>{% endif %}</div>
@@ -97,53 +44,6 @@
   </table></div>
   {% endif %}
 </section>
-
-<div class="grid-2">
-  <section class="panel">
-    <div class="panel-head"><h2>Service history</h2><a class="btn ghost small" href="/maintenance?status=all">All work orders</a></div>
-    {% if history %}
-    <div class="table-wrap"><table>
-      <thead><tr><th>Date</th><th>Work</th><th class="right">Odometer</th><th class="right">Cost</th></tr></thead>
-      <tbody>
-        {% for order in history %}
-        <tr class="clickrow" data-href="/maintenance/{{ order.id }}">
-          <td>{{ (order.performed_on or order.scheduled_for)|day }}
-            <div class="subtle"><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></div></td>
-          <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.kind|work }}</a>
-            <div class="subtle">{{ (order.description or '')[:60] }}</div></td>
-          <td class="right">{{ order.odometer|number }}</td>
-          <td class="right">{{ order.cost|money }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-    {% else %}
-    <p class="empty">No service recorded.</p>
-    {% endif %}
-  </section>
-
-  <section class="panel">
-    <div class="panel-head"><h2>Fault codes</h2><a class="btn ghost small" href="/faults">All faults</a></div>
-    {% if faults %}
-    <div class="table-wrap"><table>
-      <thead><tr><th>Code</th><th>Severity</th><th>Seen</th><th>State</th></tr></thead>
-      <tbody>
-        {% for fault in faults %}
-        <tr class="clickrow" data-href="/faults/{{ fault.id }}">
-          <td><span class="mono">{{ fault.dtc_code or ('SPN ' ~ fault.spn ~ '/' ~ fault.fmi) }}</span>
-            <div class="subtle">{{ (fault.description or '')[:60] }}</div></td>
-          <td><span class="badge {{ fault.severity|tone }}">{{ fault.severity }}</span></td>
-          <td>{{ fault.last_seen_at|ago }}</td>
-          <td>{% if fault.cleared_at %}<span class="badge ok">cleared</span>{% else %}<span class="badge bad">active</span>{% endif %}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-    {% else %}
-    <p class="empty">No fault codes recorded for this truck.</p>
-    {% endif %}
-  </section>
-</div>
 
 <section class="panel">
   <div class="panel-head"><h2>PTI</h2>
@@ -228,8 +128,3 @@
 {% endif %}
 {% from "documents/_panel.html" import documents_panel %}
 {{ documents_panel(docs, 'truck', truck.id, '/trucks/' ~ truck.id) }}
-{% set assistant_truck_id = truck.id %}
-{% include "_assistant.html" %}
-{% set reminder_entity, reminder_entity_id = "truck", truck.id %}
-{% include "reminders/_panel.html" %}
-{% endblock %}

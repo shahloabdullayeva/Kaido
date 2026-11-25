@@ -38,7 +38,7 @@
       <tr{% if item.link %} class="clickrow" data-href="{{ item.link }}"{% endif %}>
         <td>{{ item.at|day }}<div class="subtle">{{ item.at|ago }}</div></td>
         <td>{% if item.truck_id %}<a href="/trucks/{{ item.truck_id }}">{{ item.unit }}</a>{% else %}—{% endif %}</td>
-        <td>{{ (item.driver or '—')|title }}</td>
+        <td>{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ (item.driver or '—')|title }}</a>{% else %}{{ (item.driver or '—')|title }}{% endif %}</td>
         <td><span class="badge {{ 'bad' if item.group in ('safety', 'engine') else 'warn' }}">{{ groups[item.group] }}</span> {{ item.title }}</td>
         <td>{{ item.detail or '' }}</td>
         <td>{% if item.open is none %}—{% elif item.open %}<span class="badge warn">open</span>{% else %}<span class="badge muted">cleared</span>{% endif %}</td>

@@ -83,8 +83,8 @@
       <tbody>
         {% for item in breakdowns %}
         <tr class="clickrow" data-href="/maintenance/{{ item.id }}">
-          <td><a class="rowlink" href="/maintenance/{{ item.id }}">{{ item.unit_number }}</a>
-            <div class="subtle">{{ item.driver_name or 'No driver' }}</div></td>
+          <td><a class="rowlink" href="/maintenance/{{ item.id }}">#{{ item.id }}</a> <a href="{{ ('/trailers/' ~ item.trailer_id) if item.asset_type == 'trailer' else ('/trucks/' ~ item.truck_id) }}">{{ item.unit_number }}</a>
+            <div class="subtle">{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ item.driver_name or 'No driver' }}</a>{% else %}{{ item.driver_name or 'No driver' }}{% endif %}</div></td>
           <td><span class="badge {{ item.status|tone }}">{{ item.status|label }}</span></td>
           <td>{{ item.location or '—' }}</td>
           <td>{{ item.occurred_at|ago }}</td>
@@ -151,7 +151,7 @@
       <tbody>
         {% for order in upcoming %}
         <tr class="clickrow" data-href="/maintenance/{{ order.id }}">
-          <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.unit_number }}</a></td>
+          <td><a class="rowlink" href="/maintenance/{{ order.id }}">#{{ order.id }}</a> <a href="{{ ('/trailers/' ~ order.trailer_id) if order.asset_type == 'trailer' else ('/trucks/' ~ order.truck_id) }}">{{ order.unit_number }}</a></td>
           <td>{{ (order.description or '')[:50] }}</td>
           <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
           <td>{{ order.scheduled_for|day }}</td>

@@ -21,7 +21,7 @@
     <div class="stat-hint">{{ fault.first_seen_at|stamp }}</div></div>
   <div class="stat"><div class="stat-label">Last seen</div><div class="stat-value" style="font-size:18px">{{ fault.last_seen_at|ago }}</div>
     <div class="stat-hint">{{ fault.occurrence_count or '?' }} times reported</div></div>
-  <div class="stat"><div class="stat-label">Truck</div><div class="stat-value" style="font-size:18px">{{ truck.unit_number }}</div>
+  <div class="stat"><div class="stat-label">Truck</div><div class="stat-value" style="font-size:18px"><a href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a></div>
     <div class="stat-hint">{{ [truck.year, truck.make, truck.model]|select|join(' ') }}</div></div>
 </div>
 

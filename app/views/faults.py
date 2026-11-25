@@ -19,13 +19,18 @@ def index():
         clause = " and f.cleared_at is null"
     elif scope == "cleared":
         clause = " and f.cleared_at is not null"
+    params = [g.company["id"]]
+    truck_id = forms.integer(request.args.get("truck_id"))
+    if truck_id:
+        clause += " and f.truck_id = %s"
+        params.append(truck_id)
     items = rows(
         f"""select f.*, t.unit_number, t.make, t.model, u.name as acknowledged_name
             from fault_events f join trucks t on t.id = f.truck_id
             left join users u on u.id = f.acknowledged_by
             where f.company_id = %s{clause}
             order by f.last_seen_at desc limit 200""",
-        (g.company["id"],),
+        tuple(params),
     )
     integration = one(
         "select * from integrations where company_id = %s and provider = 'samsara'", (g.company["id"],)

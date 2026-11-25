@@ -20,7 +20,7 @@
       <tr>
         <td>{{ entry.happened_at|day }}<div class="subtle">{{ entry.happened_at|ago }}</div></td>
         <td>{% if entry.truck_id %}<a href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a>{% else %}—{% endif %}</td>
-        <td>{{ (entry.driver_name or '—')|title }}</td>
+        <td>{% if entry.driver_id %}<a href="/drivers/{{ entry.driver_id }}">{{ (entry.driver_name or '—')|title }}</a>{% else %}{{ (entry.driver_name or '—')|title }}{% endif %}</td>
         <td><span class="badge {{ 'bad' if entry.severity == 'high' else 'warn' }}">{{ labels[entry.kind] }}</span></td>
         <td>{{ entry.summary }}{% if entry.details.invoice %}<div class="subtle">Invoice {{ entry.details.invoice }}{% if entry.details.card %} · card {{ entry.details.card }}{% endif %}</div>{% endif %}</td>
         <td>{% if entry.status == 'open' %}<span class="badge warn">to review</span>{% elif entry.status == 'ok' %}<span class="badge ok">OK</span>{% else %}<span class="badge bad">confirmed</span>{% endif %}

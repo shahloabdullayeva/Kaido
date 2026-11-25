@@ -286,3 +286,4 @@ rather than an empty map.
 - Backup before starting: `/root/backups/fleet/pre-redesign-20261125.sql.gz` (database) and `pre-redesign-uploads-20261125.tar.gz`; git tag `pre-redesign-20261125` is the code before any change.
 - Stage 1: Cases merged into work orders (README → Work orders). Cases tab removed from the menu. The old tables stay as an archive.
 - Stage 2: short new-work-order form, trucks or trailers (dropped trailers with a location), cancelled status, delete with confirmation, comments thread with photos and automatic status lines, costs folded away (README → Work orders).
+- Stages 3 and 9: one page for unit and driver, trailer pages, See-all links filtered to the unit or driver, unit numbers and driver names linked on the dashboard, lists, trips, board and alerts (README → Unit and driver page).

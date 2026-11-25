@@ -81,6 +81,21 @@ def detail(driver_id):
     driver = one("select * from drivers where id = %s and company_id = %s", (driver_id, g.company["id"]))
     if not driver:
         return render_template("errors/404.html"), 404
+    truck = one("select id from trucks where driver_id = %s and company_id = %s and status <> 'sold' order by updated_at desc limit 1",
+                (driver_id, g.company["id"]))
+    if truck:
+        return redirect(f"/trucks/{truck['id']}")
+    from .trucks import render_unit
+    return render_unit(None, driver)
+
+
+@bp.get("/drivers/<int:driver_id>/edit")
+@login_required
+@company_required
+def edit(driver_id):
+    driver = one("select * from drivers where id = %s and company_id = %s", (driver_id, g.company["id"]))
+    if not driver:
+        return render_template("errors/404.html"), 404
     trucks = rows("select id, unit_number, driver_source from trucks where driver_id = %s order by unit_number", (driver_id,))
     in_horizon = one("select 1 as yes from driver_links where driver_id = %s and provider = 'horizoneld'", (driver_id,))
     return render_template("drivers/form.html", title=driver["name"], active="/trucks",

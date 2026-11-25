@@ -8,7 +8,7 @@
     <div class="board-head"><span class="badge {{ col.tone }}">{{ col.label }}</span><span class="subtle">{{ col['items']|length }}</span></div>
     {% for item in col['items'] %}
     <a class="board-card" href="/trucks/{{ item.truck.id }}">
-      <strong>{{ item.truck.unit_number }}</strong>
+      <strong><a href="/trucks/{{ item.truck.id }}">{{ item.truck.unit_number }}</a></strong>
       {% if item.truck.driver_name %}<span>{{ item.truck.driver_name|title }}</span>{% endif %}
       {% if item.truck.location %}<span class="subtle">{{ item.truck.location }}</span>{% endif %}
       {% if item.note %}<span class="subtle">{{ item.note }}</span>{% endif %}
