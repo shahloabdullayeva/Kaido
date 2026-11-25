@@ -57,7 +57,7 @@
     {% if shop.hours_lines %}<details class="shop-hours"><summary>Hours</summary>{{ shop.hours_lines|join(' · ') }}</details>
     {% elif shop.opening_hours %}<div class="shop-hours">Hours: {{ shop.opening_hours|osm_hours }}</div>{% endif %}
     {% if shop.history %}
-    <div class="shop-history">Used {{ shop.history.visits }}×{% if shop.history.average %} · average {{ shop.history.average|money }}{% endif %}{% if shop.history.last %} · last {{ shop.history.last }}{% endif %}{% if shop.history.rating %} · rated {{ shop.history.rating }}/5 ({{ shop.history.rated }}){% endif %}{% if shop.history.days is not none %} · about {{ shop.history.days }} days in shop{% endif %}
+    <div class="shop-history">Used {{ shop.history.visits }}×{% if shop.history.average %} · average {{ shop.history.average|money }}{% endif %}{% if shop.history.last %} · last {{ shop.history.last }}{% endif %}{% if shop.history.rating %} · rated {{ shop.history.rating }}/5 ({{ shop.history.rated }}){% endif %}{% if shop.history.days is not none %} · about {{ shop.history.days }} days in shop{% endif %}{% if shop.history.comebacks %} · <span class="badge bad">{{ shop.history.comebacks }} comeback{{ 's' if shop.history.comebacks != 1 }}</span>{% endif %}
       {% if shop.history.comment %}<div class="subtle">"{{ shop.history.comment }}"</div>{% endif %}</div>
     {% endif %}
     <div class="shop-note" data-note hidden></div>

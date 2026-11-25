@@ -3,7 +3,7 @@ from datetime import datetime
 
 from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, send_file
 
-from .. import advisor, forms, google_places, places, pm_list, shops as shop_search, vehicles, work_orders
+from .. import advisor, comebacks, downtime, forms, google_places, places, pm_list, shops as shop_search, vehicles, work_orders
 from ..work_types import CUSTOM_PREFIX, GROUP_LABELS, kinds_in
 from ..audit import audit
 from ..auth import login_required
@@ -162,6 +162,8 @@ def index():
     status = forms.pick(request.args.get("status"), LIST_FILTERS, "all")
     group = forms.pick(request.args.get("group"), list(GROUP_LABELS), "")
     asset = forms.pick(request.args.get("asset"), ["truck", "trailer"], "")
+    flag = forms.pick(request.args.get("flag"), ["comebacks"], "")
+    downtime.refresh(g.company["id"])
     params = [g.company["id"]]
     clause = ""
     if status == "all":
@@ -174,6 +176,8 @@ def index():
     if asset:
         clause += " and m.asset_type = %s"
         params.append(asset)
+    if flag:
+        clause += " and exists (select 1 from maintenance_comebacks c where c.order_id = m.id and c.dismissed_at is null)"
     for key in ("truck_id", "trailer_id", "driver_id"):
         value = forms.integer(request.args.get(key))
         if value:
@@ -188,7 +192,9 @@ def index():
         f"""select m.*, {work_orders.UNIT_COL} as unit_number, d.name as driver_name,
                    coalesce(m.driver_contact, d.phone) as contact,
                    (select count(*) from maintenance_files f where f.order_id = m.id) as files,
-                   (select count(*) from work_order_comments c where c.order_id = m.id and c.kind = 'comment') as comments
+                   (select count(*) from work_order_comments c where c.order_id = m.id and c.kind = 'comment') as comments,
+                   (select count(*) from maintenance_comebacks c where c.order_id = m.id and c.dismissed_at is null) as comeback,
+                   extract(epoch from coalesce(m.down_ended_at, now()) - m.down_started_at) / 86400.0 as down_days
             from maintenance_orders m {work_orders.UNIT_JOIN}
             left join drivers d on d.id = m.driver_id
             where m.company_id = %s{clause}
@@ -204,7 +210,18 @@ def index():
     )
     cancelled = one("select count(*) as n from maintenance_orders where company_id = %s and status = 'cancelled'",
                     (g.company["id"],))["n"]
-    return render_template("maintenance/list.html", title="Maintenance", active="/maintenance",
+    shops = []
+    if flag:
+        shops = rows(
+            """select coalesce(nullif(m.vendor, ''), 'No shop recorded') as vendor, count(distinct c.order_id) as comebacks,
+                      (select count(*) from maintenance_orders x where x.company_id = m.company_id and x.status = 'done'
+                         and lower(x.vendor) = lower(m.vendor)) as jobs
+               from maintenance_comebacks c join maintenance_orders m on m.id = c.earlier_id
+               where c.company_id = %s and c.dismissed_at is null group by 1, m.company_id, m.vendor order by 2 desc""",
+            (g.company["id"],),
+        )
+    return render_template("maintenance/list.html", title="Maintenance", active="/maintenance", flag=flag, shops=shops,
+                           comeback_days=one("select comeback_days from companies where id = %s", (g.company["id"],))["comeback_days"],
                            orders=orders, status=status, statuses=work_orders.STATUSES, spend=spend,
                            group=group, group_labels=GROUP_LABELS, asset=asset, cancelled=cancelled)
 
@@ -274,6 +291,8 @@ def create():
          ((truck or {}).get("odometer") or None) if asset == "truck" else None, g.session["user_id"]),
     )
     work_orders.add_comment(company_id, order["id"], "event", "opened this work order", g.session["user_id"], author())
+    downtime.on_create(order)
+    comebacks.check(order["id"])
     unit = trailer["unit_number"] if trailer else truck["unit_number"]
     audit("maintenance.created", "maintenance_order", order["id"], {"unit": unit, "asset": asset, "status": status})
     pti_id = forms.integer(form.get("pti_id"))
@@ -336,7 +355,8 @@ def vendor_history(company_id):
            group by vendor""",
         (company_id,),
     )
-    return [dict(row, tokens=_tokens(row["vendor"])) for row in history]
+    repeats = comebacks.by_vendor(company_id)
+    return [dict(row, tokens=_tokens(row["vendor"]), comebacks=repeats.get(row["vendor"].lower(), 0)) for row in history]
 
 
 def match_history(shop_name, history):
@@ -356,7 +376,8 @@ def match_history(shop_name, history):
                 "average": float(best["average"]) if best["average"] is not None else None,
                 "last": best["last"].strftime("%b %Y") if best["last"] else None,
                 "rating": round(float(best["rating"]), 1) if best["rating"] is not None else None, "rated": best["rated"],
-                "days": round(float(best["days"]), 1) if best["days"] is not None else None, "comment": best["comment"]}
+                                "days": round(float(best["days"]), 1) if best["days"] is not None else None, "comment": best["comment"],
+                "comebacks": best["comebacks"]}
     return None
 
 
@@ -566,7 +587,10 @@ def detail(order_id):
     files = work_orders.files_of(order_id)
     costs_open = order["status"] == "done" or bool(parts or files or order["cost"] is not None or order["labor_cost"]
                                                    or order["invoice_no"] or order["paid_with"] or order["shop_rating"])
+    downtime.refresh(g.company["id"])
+    order = load_order(order_id)
     return render_template("maintenance/form.html", title=f"Work order #{order['id']}", active="/maintenance",
+                           comeback_flags=comebacks.flags_for(order_id), down_days=downtime.days(order),
                            groups=pm_list.groups(g.company["id"], order["kind"]), statuses=work_orders.STATUSES,
                            order=order, truck_id=order["truck_id"], parts=parts, files=files,
                            comments=work_orders.comments_of(order_id), costs_open=costs_open, **form_choices())
@@ -623,6 +647,11 @@ def update(order_id):
     save_rating(order_id)
     work_orders.log_status(g.company["id"], order_id, order["status"], status, g.session["user_id"], author())
     close_out(updated, status)
+    if status != order["status"]:
+        downtime.on_status(updated, status)
+    if updated["breakdown"] and not order["breakdown"]:
+        downtime.on_create(updated)
+    comebacks.check(order_id)
     if truck:
         apply_completion(updated, truck)
     audit("maintenance.updated", "maintenance_order", order_id, {"status": status})
@@ -643,6 +672,9 @@ def change_status(order_id):
                          (status, order_id))
         work_orders.log_status(g.company["id"], order_id, order["status"], status, g.session["user_id"], author())
         close_out(updated, status)
+        downtime.on_status(updated, status)
+        if status == "done":
+            comebacks.check(order_id)
         truck = one("select * from trucks where id = %s", (order["truck_id"],)) if order["truck_id"] else None
         if truck:
             apply_completion(updated, truck)
@@ -685,6 +717,32 @@ def comment_file(order_id, comment_id):
                          max_age=0)
     response.headers["Cache-Control"] = "private, no-store"
     return response
+
+
+@bp.post("/maintenance/<int:order_id>/comebacks/<int:flag_id>")
+@login_required
+@role_required("admin")
+def comeback_flag(order_id, flag_id):
+    dismiss = request.form.get("action") != "restore"
+    execute(
+        """update maintenance_comebacks set dismissed_at = case when %s then now() end, dismissed_by = case when %s then %s end
+           where id = %s and order_id = %s and company_id = %s""",
+        (dismiss, dismiss, g.session["user_id"], flag_id, order_id, g.company["id"]),
+    )
+    audit("maintenance.comeback", "maintenance_order", order_id, {"flag": flag_id, "dismissed": dismiss})
+    return redirect(f"/maintenance/{order_id}")
+
+
+@bp.post("/maintenance/comeback-window")
+@login_required
+@role_required("admin")
+def comeback_window():
+    days = min(max(forms.integer(request.form.get("days")) or 60, 1), 365)
+    execute("update companies set comeback_days = %s where id = %s", (days, g.company["id"]))
+    execute("delete from maintenance_comebacks where company_id = %s and dismissed_at is null", (g.company["id"],))
+    comebacks.recheck_company(g.company["id"])
+    audit("company.comeback_days", "company", g.company["id"], {"days": days})
+    return redirect("/maintenance?flag=comebacks")
 
 
 @bp.post("/maintenance/<int:order_id>/delete")

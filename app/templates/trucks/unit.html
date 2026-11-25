@@ -82,6 +82,17 @@
     {% else %}<p class="empty">None yet.</p>{% endif %}
   </section>
   <section class="panel">
+    <div class="panel-head"><h2>Downtime and comebacks</h2><a class="btn ghost small" href="/maintenance?flag=comebacks&amp;truck_id={{ truck.id }}">See all</a></div>
+    <div class="idle-grid">
+      <div><div class="stat-label">Down this month</div><div class="idle-hours">{{ truck_info.downtime.month|number(1) }} d</div></div>
+      <div><div class="stat-label">Last 90 days</div><div class="idle-hours">{{ truck_info.downtime.days90|number(1) }} d</div></div>
+      <div><div class="stat-label">Possible comebacks</div><div class="idle-hours">{{ truck_info.comebacks|length }}</div></div>
+    </div>
+    {% if truck_info.comebacks %}<ul class="unit-list">{% for c in truck_info.comebacks %}
+      <li><a href="/maintenance/{{ c.order_id }}">#{{ c.order_id }} {{ (c.description or '')[:50] }}</a><span class="subtle">{{ c.reason }}, after #{{ c.earlier_id }}{% if c.vendor %} at {{ c.vendor }}{% endif %}</span></li>
+    {% endfor %}</ul>{% endif %}
+  </section>
+  <section class="panel">
     <div class="panel-head"><h2>Active fault codes</h2><a class="btn ghost small" href="/faults?truck_id={{ truck.id }}">See all</a></div>
     {% if truck_info.faults %}
     <ul class="unit-list">{% for f in truck_info.faults %}

@@ -745,6 +745,25 @@ change writes "<name> changed status from X to Y" into the thread. Cancelled ord
 the Status filter is Cancelled; Delete asks first and removes the order with its comments, files and reminders.
 The list shows the comment count per order and filters by status, truck/trailer and system.
 
+## Comebacks and downtime
+
+**Comebacks** (`app/comebacks.py`): when a work order is opened, saved or marked done, Kaido looks for a done work
+order on the same truck or trailer within the comeback window (`companies.comeback_days`, default 60) that matches by
+the same work type, the same system, or a similar description (shared phrases such as "air leak", "brake", "tire";
+tire and wheel jobs on clearly different positions do not match). Preventive maintenance, inspections and towing never
+count on type or system. Each match is a row in `maintenance_comebacks` with the reason. It shows as "possible
+comeback" on the work order (link to the earlier one and its shop, "Not a comeback" to clear it, Undo to bring it
+back), as "comeback?" in the list, on the unit page, and as a count in the shop finder's history line. Maintenance →
+Flags → Possible comebacks lists them with a table of comebacks per shop and the window setting (saving rechecks all
+work orders).
+
+**Downtime** (`app/downtime.py`): a work order is down from the moment it goes to towing or in shop, or from when a
+breakdown is reported, until it is marked done or cancelled, or until the truck moves again at 5 mph or more (30
+minutes of grace for a road test), whichever comes first (`down_started_at`, `down_ended_at`, `down_end_reason`).
+Shown in days on the work order and in the list, as totals per truck for this month and the last 90 days on the unit
+page, and as "Most downtime, 90 days" on the dashboard. Trailers end only on done or cancelled since they have no
+GPS. Existing orders were filled from their status history; position history only goes back to 17 Nov 2026.
+
 ## Unit and driver page
 
 `/trucks/<id>` is one page for the truck and whoever drives it (`app/unit_page.py`, `trucks/unit.html`). `/drivers/<id>`

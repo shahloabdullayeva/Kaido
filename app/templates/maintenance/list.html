@@ -6,6 +6,18 @@
   {% if at_least(role, 'admin') %}<a class="btn ghost" href="/maintenance/pm-list">Preventive maintenance list</a>{% endif %}
   {% if at_least(role, 'admin') %}<a class="btn" href="/maintenance/new">New work order</a>{% endif %}</div>
 </div>
+{% if flag == 'comebacks' %}
+<section class="panel">
+  <div class="panel-head"><h2>Comebacks by shop</h2>
+    {% if at_least(role, 'admin') %}<form method="post" action="/maintenance/comeback-window" class="filters threshold">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}">
+      <label class="field"><span>Window, days</span><input type="number" name="days" min="1" max="365" value="{{ comeback_days }}"></label>
+      <button class="btn ghost small" type="submit">Save and recheck</button></form>{% endif %}</div>
+  {% if shops %}<div class="table-wrap"><table><thead><tr><th>Shop that did the first repair</th><th class="right">Comebacks</th><th class="right">Jobs done</th></tr></thead>
+  <tbody>{% for s in shops %}<tr><td>{{ s.vendor }}</td><td class="right">{{ s.comebacks }}</td><td class="right">{{ s.jobs }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty">No comebacks in {{ comeback_days }} days.</p>{% endif %}
+</section>
+{% endif %}
 <section class="panel">
   <div class="panel-head">
     <form method="get" action="/maintenance" class="filters" data-autosubmit>
@@ -23,6 +35,12 @@
           <option value="trailer" {% if asset == 'trailer' %}selected{% endif %}>Trailers</option>
         </select>
       </label>
+      <label class="field"><span>Flags</span>
+        <select name="flag">
+          <option value="" {% if not flag %}selected{% endif %}>All</option>
+          <option value="comebacks" {% if flag == 'comebacks' %}selected{% endif %}>Possible comebacks</option>
+        </select>
+      </label>
       <label class="field"><span>System</span>
         <select name="group">
           <option value="">All</option>
@@ -34,19 +52,20 @@
   </div>
   {% if orders %}
   <div class="table-wrap"><table>
-    <thead><tr><th>#</th><th>Unit</th><th>Work</th><th>Priority</th><th>Status</th><th>Shop</th><th>Date</th><th class="right">Comments</th><th class="right">Total</th></tr></thead>
+    <thead><tr><th>#</th><th>Unit</th><th>Work</th><th>Priority</th><th>Status</th><th>Shop</th><th>Date</th><th class="right">Down</th><th class="right">Comments</th><th class="right">Total</th></tr></thead>
     <tbody>
       {% for order in orders %}
       <tr class="clickrow" data-href="/maintenance/{{ order.id }}" title="Open work order #{{ order.id }}">
         <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.id }}</a></td>
         <td><a class="rowlink" href="{{ ('/trailers/' ~ order.trailer_id) if order.asset_type == 'trailer' else ('/trucks/' ~ order.truck_id) }}">{{ order.unit_number }}</a>
           {% if order.asset_type == 'trailer' %}<div class="subtle">trailer{% if not order.truck_id and order.location %} · {{ order.location }}{% endif %}</div>{% elif order.driver_name %}<div class="subtle">{{ order.driver_name }}</div>{% endif %}</td>
-        <td>{{ order.kind|work }}{% if order.breakdown %} <span class="badge bad">breakdown</span>{% endif %}
+        <td>{{ order.kind|work }}{% if order.breakdown %} <span class="badge bad">breakdown</span>{% endif %}{% if order.comeback %} <span class="badge bad">comeback?</span>{% endif %}
           <div class="subtle">{{ (order.description or '')[:70] }}</div></td>
         <td><span class="badge {{ order.priority|tone }}">{{ order.priority }}</span></td>
         <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
         <td>{{ order.vendor or '' }}</td>
         <td>{{ (order.performed_on or order.scheduled_for or order.reported_at)|day }}</td>
+        <td class="right">{% if order.down_days is not none %}{{ order.down_days|number(1) }} d{% endif %}</td>
         <td class="right">{% if order.comments %}{{ order.comments }}{% endif %}</td>
         <td class="right">{% if order.cost is not none %}{{ order.cost|money }}{% endif %}</td>
       </tr>

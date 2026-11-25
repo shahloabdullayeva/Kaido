@@ -80,8 +80,10 @@ def home():
            order by coalesce(m.scheduled_for, current_date) limit 6""",
         (company_id,),
     )
+    from .. import downtime
+    downtime.refresh(company_id)
     return render_template(
-        "dashboard.html", title="Dashboard", active="/", summary=summary,
+        "dashboard.html", most_down=downtime.ranking(company_id), title="Dashboard", active="/", summary=summary,
         attention=attention, breakdowns=breakdowns, faults=faults, fuel=fuel, pins=pins,
         upcoming=upcoming, documents=expiring_documents(company_id)[:8], fleet_size=len(fleet),
     )

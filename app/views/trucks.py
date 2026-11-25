@@ -365,6 +365,8 @@ def create():
 
 def truck_context(truck):
     truck_id = truck["id"]
+    from .. import downtime
+    downtime.refresh(g.company["id"])
     last_oil = one(
         """select max(odometer) as odometer, max(performed_on) as performed_on
            from maintenance_orders where truck_id = %s and kind = 'oil' and status = 'done'""",

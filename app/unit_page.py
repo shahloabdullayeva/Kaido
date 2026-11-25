@@ -66,7 +66,15 @@ def truck_section(company_id, truck):
            order by opened_at desc limit 10""",
         (truck["id"],),
     )
+    from . import downtime
+    flags = rows(
+        """select c.*, m.description, e.vendor, e.performed_on as earlier_on from maintenance_comebacks c
+           join maintenance_orders m on m.id = c.order_id join maintenance_orders e on e.id = c.earlier_id
+           where m.truck_id = %s and c.dismissed_at is null order by c.created_at desc limit 5""",
+        (truck["id"],),
+    )
     return {"open_orders": open_orders, "recent_orders": recent, "faults": faults, "alerts": alerts,
+            "comebacks": flags, "downtime": downtime.truck_totals(truck["id"]),
             "position": position(truck),
             "drivers": rows(
                 """select a.*, d.name from driver_assignments a join drivers d on d.id = a.driver_id

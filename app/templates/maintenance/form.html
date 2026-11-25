@@ -14,7 +14,8 @@
     <p><a href="{{ unit_href }}">{{ 'Trailer' if order.asset_type == 'trailer' else 'Unit' }} {{ order.unit_number }}</a>
       <span class="badge {{ order.status|tone }}">{{ order.status|label }}</span>
       <span class="badge {{ order.priority|tone }}">{{ order.priority }} priority</span>
-      {% if order.breakdown %}<span class="badge bad">breakdown</span>{% endif %}</p></div>
+      {% if order.breakdown %}<span class="badge bad">breakdown</span>{% endif %}
+      {% if comeback_flags|rejectattr('dismissed_at')|list %}<span class="badge bad">possible comeback</span>{% endif %}</p></div>
   <div class="actions-row">
     <a class="btn ghost" href="/maintenance/{{ order.id }}/pdf">PDF</a>
     {% if admin %}<form method="post" action="/maintenance/{{ order.id }}/delete" class="inline" data-confirm="Delete work order #{{ order.id }} with its comments and files? This cannot be undone.">
@@ -27,10 +28,26 @@
   {% if order.asset_type == 'trailer' %}<div class="stat"><div class="stat-label">{{ 'With truck' if order.truck_unit else 'Dropped at' }}</div><div class="stat-value small">{% if order.truck_unit %}<a href="/trucks/{{ order.truck_id }}">{{ order.truck_unit }}</a>{% else %}{{ order.location or 'Not recorded' }}{% endif %}</div></div>{% endif %}
   {% if order.vendor %}<div class="stat"><div class="stat-label">Shop</div><div class="stat-value small">{{ order.vendor }}</div><div class="stat-hint">{{ order.shop_phone or '' }}</div></div>{% endif %}
   <div class="stat"><div class="stat-label">Reported</div><div class="stat-value small">{{ order.reported_at|day }}</div>{% if order.scheduled_for %}<div class="stat-hint">scheduled {{ order.scheduled_for|day }}</div>{% endif %}</div>
+  {% if down_days is not none %}<div class="stat {{ 'warn' if not order.down_ended_at else '' }}"><div class="stat-label">Downtime</div><div class="stat-value">{{ down_days|number(1) }} d</div><div class="stat-hint">{% if order.down_ended_at %}ended {{ 'when it moved' if order.down_end_reason == 'moving' else order.down_end_reason }} {{ order.down_ended_at|day }}{% else %}still down{% endif %}</div></div>{% endif %}
   {% if order.cost is not none %}<div class="stat"><div class="stat-label">Total</div><div class="stat-value">{{ order.cost|money }}</div></div>{% endif %}
   {% if order.status == 'done' %}<div class="stat {{ '' if files else 'warn' }}"><div class="stat-label">Invoice</div><div class="stat-value">{{ files|length }}</div><div class="stat-hint">{{ 'file' if files|length == 1 else 'files' }}</div></div>{% endif %}
 </div>
 
+{% if comeback_flags %}
+<section class="panel comeback">
+  <div class="panel-head"><h2>Possible comeback</h2></div>
+  <ul class="unit-list">{% for f in comeback_flags %}
+    <li{% if f.dismissed_at %} class="subtle"{% endif %}><span>{{ f.reason|capitalize }}: <a href="/maintenance/{{ f.earlier_id }}">#{{ f.earlier_id }} {{ f.kind|work }}</a>
+      {{ (f.performed_on or f.reported_at)|day }}{% if f.vendor %} at <strong>{{ f.vendor }}</strong>{% endif %}
+      <span class="subtle">{{ (f.description or '')[:60] }}</span></span>
+      {% if admin %}<form method="post" action="/maintenance/{{ order.id }}/comebacks/{{ f.id }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}">
+        {% if f.dismissed_at %}<span class="subtle">marked not a comeback</span> <button class="btn ghost small" name="action" value="restore">Undo</button>
+        {% else %}<button class="btn ghost small" name="action" value="dismiss">Not a comeback</button>{% endif %}
+      </form>{% endif %}</li>
+  {% endfor %}</ul>
+</section>
+{% endif %}
 {% if admin %}
 <form method="post" action="/maintenance/{{ order.id }}/status" class="panel status-bar">
   <input type="hidden" name="csrf" value="{{ session.csrf }}">

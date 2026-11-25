@@ -98,6 +98,20 @@
   </section>
 </div>
 
+<section class="panel">
+  <div class="panel-head"><h2>Most downtime, 90 days</h2><a class="btn ghost small" href="/maintenance?status=all">Work orders</a></div>
+  {% if most_down %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th class="right">Days down</th><th class="right">Work orders</th><th></th></tr></thead>
+    <tbody>{% for t in most_down %}
+      <tr class="clickrow" data-href="/trucks/{{ t.id }}"><td><a class="rowlink" href="/trucks/{{ t.id }}">{{ t.unit_number }}</a>{% if t.carrier_group %} <span class="subtle">{{ t.carrier_group }}</span>{% endif %}</td>
+        <td class="right">{{ t.days|number(1) }}</td><td class="right">{{ t.orders }}</td>
+        <td>{% if t.down_now %}<span class="badge bad">down now</span>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="empty">No downtime recorded.</p>{% endif %}
+</section>
+
 <div class="grid-2">
   <section class="panel">
     <div class="panel-head"><h2>Active faults</h2><a class="btn ghost small" href="/faults">All faults</a></div>

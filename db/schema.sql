@@ -1607,3 +1607,43 @@ do $$ begin
   end if;
 end $$;
 create index if not exists safety_events_status_idx on safety_events (company_id, status, happened_at desc);
+
+alter table companies add column if not exists comeback_days int not null default 60;
+create table if not exists maintenance_comebacks (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  order_id bigint not null references maintenance_orders(id) on delete cascade,
+  earlier_id bigint not null references maintenance_orders(id) on delete cascade,
+  reason text not null,
+  created_at timestamptz not null default now(),
+  dismissed_at timestamptz,
+  dismissed_by int references users(id) on delete set null,
+  unique (order_id, earlier_id)
+);
+create index if not exists maintenance_comebacks_order_idx on maintenance_comebacks (order_id);
+create index if not exists maintenance_comebacks_earlier_idx on maintenance_comebacks (earlier_id);
+alter table maintenance_comebacks enable row level security;
+alter table maintenance_comebacks force row level security;
+drop policy if exists company_lock on maintenance_comebacks;
+create policy company_lock on maintenance_comebacks
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+alter table maintenance_orders add column if not exists down_started_at timestamptz;
+alter table maintenance_orders add column if not exists down_ended_at timestamptz;
+alter table maintenance_orders add column if not exists down_end_reason text;
+update maintenance_orders m set down_started_at = coalesce(
+    (select min(c.created_at) from work_order_comments c where c.order_id = m.id and c.kind = 'status'
+       and (c.body like '%to in shop' or c.body like '%to towing')),
+    case when m.breakdown then m.reported_at end)
+ where m.down_started_at is null and (m.breakdown or exists (select 1 from work_order_comments c where c.order_id = m.id
+       and c.kind = 'status' and (c.body like '%to in shop' or c.body like '%to towing')));
+update maintenance_orders set down_ended_at = coalesce(resolved_at, updated_at), down_end_reason = status
+ where down_started_at is not null and down_ended_at is null and status in ('done', 'cancelled');
+update maintenance_orders m set down_ended_at = mv.at, down_end_reason = 'moving'
+  from (select m2.id, (select min(p.recorded_at) from truck_positions p where p.truck_id = m2.truck_id and p.speed_mph >= 5
+                       and p.recorded_at > m2.down_started_at + interval '30 minutes') as at
+          from maintenance_orders m2 where m2.down_started_at is not null and m2.asset_type = 'truck') mv
+ where mv.id = m.id and mv.at is not null and mv.at < coalesce(m.down_ended_at, 'infinity') and m.down_end_reason is distinct from 'moving';
