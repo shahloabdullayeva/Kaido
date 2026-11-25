@@ -1588,3 +1588,22 @@ create table if not exists place_suggestions (
 alter table driver_links add column if not exists ignored boolean not null default false;
 
 alter table drivers add column if not exists name_locked boolean not null default false;
+
+alter table companies add column if not exists speeding_min_over int not null default 10;
+alter table companies add column if not exists speeding_min_seconds int not null default 30;
+alter table safety_events add column if not exists status text not null default 'open';
+alter table safety_events add column if not exists acknowledged_at timestamptz;
+alter table safety_events add column if not exists acknowledged_by int references users(id) on delete set null;
+alter table safety_events add column if not exists cleared_at timestamptz;
+alter table safety_events add column if not exists cleared_by int references users(id) on delete set null;
+alter table health_alerts add column if not exists acknowledged_at timestamptz;
+alter table health_alerts add column if not exists acknowledged_by int references users(id) on delete set null;
+alter table health_alerts add column if not exists cleared_by int references users(id) on delete set null;
+alter table fuel_alerts add column if not exists acknowledged_at timestamptz;
+alter table fuel_alerts add column if not exists acknowledged_by int references users(id) on delete set null;
+do $$ begin
+  if not exists (select 1 from safety_events where status <> 'open' or cleared_at is not null) then
+    update safety_events set status = 'cleared', cleared_at = now() where happened_at < now() - interval '7 days';
+  end if;
+end $$;
+create index if not exists safety_events_status_idx on safety_events (company_id, status, happened_at desc);

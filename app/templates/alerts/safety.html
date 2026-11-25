@@ -2,7 +2,13 @@
 {% block body %}
 {% set fleet_tab = 'safety' %}{% include "_fleet_tabs.html" %}
 <div class="page-head">
-  <div><h1>Safety</h1></div>
+  <div><h1>Safety</h1><p>Speeding counts when {{ g.company.speeding_min_over }}+ mph over for {{ g.company.speeding_min_seconds }}+ seconds · {{ hidden|number }} smaller speeding events left out</p></div>
+  {% if at_least(role, 'admin') %}<form method="post" action="/safety/threshold" class="filters threshold">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <label class="field"><span>mph over</span><input type="number" name="over" min="0" max="40" value="{{ g.company.speeding_min_over }}"></label>
+    <label class="field"><span>seconds</span><input type="number" name="seconds" min="0" max="600" value="{{ g.company.speeding_min_seconds }}"></label>
+    <button class="btn ghost small" type="submit">Save</button>
+  </form>{% endif %}
 </div>
 <section class="panel">
   <div class="panel-head">

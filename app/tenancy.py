@@ -24,12 +24,12 @@ def is_platform():
 def memberships_for(user_id, platform_role):
     if platform_role:
         return rows(
-            """select c.id, c.name, c.status, c.is_house, c.timezone, 'admin' as role
+            """select c.id, c.name, c.status, c.is_house, c.timezone, c.speeding_min_over, c.speeding_min_seconds, 'admin' as role
                from companies c where c.status = 'active'
                order by c.is_house desc, lower(c.name)"""
         )
     return rows(
-        """select c.id, c.name, c.status, c.is_house, c.timezone, m.role
+        """select c.id, c.name, c.status, c.is_house, c.timezone, c.speeding_min_over, c.speeding_min_seconds, m.role
            from memberships m join companies c on c.id = m.company_id
            where m.user_id = %s and c.status = 'active'
            order by c.is_house desc, lower(c.name)""",

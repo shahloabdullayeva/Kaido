@@ -1,24 +1,27 @@
 {% extends "layout.html" %}
 {% block body %}
+{% set admin = at_least(role, 'admin') %}
+{% if hours_view %}{% set fleet_tab = 'hours' %}{% include "_fleet_tabs.html" %}{% endif %}
 <div class="page-head">
-  <div><h1>Alerts</h1></div>
+  <div><h1>{{ 'Hours' if hours_view else 'Alerts' }}</h1><p>{{ total }} rows · {{ raw_total }} alerts{% for key, n in counts.items() %} · {{ groups[key] }} {{ n }}{% endfor %}</p></div>
 </div>
 <section class="panel">
   <div class="panel-head">
-    <form method="get" action="/alerts" class="filters" data-autosubmit>
-      <label class="field"><span>Type</span>
+    <form method="get" action="{{ request.path }}" class="filters" data-autosubmit>
+      <label class="field"><span>Status</span>
+        <select name="status">
+          <option value="open" {% if status == 'open' %}selected{% endif %}>Open</option>
+          <option value="acknowledged" {% if status == 'acknowledged' %}selected{% endif %}>Acknowledged</option>
+          <option value="cleared" {% if status == 'cleared' %}selected{% endif %}>Cleared</option>
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+        </select>
+      </label>
+      {% if not hours_view %}<label class="field"><span>Type</span>
         <select name="kind">
           <option value="all" {% if kind == 'all' %}selected{% endif %}>All</option>
           {% for key, label in groups.items() %}<option value="{{ key }}" {% if kind == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
         </select>
-      </label>
-      <label class="field"><span>Status</span>
-        <select name="status">
-          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
-          <option value="open" {% if status == 'open' %}selected{% endif %}>Open</option>
-          <option value="cleared" {% if status == 'cleared' %}selected{% endif %}>Cleared</option>
-        </select>
-      </label>
+      </label>{% endif %}
       <label class="field"><span>Period</span>
         <select name="period">
           <option value="all" {% if period == 'all' %}selected{% endif %}>All</option>
@@ -28,21 +31,37 @@
         </select>
       </label>
       {% with groups = carrier_groups, group = carrier %}{% include "_group_filter.html" %}{% endwith %}
+      {% for key in ('truck_id', 'driver_id') %}{% if request.args.get(key) %}<input type="hidden" name="{{ key }}" value="{{ request.args.get(key) }}">{% endif %}{% endfor %}
     </form>
-    <span class="subtle">{{ total }}{% for key, n in counts.items() %} · {{ groups[key] }} {{ n }}{% endfor %}</span>
+    {% if admin and items %}
+    <form method="post" action="/alerts/act" class="inline" data-confirm="Clear all {{ items|length }} rows shown?">
+      <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="back" value="{{ request.full_path }}">
+      <input type="hidden" name="refs" value="{{ items|map(attribute='refs')|sum(start=[])|join(',') }}">
+      <button class="btn ghost small" name="action" value="clear" type="submit">Clear all shown</button>
+    </form>
+    {% endif %}
   </div>
   {% if items %}
   <div class="table-wrap"><table>
-    <thead><tr><th>When</th><th>Unit</th><th>Driver</th><th>Alert</th><th>Detail</th><th>Status</th></tr></thead>
+    <thead><tr><th>When</th><th>Unit</th><th>Driver</th><th>Alert</th><th class="right">Count</th><th>Detail</th><th>Status</th>{% if admin %}<th></th>{% endif %}</tr></thead>
     <tbody>
     {% for item in items %}
-      <tr{% if item.link %} class="clickrow" data-href="{{ item.link }}"{% endif %}>
-        <td>{{ item.at|day }}<div class="subtle">{{ item.at|ago }}</div></td>
+      <tr>
+        <td>{{ item.at|stamp }}{% if item.count > 1 %}<div class="subtle">from {{ item.first.strftime('%H:%M') }}</div>{% endif %}</td>
         <td>{% if item.truck_id %}<a href="/trucks/{{ item.truck_id }}">{{ item.unit }}</a>{% else %}—{% endif %}</td>
         <td>{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ (item.driver or '—')|title }}</a>{% else %}{{ (item.driver or '—')|title }}{% endif %}</td>
-        <td><span class="badge {{ 'bad' if item.group in ('safety', 'engine') else 'warn' }}">{{ groups[item.group] }}</span> {{ item.title }}</td>
+        <td><span class="badge {{ 'bad' if item.group in ('safety', 'engine') else 'warn' }}">{{ groups[item.group] }}</span>
+          {% if item.link %}<a href="{{ item.link }}">{{ item.title }}</a>{% else %}{{ item.title }}{% endif %}</td>
+        <td class="right">{% if item.count > 1 %}<strong>{{ item.count }}×</strong>{% endif %}</td>
         <td>{{ item.detail or '' }}</td>
-        <td>{% if item.open is none %}—{% elif item.open %}<span class="badge warn">open</span>{% else %}<span class="badge muted">cleared</span>{% endif %}</td>
+        <td><span class="badge {{ {'open': 'warn', 'acknowledged': 'info'}.get(item.status, 'muted') }}">{{ item.status }}</span></td>
+        {% if admin %}<td class="right">{% if item.refs %}
+          <form method="post" action="/alerts/act" class="actions-row">
+            <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="back" value="{{ request.full_path }}">
+            <input type="hidden" name="refs" value="{{ item.refs|join(',') }}">
+            {% if item.status == 'open' %}<button class="btn ghost small" name="action" value="acknowledge" type="submit">Acknowledge</button>{% endif %}
+            {% if item.status != 'cleared' %}<button class="btn small" name="action" value="clear" type="submit">Clear</button>{% endif %}
+          </form>{% endif %}</td>{% endif %}
       </tr>
     {% endfor %}
     </tbody>

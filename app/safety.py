@@ -168,3 +168,10 @@ def run():
             log.warning("safety pull failed for %s: %s", company["id"], err)
             result[company["name"]] = {"error": str(err)[:200]}
     return result
+
+
+def counted_sql(company, alias="e"):
+    over = int(company.get("speeding_min_over") or 0)
+    seconds = int(company.get("speeding_min_seconds") or 0)
+    return (f"({alias}.kind not like 'speeding:%%' or (coalesce({alias}.speed_mph - {alias}.limit_mph, 0) >= {over}"
+            f" and extract(epoch from coalesce({alias}.ended_at, {alias}.happened_at) - {alias}.happened_at) >= {seconds}))")

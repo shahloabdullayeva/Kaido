@@ -3,11 +3,11 @@ from datetime import date, datetime, timedelta, timezone
 from . import documents, work_orders
 from .config import config
 from .reminders import zone_for
+from .safety import counted_sql
 from .db import one, rows
 
 MOVING_MPH = 5
 PTI_DAYS = 10
-SAFETY_HIDDEN = ("speeding:light",)
 
 
 def position(truck):
@@ -147,9 +147,10 @@ def driver_section(company_id, driver):
             (driver_id,),
         ),
         "safety": rows(
-            """select e.*, t.unit_number from safety_events e left join trucks t on t.id = e.truck_id
-               where e.driver_id = %s and e.kind <> all(%s) order by e.happened_at desc limit 10""",
-            (driver_id, list(SAFETY_HIDDEN)),
+            f"""select e.*, t.unit_number from safety_events e left join trucks t on t.id = e.truck_id
+               where e.driver_id = %s and {counted_sql(one("select * from companies where id = %s", (company_id,)))}
+               order by e.happened_at desc limit 10""",
+            (driver_id,),
         ),
         "pti": pti_days(company_id, driver),
         "fuel": fuel_with_suggestions(driver_id),

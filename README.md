@@ -771,6 +771,20 @@ order that recorded one.
   missed. Gallons use `IDLE_GALLONS_PER_HOUR` (0.8, a typical heavy-truck idle burn) and dollars use the company's
   average diesel price over 90 days. Fuel → Insights has an Idle hours column per driver.
 
+## Alerts, hours and safety
+
+- **Alerts** (`/alerts`) open on **Open** (open or acknowledged), at her request. Repeats of the same alert on the same
+  truck on the same day (company time zone) are one row with a count. Every row has a status (open, acknowledged,
+  cleared) and Acknowledge / Clear buttons that act on all alerts in the row; "Clear all shown" clears the page.
+  Statuses live in `health_alerts.acknowledged_at/cleared_at`, `safety_events.status`, and `fuel_alerts.status` plus
+  `acknowledged_at`. On 25 Nov 2026 safety events older than 7 days were set to cleared so the open list starts clean.
+- **Hours** (Trucks → Hours, `/hours`): the hours alerts (14-hour shift almost out, driving hours almost out, break,
+  cycle, violations) in the same grouped list. **Faults** shows engine fault codes only.
+- **Speeding threshold** (Safety page, admins): a speeding event counts only when it is at least N mph over the limit
+  for at least S seconds (`companies.speeding_min_over`, default 10, and `speeding_min_seconds`, default 30). It
+  applies to the Safety totals and list, the Alerts list and the driver section of the unit page (`safety.counted_sql`).
+  The Telegram alerts for heavy and severe speeding are unchanged.
+
 ## Groups and names
 
 Trucks have a **carrier/group** (`carrier_group`: Octane, Mercury, TVC, TCS...) and an optional **label**
