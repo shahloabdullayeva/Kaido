@@ -322,7 +322,10 @@ def insights():
                    (select count(*) from fuel_offers o where o.company_id = f.company_id and o.driver_id = max(f.driver_id)
                       and o.created_at >= {since} and o.status <> 'failed') as offered,
                    (select count(*) from fuel_offers o where o.company_id = f.company_id and o.driver_id = max(f.driver_id)
-                      and o.created_at >= {since} and o.chosen_station_id is not null) as taken
+                      and o.created_at >= {since} and o.chosen_station_id is not null) as taken,
+                   (select sum(extract(epoch from coalesce(e.ended_at, now()) - greatest(e.started_at, {since}))) / 3600.0
+                      from engine_sessions e where e.driver_id = max(f.driver_id) and e.state = 'Idle'
+                      and coalesce(e.ended_at, now()) > {since}) as idle_hours
             from fuel_transactions f join trucks t on t.id = f.truck_id left join drivers d on d.id = f.driver_id
             where f.company_id = %s and f.fuel_type = 'diesel' and f.purchased_at >= {since}
             group by lower(regexp_replace(trim(coalesce(d.name, f.raw->>'driver name', 'Unit ' || t.unit_number)), '\s+', ' ', 'g')),

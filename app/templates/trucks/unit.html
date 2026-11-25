@@ -152,6 +152,19 @@
     {% else %}<p class="empty">No purchases.</p>{% endif %}
   </section>
   <section class="panel">
+    <div class="panel-head"><h2>Idle time</h2><span class="subtle">{{ di.idle.gph }} gal/h at {{ di.idle.price|money }}/gal</span></div>
+    {% if di.idle.since %}
+    <div class="idle-grid">{% for t in di.idle.totals %}
+      <div><div class="stat-label">{{ t.label }}</div><div class="idle-hours">{{ t.hours|number(1) }} h</div>
+        <div class="subtle">{{ t.gallons|number(1) }} gal · {{ t.dollars|money }}</div></div>
+    {% endfor %}</div>
+    {% if di.idle.longest %}<ul class="unit-list">{% for s in di.idle.longest %}
+      <li>{{ s.hours|number(1) }} h <span class="subtle">{{ s.location or '—' }} · unit {{ s.unit_number }}</span><span>{{ s.started_at|stamp }}{% if not s.ended_at %} <span class="badge warn">idling now</span>{% endif %}</span></li>
+    {% endfor %}</ul>{% endif %}
+    <p class="subtle pad">Counted since {{ di.idle.since|day }}.</p>
+    {% else %}<p class="empty">Counting starts with the next sync.</p>{% endif %}
+  </section>
+  <section class="panel">
     <div class="panel-head"><h2>Trucks driven</h2></div>
     {% if di.trucks %}
     <ul class="unit-list">{% for t in di.trucks %}

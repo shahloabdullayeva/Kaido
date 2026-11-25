@@ -1,6 +1,8 @@
 from datetime import date, datetime, timedelta, timezone
 
 from . import documents, work_orders
+from .config import config
+from .reminders import zone_for
 from .db import one, rows
 
 MOVING_MPH = 5
@@ -160,6 +162,7 @@ def driver_section(company_id, driver):
             (driver_id,),
         ),
         "telegram": driver.get("telegram_username") or driver.get("telegram_user_id"),
+        "idle": idle_section(company_id, driver_id, one("select timezone from companies where id = %s", (company_id,))["timezone"]),
     }
 
 
@@ -169,3 +172,47 @@ def last_truck(driver_id):
            where a.driver_id = %s order by coalesce(a.ended_at, now()) desc limit 1""",
         (driver_id,),
     )
+
+
+def fleet_price(company_id):
+    row = one(
+        """select sum(total) / nullif(sum(gallons), 0) as price from fuel_transactions
+           where company_id = %s and fuel_type = 'diesel' and purchased_at > now() - interval '90 days'""",
+        (company_id,),
+    )
+    return float(row["price"]) if row and row["price"] else config.DIESEL_PRICE
+
+
+def idle_hours(driver_id, start, end=None):
+    row = one(
+        """select coalesce(sum(extract(epoch from least(coalesce(ended_at, now()), coalesce(%s, now()))
+                                       - greatest(started_at, %s))), 0) / 3600.0 as hours
+           from engine_sessions
+           where driver_id = %s and state = 'Idle' and started_at < coalesce(%s, now())
+             and coalesce(ended_at, now()) > %s""",
+        (end, start, driver_id, end, start),
+    )
+    return max(0.0, float(row["hours"]))
+
+
+def idle_section(company_id, driver_id, tz_name):
+    zone = zone_for(tz_name)
+    now = datetime.now(zone)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    periods = [("Today", today), ("This week", today - timedelta(days=today.weekday())), ("This month", today.replace(day=1))]
+    price = fleet_price(company_id)
+    totals = []
+    for label, start in periods:
+        hours = idle_hours(driver_id, start)
+        gallons = hours * config.IDLE_GALLONS_PER_HOUR
+        totals.append({"label": label, "hours": hours, "gallons": gallons, "dollars": gallons * price})
+    longest = rows(
+        """select s.*, t.unit_number, extract(epoch from coalesce(s.ended_at, now()) - s.started_at) / 3600.0 as hours
+           from engine_sessions s join trucks t on t.id = s.truck_id
+           where s.driver_id = %s and s.state = 'Idle' and s.started_at > now() - interval '31 days'
+           order by coalesce(s.ended_at, now()) - s.started_at desc limit 5""",
+        (driver_id,),
+    )
+    since = one("select min(started_at) as at from engine_sessions where company_id = %s", (company_id,))
+    return {"totals": totals, "longest": longest, "price": price, "gph": config.IDLE_GALLONS_PER_HOUR,
+            "since": since["at"] if since else None}

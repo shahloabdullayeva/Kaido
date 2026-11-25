@@ -61,6 +61,7 @@ class Config:
     SHOP_RADIUS_MILES = _int("SHOP_RADIUS_MILES", 50)
     DIESEL_PRICE = float(os.environ.get("DIESEL_PRICE", "3.85"))
     TRUCK_MPG = float(os.environ.get("TRUCK_MPG", "6.5"))
+    IDLE_GALLONS_PER_HOUR = float(os.environ.get("IDLE_GALLONS_PER_HOUR", "0.8"))
     ROAD_SPEED_MPH = float(os.environ.get("ROAD_SPEED_MPH", "50"))
     GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY", "")
     GOOGLE_MAPS_BROWSER_KEY = os.environ.get("GOOGLE_MAPS_BROWSER_KEY", "") or GOOGLE_MAPS_API_KEY

@@ -1531,3 +1531,27 @@ alter table health_alerts add column if not exists driver_id int references driv
 create index if not exists health_alerts_driver_idx on health_alerts (driver_id, opened_at desc);
 update health_alerts a set driver_id = t.driver_id from trucks t
  where a.truck_id = t.id and a.driver_id is null and a.kind like 'hos%' and t.driver_id is not null;
+
+create table if not exists engine_sessions (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  driver_id int references drivers(id) on delete set null,
+  state text not null,
+  started_at timestamptz not null,
+  ended_at timestamptz,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  location text
+);
+create index if not exists engine_sessions_truck_idx on engine_sessions (truck_id, started_at desc);
+create index if not exists engine_sessions_driver_idx on engine_sessions (driver_id, state, started_at desc);
+create unique index if not exists engine_sessions_open_idx on engine_sessions (truck_id) where ended_at is null;
+alter table engine_sessions enable row level security;
+alter table engine_sessions force row level security;
+drop policy if exists company_lock on engine_sessions;
+create policy company_lock on engine_sessions
+  using (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = ''
+    or company_id = nullif(current_setting('kaido.company_id', true), '')::int);

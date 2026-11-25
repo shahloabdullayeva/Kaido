@@ -42,7 +42,7 @@
   {% if drivers %}
   <div class="table-wrap"><table>
     <thead><tr><th>Driver</th><th class="right">Fills</th><th class="right">Gallons</th><th class="right">$/gal</th>
-      <th class="right">Discount</th><th class="right">Missed</th><th class="right">No discount</th><th class="right">Suggestions taken</th></tr></thead>
+      <th class="right">Discount</th><th class="right">Missed</th><th class="right">No discount</th><th class="right">Suggestions taken</th><th class="right">Idle hours</th></tr></thead>
     <tbody>
       {% for row in drivers %}
       <tr>
@@ -54,6 +54,7 @@
         <td class="right {{ 'fuel-miss' if row.missed > 0 else 'subtle' }}">{{ row.missed|money }}</td>
         <td class="right">{{ row.no_discount or '—' }}</td>
         <td class="right">{% if row.offered %}{{ row.taken }} / {{ row.offered }}{% else %}—{% endif %}</td>
+        <td class="right">{% if row.idle_hours is not none %}{{ row.idle_hours|number(1) }}{% else %}—{% endif %}</td>
       </tr>
       {% endfor %}
     </tbody>

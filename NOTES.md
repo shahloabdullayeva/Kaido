@@ -287,3 +287,4 @@ rather than an empty map.
 - Stage 1: Cases merged into work orders (README → Work orders). Cases tab removed from the menu. The old tables stay as an archive.
 - Stage 2: short new-work-order form, trucks or trailers (dropped trailers with a location), cancelled status, delete with confirmation, comments thread with photos and automatic status lines, costs folded away (README → Work orders).
 - Stages 3 and 9: one page for unit and driver, trailer pages, See-all links filtered to the unit or driver, unit numbers and driver names linked on the dashboard, lists, trips, board and alerts (README → Unit and driver page).
+- Stage 10: idle time on the unit/driver page and in Fuel insights, from the engine state the sync already gets. No new Samsara endpoint, so counting starts 25 Nov 2026 (README → Unit and driver page).

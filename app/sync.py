@@ -314,6 +314,25 @@ def record_fuel(truck, block):
 def record_health(truck, stat):
     health = {key: stat[key] for key in HEALTH_KEYS if isinstance(stat.get(key), dict)}
     execute("update trucks set health = %s, health_at = now() where id = %s", (json.dumps(health), truck["id"]))
+    record_engine(truck["id"], health.get("engineState"))
+
+
+def record_engine(truck_id, block):
+    if not isinstance(block, dict) or not block.get("value") or not block.get("time"):
+        return
+    state, at = block["value"], block["time"]
+    current = one("select * from engine_sessions where truck_id = %s and ended_at is null", (truck_id,))
+    if current and current["state"] == state:
+        return
+    if current:
+        execute("update engine_sessions set ended_at = greatest(started_at, %s::timestamptz) where id = %s", (at, current["id"]))
+        if one("select 1 from engine_sessions where truck_id = %s and started_at >= %s::timestamptz", (truck_id, at)):
+            at = one("select ended_at from engine_sessions where id = %s", (current["id"],))["ended_at"]
+    execute(
+        """insert into engine_sessions (company_id, truck_id, driver_id, state, started_at, latitude, longitude, location)
+           select company_id, id, driver_id, %s, %s, latitude, longitude, location from trucks where id = %s""",
+        (state, at, truck_id),
+    )
 
 
 def record_track(company_id, truck_id):

@@ -756,6 +756,13 @@ order that recorded one.
 - `driver_assignments` keeps who drove which truck and when. A trigger on `trucks.driver_id` opens and closes the rows,
   so history stays right when drivers switch trucks. The past was filled in from safety events, fuel purchases and
   PTIs. Hours alerts now carry `driver_id`; the 143 older ones got the truck's current driver.
+- Idle time (driver section): hours idling today, this week and this month, gallons and dollars burned, and the 5
+  longest idle sessions in 31 days with where they happened. Built from the engine state (`On`/`Off`/`Idle` with the
+  time it changed) that the existing Samsara stats sync already reads every 15 minutes; each change becomes a row in
+  `engine_sessions` tagged with the truck's driver at that moment, so idle time follows the driver. No new Samsara
+  endpoint is used, so there is no history before 25 Nov 2026, and a state that starts and ends between two syncs is
+  missed. Gallons use `IDLE_GALLONS_PER_HOUR` (0.8, a typical heavy-truck idle burn) and dollars use the company's
+  average diesel price over 90 days. Fuel → Insights has an Idle hours column per driver.
 
 ## Service schedule
 
