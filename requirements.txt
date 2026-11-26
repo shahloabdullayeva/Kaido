@@ -10,3 +10,4 @@ fpdf2==2.8.4
 openpyxl==3.1.5
 segno==1.6.6
 xlrd==2.0.2
+pypdf==5.1.0

@@ -133,6 +133,15 @@ def order_pdf(order_id):
                                              (cell(order["next_due_odometer"], "int") + " mi") if order["next_due_odometer"] else ""] if p)),
         ("Opened by", order["author"]),
     ]
+    times = work_orders.shop_times(one(f"select m.status, {work_orders.SHOP_TIMES_COLS} from maintenance_orders m where m.id = %s",
+                                       (order_id,)))
+    if times:
+        from ..filters import span
+        fields[fields.index(("Invoice", order["invoice_no"])):0] = [
+            ("At shop", span(times["total"]) + (" so far" if times["running"] else "")),
+            ("Waiting", span(times["waiting"]) if times["waiting"] is not None else ""),
+            ("Repair", span(times["repair"]) if times["repair"] is not None else ""),
+        ]
     parts = [(part["name"], part["part_number"], f"{float(part['quantity']):g}", cell(part["unit_price"], "money"),
               cell(float(part["quantity"]) * float(part["unit_price"]), "money") if part["unit_price"] is not None else "")
              for part in work_orders.parts_of(order_id)]
@@ -141,6 +150,7 @@ def order_pdf(order_id):
                                ("Comments", "\n".join(f"{c['created_at']:%d %b %Y %H:%M} · {c['author'] or 'Kaido'}: {c['body'] or c['file_name'] or ''}"
                                                        for c in work_orders.comments_of(order_id)))],
                               tables=[("Parts", (70, 40, 20, 30, 30), ("Part", "Part number", "Qty", "Unit price", "Amount"), parts)])
+    body = work_orders.invoices_first(order_id, body)
     audit("report.downloaded", "maintenance_order", order_id, {"format": "pdf"})
     return Response(body, mimetype="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="work-order-{order_id}.pdf"'})

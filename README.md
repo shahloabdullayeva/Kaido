@@ -781,6 +781,16 @@ with the other logs (`deploy/kaido.logrotate`, installed at `/etc/logrotate.d/ka
 
 ## Work orders
 
+**Time at shop** replaces downtime on work orders. It starts when the status becomes *in shop*
+(or *in progress* if *in shop* was skipped). Waiting time runs from *in shop* to *in progress*;
+repair time from *in progress* to *done*. The list's At shop column shows the total and the
+wait (amber while still waiting); the work order shows total, waiting and repair; the PDF lists
+all three. Times come from the status changes in the activity thread, so orders moved straight
+to done have none. Truck-level downtime (dashboard, unit page) is unchanged.
+
+**PDF** puts the attached invoice files first (PDF pages, and photos as pages, in upload
+order), then the work order. A file that cannot be read is skipped and logged.
+
 Each row on the Maintenance list has an **×** that deletes the work order (asks first, admins
 only) and returns to the same filtered list.
 

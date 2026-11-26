@@ -27,7 +27,7 @@
   {% if order.asset_type == 'trailer' %}<div><dt>{{ 'With truck' if order.truck_unit else 'Dropped at' }}</dt><dd>{% if order.truck_unit %}<a href="/trucks/{{ order.truck_id }}">{{ order.truck_unit }}</a>{% else %}{{ order.location or 'Not recorded' }}{% endif %}</dd></div>{% endif %}
   <div><dt>Shop</dt><dd>{{ order.vendor or 'Not chosen' }}<small>{{ order.shop_phone or '' }}</small></dd></div>
   <div><dt>Reported</dt><dd>{{ order.reported_at|day }}{% if order.scheduled_for %}<small>scheduled {{ order.scheduled_for|day }}</small>{% endif %}</dd></div>
-  {% if down_days is not none %}<div class="{{ 'warn' if not order.down_ended_at else '' }}"><dt>Downtime</dt><dd>{{ down_days|number(1) }} d<small>{% if order.down_ended_at %}ended {{ 'when it moved' if order.down_end_reason == 'moving' else order.down_end_reason }} {{ order.down_ended_at|day }}{% else %}still down{% endif %}</small></dd></div>{% endif %}
+  {% if times %}<div class="{{ 'warn' if times.stage == 'waiting' else '' }}"><dt>At shop</dt><dd>{{ times.total|span }}<small>{% if times.waiting is not none %}waiting {{ times.waiting|span }}{% if times.stage == 'waiting' %} so far{% endif %}{% endif %}{% if times.repair is not none %}{{ ' · ' if times.waiting is not none }}repair {{ times.repair|span }}{% if times.stage == 'repair' %} so far{% endif %}{% endif %}</small></dd></div>{% endif %}
   {% if order.cost is not none %}<div><dt>Total</dt><dd>{{ order.cost|money }}</dd></div>{% endif %}
   {% if order.status == 'done' %}<div class="{{ '' if files else 'warn' }}"><dt>Invoice</dt><dd>{{ files|length }} {{ 'file' if files|length == 1 else 'files' }}</dd></div>{% endif %}
 </dl>

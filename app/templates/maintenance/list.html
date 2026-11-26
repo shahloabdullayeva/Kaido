@@ -52,7 +52,7 @@
   </div>
   {% if orders %}
   <div class="table-wrap"><table>
-    <thead><tr><th>#</th><th>Unit</th><th>Work</th><th>Priority</th><th>Status</th><th>Shop</th><th>Date</th><th class="right">Down</th><th class="right">Comments</th><th class="right">Total</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>Unit</th><th>Work</th><th>Priority</th><th>Status</th><th>Shop</th><th>Date</th><th class="right">At shop</th><th class="right">Comments</th><th class="right">Total</th><th></th></tr></thead>
     <tbody>
       {% for order in orders %}
       <tr class="clickrow" data-href="/maintenance/{{ order.id }}" title="Open work order #{{ order.id }}">
@@ -65,7 +65,7 @@
         <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
         <td>{{ order.vendor or '' }}</td>
         <td>{{ (order.performed_on or order.scheduled_for or order.reported_at)|day }}</td>
-        <td class="right">{% if order.down_days is not none %}{{ order.down_days|number(1) }} d{% endif %}</td>
+        <td class="right">{% if order.times %}{{ order.times.total|span }}{% if order.times.waiting is not none %}<div class="subtle{{ ' wo-waiting' if order.times.stage == 'waiting' }}">waited {{ order.times.waiting|span }}</div>{% endif %}{% endif %}</td>
         <td class="right">{% if order.comments %}{{ order.comments }}{% endif %}</td>
         <td class="right">{% if order.cost is not none %}{{ order.cost|money }}{% endif %}</td>
         <td class="wo-row-actions">{% if at_least(role, 'admin') %}

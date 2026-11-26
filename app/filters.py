@@ -121,6 +121,18 @@ def source(value):
     return SOURCES.get(value or "", "Entered by hand" if value is None else str(value))
 
 
+def span(seconds):
+    if seconds is None:
+        return "—"
+    minutes = seconds / 60
+    if minutes < 60:
+        return f"{max(1, round(minutes))} min"
+    hours = minutes / 60
+    if hours < 48:
+        return f"{hours:.1f} h"
+    return f"{hours / 24:.1f} d"
+
+
 def register(app):
     app.jinja_env.filters.update({
         "source": source,
@@ -139,4 +151,5 @@ def register(app):
         "shop_pins": shop_pins,
         "json_attr": json_attr,
         "osm_hours": osm_hours,
+        "span": span,
     })

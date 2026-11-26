@@ -1,8 +1,12 @@
+import io
 import uuid
 
 from . import forms
 from .config import ROOT
 from .db import execute, insert, one, rows
+from .logs import get
+
+log = get("work-orders")
 
 FILE_DIR = ROOT / "uploads" / "maintenance"
 MAX_FILE_BYTES = 25 * 1024 * 1024
@@ -246,3 +250,72 @@ def delete_file(item):
     if path:
         path.unlink(missing_ok=True)
     execute("delete from maintenance_files where id = %s", (item["id"],))
+
+
+SHOP_TIMES_COLS = """(select min(c.created_at) from work_order_comments c where c.order_id = m.id and c.kind = 'status'
+                        and c.body ~ 'to in shop$') as shop_at,
+                     (select min(c.created_at) from work_order_comments c where c.order_id = m.id and c.kind = 'status'
+                        and c.body ~ 'to in progress$') as work_at,
+                     (select max(c.created_at) from work_order_comments c where c.order_id = m.id and c.kind = 'status'
+                        and c.body ~ 'to done$') as done_at"""
+
+
+def shop_times(order):
+    from datetime import datetime, timezone
+    arrived, started = order.get("shop_at"), order.get("work_at")
+    finished = order.get("done_at") if order.get("status") == "done" else None
+    if started and arrived and started < arrived:
+        started = None
+    arrived = arrived or started
+    if not arrived or order.get("status") == "cancelled":
+        return None
+    now = datetime.now(timezone.utc)
+    seconds = lambda a, b: max(0.0, (b - a).total_seconds()) if a and b else None
+    return {
+        "arrived": arrived, "started": started, "finished": finished,
+        "waiting": seconds(order.get("shop_at"), started or (None if finished else now)) if order.get("shop_at") else None,
+        "repair": seconds(started, finished or now) if started else None,
+        "total": seconds(arrived, finished or now),
+        "running": not finished,
+        "stage": "done" if finished else ("repair" if started else "waiting"),
+    }
+
+
+def image_pdf(path):
+    from PIL import Image, ImageOps
+    with Image.open(path) as image:
+        image = ImageOps.exif_transpose(image).convert("RGB")
+        image.thumbnail((2000, 2000))
+        out = io.BytesIO()
+        image.save(out, "PDF", resolution=150)
+        return out.getvalue()
+
+
+def invoices_first(order_id, record_pdf):
+    from pypdf import PdfReader, PdfWriter
+    writer = PdfWriter()
+    for item in files_of(order_id):
+        path = file_path(item)
+        if not path:
+            continue
+        try:
+            if item["content_type"] == "application/pdf":
+                reader = PdfReader(str(path))
+                if reader.is_encrypted:
+                    reader.decrypt("")
+                pages = reader.pages
+            elif (item["content_type"] or "").startswith("image/"):
+                pages = PdfReader(io.BytesIO(image_pdf(path))).pages
+            else:
+                continue
+            for page in pages:
+                writer.add_page(page)
+        except Exception as err:
+            log.warning("could not add %s to work order %s PDF: %s", item["name"], order_id, err)
+    if not len(writer.pages):
+        return record_pdf
+    for page in PdfReader(io.BytesIO(record_pdf)).pages:
+        writer.add_page(page)
+    out = io.BytesIO()
+    writer.write(out)
+    return out.getvalue()

@@ -194,7 +194,7 @@ def index():
                    (select count(*) from maintenance_files f where f.order_id = m.id) as files,
                    (select count(*) from work_order_comments c where c.order_id = m.id and c.kind = 'comment') as comments,
                    (select count(*) from maintenance_comebacks c where c.order_id = m.id and c.dismissed_at is null) as comeback,
-                   extract(epoch from coalesce(m.down_ended_at, now()) - m.down_started_at) / 86400.0 as down_days
+                   {work_orders.SHOP_TIMES_COLS}
             from maintenance_orders m {work_orders.UNIT_JOIN}
             left join drivers d on d.id = m.driver_id
             where m.company_id = %s{clause}
@@ -202,6 +202,8 @@ def index():
                      m.id desc limit 300""",
         tuple(params),
     )
+    for order in orders:
+        order["times"] = work_orders.shop_times(order)
     spend = one(
         """select coalesce(sum(cost), 0) as month_cost, count(*) as month_orders
            from maintenance_orders where company_id = %s and status = 'done'
@@ -579,6 +581,11 @@ def oil(truck_id):
                            ai_on=advisor.available(), ai_paused=advisor.over_budget())
 
 
+def order_times(order):
+    found = one(f"select m.status, {work_orders.SHOP_TIMES_COLS} from maintenance_orders m where m.id = %s", (order["id"],))
+    return work_orders.shop_times(found) if found else None
+
+
 def saved_shop_for(order):
     if not order["vendor"]:
         return None
@@ -639,7 +646,7 @@ def detail(order_id):
     downtime.refresh(g.company["id"])
     order = load_order(order_id)
     return render_template("maintenance/form.html", saved_shop=saved_shop_for(order), title=" + ".join(x for x in [order["truck_unit"], f"Trailer {order['trailer_unit']}" if order["trailer_unit"] else None] if x) or str(order["unit_number"]), active="/maintenance",
-                           comeback_flags=comebacks.flags_for(order_id), down_days=downtime.days(order),
+                           comeback_flags=comebacks.flags_for(order_id), times=order_times(order),
                            groups=pm_list.groups(g.company["id"], order["kind"]), statuses=work_orders.STATUSES,
                            order=order, truck_id=order["truck_id"], parts=parts, files=files,
                            comments=work_orders.comments_of(order_id), costs_open=costs_open, **form_choices())
