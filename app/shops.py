@@ -127,6 +127,30 @@ def by_drive(found, drive):
     return found
 
 
+SORTS = {"near": "Closest", "open": "Open now", "cheap": "Cheapest we paid", "rated": "Best rated", "used": "Used before"}
+TOW_FIRST = {"tow": 0, "road": 1, "light": 2, "shop": 3}
+
+
+def sort_shops(found, sort, tow_first=False):
+    def key(shop):
+        history = shop.get("history") or {}
+        miles = shop.get("miles") or 0
+        if sort == "open":
+            rest = (shop.get("open_state") != "open", shop.get("open_state") == "closed", miles)
+        elif sort == "cheap":
+            average = history.get("average")
+            rest = (average is None, float(average or 0), miles)
+        elif sort == "rated":
+            own, google = history.get("rating"), shop.get("rating")
+            rest = (own is None and not google, -float(own or 0), -float(google or 0), miles)
+        elif sort == "used":
+            rest = (-(history.get("visits") or 0), not shop.get("saved"), miles)
+        else:
+            rest = (miles,)
+        return ((TOW_FIRST.get(shop.get("service"), 3),) if tow_first else ()) + (shop.get("truck_fit") != "yes",) + rest
+    return sorted(found, key=key)
+
+
 TRUCK_BRANDS = ("ta truck", "ta travel", "petro", "love", "pilot", "flying j",
                 "speedco", "tires? plus truck", "boss shop", "sapp bros",
                 "roady", "travelcenters", "freightliner", "kenworth", "peterbilt",

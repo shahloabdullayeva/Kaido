@@ -361,6 +361,12 @@ a new note is added to them. Rows without coordinates are looked up by address, 
 city. Sheets named Towing, Mobile service and Tire shops set the shop's `service`, which
 the finder reads with the name and note to sort towing, road service and tires.
 
+**Sort** on the shop list: Closest (default), Open now, Cheapest we paid (average of this
+company's work orders at that shop), Best rated (own work-order ratings, then Google's), Used
+before (visits, then saved shops). In every sort, shops confirmed to take semis come before
+unconfirmed ones, and when the truck cannot drive, towing and road service come first. Saved
+shops within 100 mi are mixed in by the same sort instead of always leading the list.
+
 A finished work order with a shop name shows **Save shop** with a comment box (prefilled
 with the work order's shop comment). It uses the work order's map spot, or looks up the shop
 address; once saved, the work order shows it as a saved shop.

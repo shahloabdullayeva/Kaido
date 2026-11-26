@@ -450,6 +450,14 @@ const wireSearch = () => {
       load(trucks.value, params);
     });
   }
+  const sorter = body.querySelector('[data-shop-sort]');
+  if (sorter) {
+    sorter.addEventListener('change', () => {
+      const params = { ...(lastParams || {}) };
+      if (sorter.value === 'near') delete params.sort; else params.sort = sorter.value;
+      load(trucks.value, params);
+    });
+  }
   const retry = body.querySelector('[data-shop-retry]');
   if (retry) retry.addEventListener('click', () => load(trucks.value, lastParams));
   const ask = body.querySelector('[data-shop-ai]');

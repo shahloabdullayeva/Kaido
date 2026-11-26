@@ -814,3 +814,5 @@ form.inline { display: inline; }
 .wo-save-shop { margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--line, var(--face-dark)); border-radius: 6px; }
 .wo-save-shop form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
 .wo-save-shop .field { flex: 1; min-width: 240px; margin: 0; }
+.shop-sort { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
+.shop-sort select { width: auto; }

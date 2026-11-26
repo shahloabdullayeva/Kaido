@@ -478,7 +478,10 @@ def find_shops(truck):
         shop["maps"] = shop.get("maps") or shop_search.maps_link(shop)
         address = shop.get("address") or ""
         shop["address_complete"] = shop.get("source") == "google" or bool(address[:1].isdigit() and "," in address)
-    found = shop_search.by_drive(found, forms.pick(request.args.get("drive"), ["yes", "no"], None))
+    drive = forms.pick(request.args.get("drive"), ["yes", "no"], None)
+    found = shop_search.by_drive(found, drive)
+    found = shop_search.sort_shops(found, forms.pick(request.args.get("sort"), list(shop_search.SORTS), "near"),
+                                   tow_first=drive == "no")
     return origin, found, meta, problem
 
 
@@ -508,7 +511,8 @@ def shops(truck_id):
                            ai_paused=advisor.over_budget(), problem=problem,
                            drive=forms.pick(request.args.get("drive"), ["yes", "no"], None),
                            services=shop_search.SERVICES, light_note=shop_search.LIGHT_NOTE,
-                           needs=shop_search.NEEDS, need=forms.pick(request.args.get("need"), list(shop_search.NEEDS), "repair"))
+                           needs=shop_search.NEEDS, need=forms.pick(request.args.get("need"), list(shop_search.NEEDS), "repair"),
+                           sorts=shop_search.SORTS, sort=forms.pick(request.args.get("sort"), list(shop_search.SORTS), "near"))
 
 
 @bp.get("/maintenance/shops/<int:truck_id>/advice")

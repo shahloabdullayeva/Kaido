@@ -6,7 +6,8 @@
 </div>
 {% if drive %}<p class="shop-drive">{% if drive == 'no' %}<strong>Truck cannot drive</strong>{% else %}<strong>Truck can drive</strong>{% endif %}
   <button type="button" class="btn ghost small" data-shop-drive="{{ 'yes' if drive == 'no' else 'no' }}">{{ 'It can drive after all' if drive == 'no' else 'It cannot drive — show towing' }}</button></p>{% endif %}
-<div class="shop-needs">{% for key, text in needs.items() %}<button type="button" class="btn {{ '' if need == key else 'ghost' }} small" data-shop-need="{{ key }}">{{ text }}</button>{% endfor %}</div>
+<div class="shop-needs">{% for key, text in needs.items() %}<button type="button" class="btn {{ '' if need == key else 'ghost' }} small" data-shop-need="{{ key }}">{{ text }}</button>{% endfor %}
+  <label class="shop-sort">Sort <select data-shop-sort>{% for key, text in sorts.items() %}<option value="{{ key }}" {% if sort == key %}selected{% endif %}>{{ text }}</option>{% endfor %}</select></label></div>
 <p class="subtle shop-origin">
   {%- if origin and origin.source == 'samsara' %}
   <strong>{{ truck.unit_number }}</strong> is at {{ origin.label }}{% if origin.at %}, reported {{ origin.at|ago }}{% endif %}.
@@ -73,7 +74,7 @@
   {% endfor %}
 </ol>
 <p class="subtle" id="shop-foot" data-ai="{{ 'paused' if ai_paused else ('on' if ai_on else 'off') }}">Shops from {{ 'Google Maps' if meta and meta.source == 'google' else 'OpenStreetMap' }}{% if meta and meta.cached %}, cached{% endif %}.
-  {% if saved_count %}<a href="/maintenance/saved-shops">{{ saved_count }} saved shop{{ 's' if saved_count != 1 }}</a> come first when nearby.{% endif %}
+  {% if saved_count %}<a href="/maintenance/saved-shops">{{ saved_count }} saved shop{{ 's' if saved_count != 1 }}</a> within 100 mi are included.{% endif %}
   {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
   {% if ai_on and not ai_paused and found %}<button type="button" class="btn small" data-shop-ai>Ask Claude which shop</button>{% endif %}
   <span id="shop-ai-state">{% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.{% elif ai_paused %}AI notes are paused — today's budget is spent. They come back tomorrow.{% endif %}</span></p>
