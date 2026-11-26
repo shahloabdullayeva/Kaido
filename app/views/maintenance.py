@@ -575,6 +575,51 @@ def oil(truck_id):
                            ai_on=advisor.available(), ai_paused=advisor.over_budget())
 
 
+def saved_shop_for(order):
+    if not order["vendor"]:
+        return None
+    found = rows("select * from saved_shops where company_id = %s and lower(name) = lower(%s)",
+                 (g.company["id"], order["vendor"].strip()))
+    if order["shop_lat"] is not None:
+        found = [row for row in found if shop_search.haversine(float(order["shop_lat"]), float(order["shop_lon"]),
+                                                                float(row["latitude"]), float(row["longitude"])) < 1]
+    return found[0] if found else None
+
+
+@bp.post("/maintenance/<int:order_id>/save-shop")
+@login_required
+@role_required("admin")
+def save_order_shop(order_id):
+    order = load_order(order_id)
+    if not order:
+        return render_template("errors/404.html"), 404
+    back = f"/maintenance/{order_id}"
+    if not order["vendor"]:
+        flash("Add the shop's name first.", "bad")
+        return redirect(back)
+    if saved_shop_for(order):
+        flash(f"{order['vendor']} is already in saved shops.", "info")
+        return redirect(back)
+    note = forms.text(request.form.get("note"), 600)
+    if order["shop_lat"] is not None:
+        row = insert(
+            """insert into saved_shops (company_id, name, address, latitude, longitude, phone, note, added_by)
+               values (%s, %s, %s, %s, %s, %s, %s, %s) returning *""",
+            (g.company["id"], forms.text(order["vendor"], 160), forms.text(order["shop_address"] or order["shop_where"], 300),
+             order["shop_lat"], order["shop_lon"], forms.text(order["shop_phone"], 40), note, g.session["user_id"]),
+        )
+        audit("saved_shop.added", "saved_shop", row["id"], {"name": row["name"], "work_order": order_id})
+        problem = None
+    else:
+        row, problem = save_shop(name=order["vendor"], address=order["shop_address"] or order["shop_where"],
+                                 phone=order["shop_phone"], note=note)
+    if problem:
+        flash(problem + " Add the shop address to the work order and try again.", "bad")
+    else:
+        flash(f"{row['name']} saved to saved shops.", "ok")
+    return redirect(back)
+
+
 @bp.get("/maintenance/<int:order_id>")
 @login_required
 @company_required
@@ -589,7 +634,7 @@ def detail(order_id):
                                                    or order["invoice_no"] or order["paid_with"] or order["shop_rating"])
     downtime.refresh(g.company["id"])
     order = load_order(order_id)
-    return render_template("maintenance/form.html", title=" + ".join(x for x in [order["truck_unit"], f"Trailer {order['trailer_unit']}" if order["trailer_unit"] else None] if x) or str(order["unit_number"]), active="/maintenance",
+    return render_template("maintenance/form.html", saved_shop=saved_shop_for(order), title=" + ".join(x for x in [order["truck_unit"], f"Trailer {order['trailer_unit']}" if order["trailer_unit"] else None] if x) or str(order["unit_number"]), active="/maintenance",
                            comeback_flags=comebacks.flags_for(order_id), down_days=downtime.days(order),
                            groups=pm_list.groups(g.company["id"], order["kind"]), statuses=work_orders.STATUSES,
                            order=order, truck_id=order["truck_id"], parts=parts, files=files,

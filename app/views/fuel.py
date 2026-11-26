@@ -3,10 +3,13 @@ from datetime import datetime, timedelta, timezone
 
 import csv
 import io
+import subprocess
+import sys
 
 from flask import Blueprint, Response, flash, g, redirect, render_template, request
 
-from .. import brand_prices, forms, fuel, fuel_guard, fuel_import, eia
+from .. import brand_prices, efs_network, forms, fuel, fuel_bot, fuel_guard, fuel_import, eia
+from ..config import ROOT
 from ..audit import audit
 from ..auth import login_required
 from ..db import execute, insert, one, rows
@@ -281,7 +284,7 @@ def insights():
         (company_id,),
     )
     offers = one(
-        f"""select count(*) filter (where status <> 'failed') as sent, count(*) filter (where chosen_station_id is not null) as taken,
+        f"""select count(*) filter (where chat_id is not null and status <> 'failed') as sent, count(*) filter (where chosen_station_id is not null) as taken,
                    count(*) filter (where followed) as followed, coalesce(sum(saved_usd) filter (where saved_usd > 0), 0) as saved
             from fuel_offers where company_id = %s and created_at >= {since}""",
         (company_id,),
@@ -331,7 +334,7 @@ def insights():
                    coalesce(sum(f.discount_ppu * f.gallons), 0) as discount, coalesce(sum(f.missed_usd), 0) as missed,
                    count(*) filter (where f.net_ppu is not null and coalesce(f.discount_ppu, 0) < 0.01) as no_discount,
                    (select count(*) from fuel_offers o where o.company_id = f.company_id and o.driver_id = max(f.driver_id)
-                      and o.created_at >= {since} and o.status <> 'failed') as offered,
+                      and o.created_at >= {since} and o.chat_id is not null and o.status <> 'failed') as offered,
                    (select count(*) from fuel_offers o where o.company_id = f.company_id and o.driver_id = max(f.driver_id)
                       and o.created_at >= {since} and o.chosen_station_id is not null) as taken,
                    (select sum(extract(epoch from coalesce(e.ended_at, now()) - greatest(e.started_at, {since}))) / 3600.0
@@ -391,6 +394,37 @@ def insights():
                            stations=stations[:12], pins=pins)
 
 
+ROUTE_POINTS = 600
+
+
+def truck_for_offer(truck_id):
+    return one(fuel_bot.TRUCK_SQL + " where t.id = %s and t.company_id = %s", (truck_id, g.company["id"]))
+
+
+def live_route(truck_id):
+    trip = one(
+        """select route from trips where truck_id = %s and route is not null and status in ('draft', 'sent', 'accepted')
+             and created_at > now() - interval '8 days' order by id desc limit 1""",
+        (truck_id,),
+    )
+    points = ((trip or {}).get("route") or {}).get("points") or []
+    step = max(1, len(points) // ROUTE_POINTS)
+    return [[round(float(p[0]), 5), round(float(p[1]), 5)] for p in points[::step]]
+
+
+def suggestion_map(truck, options):
+    return {
+        "truck": {"lat": float(truck["latitude"]), "lon": float(truck["longitude"]), "unit": fuel.unit_label(truck["unit_number"]),
+                  "heading": float(truck["heading"]) if truck.get("heading") is not None else None},
+        "route": live_route(truck["id"]),
+        "stations": [{"rank": index + 1, "best": index == 0, "name": option["name"], "lat": option["latitude"],
+                      "lon": option["longitude"], "miles": option["miles"], "net": option["net"],
+                      "where": ", ".join(p for p in [option.get("city"), option.get("state")] if p),
+                      "url": fuel.maps_link(option)}
+                     for index, option in enumerate(options)],
+    }
+
+
 @bp.get("/fuel/offers")
 @login_required
 @company_required
@@ -402,7 +436,7 @@ def offers_log():
         clause = " and o.truck_id = %s"
         params.append(truck_id)
     entries = rows(
-        f"""select o.*, t.unit_number, d.name as driver_name, s.name as chosen_name, s.city as chosen_city,
+        f"""select o.*, t.unit_number, t.telegram_chat_id, d.name as driver_name, s.name as chosen_name, s.city as chosen_city,
                    s.state as chosen_state, f.net_ppu as paid_ppu, f.gallons as paid_gallons, fs.name as paid_station
             from fuel_offers o join trucks t on t.id = o.truck_id left join drivers d on d.id = o.driver_id
             left join fuel_stations s on s.id = o.chosen_station_id
@@ -411,8 +445,91 @@ def offers_log():
             where o.company_id = %s{clause} order by o.created_at desc limit 200""",
         tuple(params),
     )
+    live = live_map = truck = None
+    fleet = []
+    if truck_id:
+        truck = truck_for_offer(truck_id)
+        if truck and truck["latitude"] is not None:
+            live = fuel_bot.suggestions(truck)
+            for option in live["options"]:
+                option["price_seen"] = datetime.fromisoformat(option["price_at"]) if option.get("price_at") else None
+            live_map = suggestion_map(truck, live["options"])
+    else:
+        fleet = rows(
+            """select t.id, t.unit_number, t.fuel_percent, t.fuel_percent_at, t.located_at, t.location, t.latitude,
+                      t.telegram_chat_id, d.name as driver_name
+               from trucks t left join drivers d on d.id = t.driver_id
+               where t.company_id = %s and t.status = 'active'
+               order by t.latitude is null, t.fuel_percent is null, t.fuel_percent, lower(t.unit_number)""",
+            (g.company["id"],),
+        )
     return render_template("fuel/offers.html", title="Fuel suggestions", active="/fuel", entries=entries,
-                           trucks=active_trucks(), truck_id=truck_id, skip_labels=SKIP_LABELS)
+                           trucks=active_trucks(), truck_id=truck_id, skip_labels=SKIP_LABELS, truck=truck,
+                           live=live, live_map=live_map, fleet=fleet, efs=efs_network.status(g.company["id"]),
+                           unit_label=fuel.unit_label)
+
+
+@bp.post("/fuel/offers/send")
+@login_required
+@company_required
+def send_suggestion():
+    truck = truck_for_offer(forms.integer(request.form.get("truck_id")))
+    if not truck:
+        return render_template("errors/404.html"), 404
+    back = f"/fuel/offers?truck_id={truck['id']}"
+    if not truck["telegram_chat_id"]:
+        flash("This truck's Telegram group is not connected.", "bad")
+        return redirect(back)
+    if truck["latitude"] is None:
+        flash("No location for this truck yet.", "bad")
+        return redirect(back)
+    offer_id, ok = fuel_bot.offer_for(truck, "office")
+    audit("fuel.suggestion_sent", "fuel_offer", offer_id, {"truck": truck["unit_number"], "delivered": ok})
+    flash("Sent to the driver's group." if ok else "Telegram did not take the message. Try again in a minute.", "ok" if ok else "bad")
+    return redirect(back)
+
+
+@bp.post("/fuel/offers/<int:offer_id>/send")
+@login_required
+@company_required
+def send_saved_suggestion(offer_id):
+    offer = one("select * from fuel_offers where id = %s and company_id = %s", (offer_id, g.company["id"]))
+    if not offer:
+        return render_template("errors/404.html"), 404
+    truck = truck_for_offer(offer["truck_id"])
+    back = request.form.get("back") or "/fuel/offers"
+    if not truck or not truck["telegram_chat_id"]:
+        flash("This truck's Telegram group is not connected.", "bad")
+        return redirect(back)
+    if offer["status"] != "ready":
+        flash("That suggestion was already sent or has expired.", "bad")
+        return redirect(back)
+    ok = fuel_bot.deliver_offer(offer, truck)
+    audit("fuel.suggestion_sent", "fuel_offer", offer_id, {"truck": truck["unit_number"], "delivered": ok})
+    flash("Sent to the driver's group." if ok else "Telegram did not take the message. Try again in a minute.", "ok" if ok else "bad")
+    return redirect(back)
+
+
+@bp.post("/fuel/efs-network")
+@login_required
+@role_required("admin")
+def import_efs_network():
+    upload = request.files.get("sheet")
+    if not upload or not upload.filename:
+        flash("Choose the EFS station list file.", "bad")
+        return redirect("/fuel/prices")
+    try:
+        report = efs_network.import_file(g.company["id"], upload.filename, upload.read())
+    except Exception as err:
+        get("fuel").warning("EFS network import of %s failed", upload.filename, exc_info=True)
+        flash(f"Could not import that file. {str(err)[:400]}", "bad")
+        return redirect("/fuel/prices")
+    audit("fuel.efs_network_imported", "efs_network", None, {"file": upload.filename, **report})
+    if report["located"] < report["rows"]:
+        subprocess.Popen([sys.executable, str(ROOT / "manage.py"), "efs-network-match", "--company-id", str(g.company["id"])],
+                         cwd=str(ROOT), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    flash(f"{report['rows']} EFS locations saved, {report['located']} matched to stations so far.", "ok")
+    return redirect("/fuel/prices")
 
 
 @bp.get("/fuel/alerts")
@@ -489,7 +606,8 @@ def prices():
             found.remove(mine)
         found.append(entry)
     found.sort(key=lambda p: (p["stale"], p["net_ppu"], p["name"]))
-    return render_template("fuel/prices.html", title="Fuel prices", active="/fuel", prices=found, report=None)
+    return render_template("fuel/prices.html", title="Fuel prices", active="/fuel", prices=found, report=None,
+                           efs=efs_network.status(g.company["id"]))
 
 
 @bp.get("/fuel/prices/sample.csv")

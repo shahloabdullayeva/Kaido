@@ -73,7 +73,7 @@ def totals(company_id, begin, end, where="true", params=()):
 
 def offers(company_id, begin, end, where="true", params=()):
     return one(
-        f"""select count(*) filter (where o.status <> 'failed') as sent,
+        f"""select count(*) filter (where o.chat_id is not null and o.status <> 'failed') as sent,
                    count(*) filter (where o.chosen_station_id is not null) as accepted,
                    count(*) filter (where o.skip_reason is not null) as skipped,
                    count(*) filter (where o.followed) as followed,

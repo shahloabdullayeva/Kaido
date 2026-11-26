@@ -1,8 +1,9 @@
 import json
+import re
 from datetime import datetime, timedelta, timezone
 from html import escape
 
-from . import brand_prices, fuel
+from . import brand_prices, efs_network, fuel
 from .db import execute, insert, one, rows
 from .logs import get
 from .telegram import answer, call, edit, send
@@ -20,6 +21,7 @@ AGE_PENALTY_PER_DAY = 0.004
 KEPT = 6
 AHEAD_DEGREES = 70
 NEAR_MILES = 12
+MIN_RADIUS = 25
 NUMBERS = ["1.", "2.", "3.", "4.", "5.", "6."]
 SKIP_REASONS = [
     ("busy", "Already fueling"),
@@ -96,10 +98,11 @@ def range_of(truck, mpg):
 
 def suggestions(truck, prefs=None, limit=KEPT):
     prefs = prefs or prefs_for(truck)
+    accepted = efs_network.allowed_ids(truck["company_id"])
     mpg = mpg_of(truck)
     reach = range_of(truck, mpg)
-    radius = min(int(truck["fuel_search_miles"] or 150), reach / fuel.ROAD_FACTOR) if reach else int(truck["fuel_search_miles"] or 150)
-    radius = max(radius, 15)
+    radius = min(int(truck["fuel_search_miles"] or 150), reach / fuel.ROAD_FACTOR) if reach is not None else int(truck["fuel_search_miles"] or 150)
+    radius = max(radius, MIN_RADIUS)
     stations = fuel.nearby_stations(truck["latitude"], truck["longitude"], radius)
     moving = truck.get("heading") is not None and float(truck.get("speed_mph") or 0) >= 10
     avoided_brands = set(prefs["brands_avoided"] or [])
@@ -108,6 +111,8 @@ def suggestions(truck, prefs=None, limit=KEPT):
     needs = set(prefs["needs"] or [])
     picked = []
     for station in stations:
+        if station["id"] not in accepted:
+            continue
         if station["id"] in avoided_stations or (station["brand"] and station["brand"] in avoided_brands):
             continue
         amenities = station["amenities"] or {}
@@ -166,7 +171,7 @@ def suggestions(truck, prefs=None, limit=KEPT):
     unique = []
     for option in options:
         if not any(fuel.haversine(option["latitude"], option["longitude"], kept["latitude"], kept["longitude"]) < SAME_SPOT_MILES
-                   for kept in unique):
+                   or same_store(option, kept) for kept in unique):
             unique.append(option)
     options = unique
     priced = [o for o in options if o["net"] is not None]
@@ -184,6 +189,17 @@ def suggestions(truck, prefs=None, limit=KEPT):
                 option["saves"] = round((reference - option["net"]) * option["fill"], 2)
                 option["vs_worst"] = round((worst - option["net"]) * option["fill"], 2)
     return {"options": chosen, "mpg": mpg, "range": reach, "radius": round(radius), "reference": reference}
+
+
+def store_number(option):
+    found = re.search(r"#\s*(\d+)|\b(\d{3,5})\b", option["name"] or "")
+    return found and (found.group(1) or found.group(2))
+
+
+def same_store(one_option, other):
+    number = store_number(one_option)
+    return bool(number and one_option["brand"] and one_option["brand"] == other["brand"] and number == store_number(other)
+                and fuel.haversine(one_option["latitude"], one_option["longitude"], other["latitude"], other["longitude"]) < 30)
 
 
 def display_name(station):
@@ -250,21 +266,29 @@ def mention(truck):
     return ""
 
 
-def offer_for(truck, reason):
+def offer_for(truck, reason, deliver=True):
     prefs = prefs_for(truck)
     found = suggestions(truck, prefs)
     offer = insert(
-        """insert into fuel_offers (company_id, truck_id, driver_id, chat_id, reason, fuel_percent, range_miles,
-             latitude, longitude, options)
-           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning *""",
-        (truck["company_id"], truck["id"], truck["driver_id"], truck["telegram_chat_id"], reason,
+        """insert into fuel_offers (company_id, truck_id, driver_id, reason, fuel_percent, range_miles,
+             latitude, longitude, options, status)
+           values (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'ready') returning *""",
+        (truck["company_id"], truck["id"], truck["driver_id"], reason,
          truck["fuel_percent"], found["range"], truck["latitude"], truck["longitude"], json.dumps(found["options"])),
     )
-    result = send(truck["telegram_chat_id"], card(truck, offer, found["options"]),
-                  reply_markup=keyboard(offer["id"], found["options"]))
-    execute("update fuel_offers set message_id = %s, status = %s where id = %s",
-            (result.get("message_id"), "sent" if result.get("ok") else "failed", offer["id"]))
-    return offer["id"], bool(result.get("ok"))
+    if not deliver or not truck.get("telegram_chat_id"):
+        return offer["id"], False
+    return offer["id"], deliver_offer(offer, truck)
+
+
+def deliver_offer(offer, truck):
+    if not truck.get("telegram_chat_id"):
+        return False
+    options = offer["options"] or []
+    result = send(truck["telegram_chat_id"], card(truck, offer, options), reply_markup=keyboard(offer["id"], options))
+    execute("update fuel_offers set chat_id = %s, message_id = %s, status = %s, created_at = now() where id = %s",
+            (truck["telegram_chat_id"], result.get("message_id"), "sent" if result.get("ok") else "failed", offer["id"]))
+    return bool(result.get("ok"))
 
 
 def should_offer(truck, prefs):
@@ -293,10 +317,10 @@ def should_offer(truck, prefs):
 
 def ready_trucks(force=False):
     return rows(
-        TRUCK_SQL + """ where c.status = 'active' and t.status = 'active' and t.telegram_chat_id is not null
+        TRUCK_SQL + """ where c.status = 'active' and t.status = 'active'
                          and t.latitude is not null and t.fuel_percent is not null
                          and t.fuel_percent_at > now() - make_interval(mins => %s)
-                         and t.located_at > now() - make_interval(mins => %s)""" + ("" if force else " and c.fuel_assistant_enabled"),
+                         and t.located_at > now() - make_interval(mins => %s)""",
         (FRESH_MINUTES, FRESH_MINUTES),
     )
 
@@ -305,7 +329,7 @@ def match_refuels():
     matched = 0
     for event in fuel.detect_refuels():
         offer = one(
-            """select * from fuel_offers where truck_id = %s and status in ('sent', 'accepted', 'skipped')
+            """select * from fuel_offers where truck_id = %s and status in ('ready', 'sent', 'accepted', 'skipped')
                  and created_at between %s and %s order by created_at desc limit 1""",
             (event["truck_id"], event["at"] - timedelta(hours=EXPIRE_HOURS), event["at"]),
         )
@@ -358,9 +382,10 @@ def run(force=False):
     for truck in ready_trucks(force):
         prefs = prefs_for(truck)
         if should_offer(truck, prefs) and not trips.covers(truck):
-            offer_id, ok = offer_for(truck, "low")
+            deliver = bool(truck["telegram_chat_id"]) and (force or truck["fuel_assistant_enabled"])
+            offer_id, ok = offer_for(truck, "low", deliver)
             sent.append((truck["unit_number"], offer_id, ok))
-    execute("""update fuel_offers set status = 'expired' where status = 'sent'
+    execute("""update fuel_offers set status = 'expired' where status in ('sent', 'ready')
                and created_at < now() - make_interval(hours => %s)""", (EXPIRE_HOURS,))
     fuel.enrich()
     fuel.analyse()

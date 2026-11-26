@@ -791,3 +791,26 @@ form.inline { display: inline; }
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M12 3 2 8l10 5 10-5-10-5z'/%3E%3Cpath d='m2 13 10 5 10-5'/%3E%3Cpath d='m2 17.5 10 5 10-5' opacity='.5'/%3E%3C/svg%3E") !important;
   background-size: 22px 22px !important; background-repeat: no-repeat; background-position: center;
 }
+.suggest-note { margin: 0 0 12px; padding: 8px 12px; border-radius: 4px; background: var(--warn-bg); color: var(--warn); font-size: 13px; }
+.suggest-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 18px 0; flex-wrap: wrap; }
+.suggest-head .subtle { margin-left: 4px; }
+#suggest-map { height: 420px; margin: 12px 18px; border: 1px solid var(--line, var(--face-dark)); border-radius: 4px; }
+.suggest-list { list-style: none; margin: 0; padding: 0 18px 14px; }
+.suggest-list li { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-bottom: 1px solid var(--line, var(--face-dark)); }
+.suggest-list li.best { background: var(--ok-bg); border-radius: 4px; }
+.suggest-rank { flex: 0 0 24px; height: 24px; border-radius: 50%; background: #2a78d6; color: #fff; display: flex; align-items: center; justify-content: center; font: 700 12px/1 var(--sans); }
+.suggest-list li.best .suggest-rank { background: #17703a; }
+.suggest-body { flex: 1; min-width: 0; }
+.suggest-price { text-align: right; }
+.suggest-pin { background: none; border: none; }
+.suggest-pin span { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: #2a78d6;
+  color: #fff; font: 700 12px/1 var(--sans); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
+.suggest-pin.best span { width: 32px; height: 32px; background: #17703a; font-size: 14px; box-shadow: 0 0 0 4px rgba(23, 112, 58, .35), 0 1px 3px rgba(0, 0, 0, .35); }
+.suggest-pin.truck span { background: #1a1d24; border-radius: 6px; width: auto; padding: 0 6px; }
+@media (max-width: 860px) {
+  #suggest-map { height: 320px; margin: 10px 12px; }
+  .suggest-list { padding: 0 12px 12px; }
+}
+.wo-save-shop { margin: 0 0 14px; padding: 10px 14px; border: 1px solid var(--line, var(--face-dark)); border-radius: 6px; }
+.wo-save-shop form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.wo-save-shop .field { flex: 1; min-width: 240px; margin: 0; }

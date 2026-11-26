@@ -187,7 +187,8 @@ def create_challenge(user):
     )
     deny_url = f"{config.APP_URL}/login/deny/{handle}"
     text = "\n".join([
-        f"<b>Kaido sign-in code: {code}</b>",
+        "<b>Kaido sign-in code</b>",
+        f"<code>{code}</code>",
         "",
         f"Device: {device_label()}",
         f"IP: {client_ip()}",

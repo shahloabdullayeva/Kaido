@@ -31,6 +31,20 @@
   {% if order.cost is not none %}<div><dt>Total</dt><dd>{{ order.cost|money }}</dd></div>{% endif %}
   {% if order.status == 'done' %}<div class="{{ '' if files else 'warn' }}"><dt>Invoice</dt><dd>{{ files|length }} {{ 'file' if files|length == 1 else 'files' }}</dd></div>{% endif %}
 </dl>
+{% if order.status == 'done' and order.vendor %}
+<div class="wo-save-shop">
+  {% if saved_shop %}
+  <span class="badge ok">Saved shop</span> <a href="/maintenance/saved-shops">{{ saved_shop.name }}</a>{% if saved_shop.note %} <span class="subtle">· {{ saved_shop.note|truncate(120) }}</span>{% endif %}
+  {% elif admin %}
+  <form method="post" action="/maintenance/{{ order.id }}/save-shop">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <label class="field"><span>Save {{ order.vendor }} with a comment</span>
+      <textarea name="note" rows="2" maxlength="600">{{ order.shop_comment or '' }}</textarea></label>
+    <button class="btn" type="submit">Save shop</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
 
 {% if comeback_flags %}
 <section class="panel comeback">

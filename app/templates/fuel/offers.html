@@ -1,28 +1,98 @@
 {% extends "layout.html" %}
+{% block head %}<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css?v={{ cat_version }}">{% endblock %}
+{% block scripts %}<script src="/static/vendor/leaflet/leaflet.js?v={{ cat_version }}"></script>
+<script src="/static/fuel.js?v={{ cat_version }}"></script>{% endblock %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Driver fuel suggestions</h1></div>
+  <div><h1>Fuel suggestions</h1></div>
 </div>
 {% set tab = 'offers' %}{% include "fuel/_tabs.html" %}
+{% if not efs or not efs.total %}
+<p class="suggest-note">Only stations where the company has paid with EFS are suggested until the EFS station list is uploaded{% if at_least(role, 'admin') %} on <a href="/fuel/prices">Prices</a>{% endif %}.</p>
+{% endif %}
 <section class="panel">
   <div class="panel-head">
     <form method="get" action="/fuel/offers" class="filters" data-autosubmit>
       <label class="field"><span>Truck</span>
         <select name="truck_id">
           <option value="">All trucks</option>
-          {% for truck in trucks %}<option value="{{ truck.id }}" {% if truck_id == truck.id %}selected{% endif %}>{{ truck.unit_number }}</option>{% endfor %}
+          {% for item in trucks %}<option value="{{ item.id }}" {% if truck_id == item.id %}selected{% endif %}>{{ item.unit_number }}</option>{% endfor %}
         </select>
       </label>
     </form>
   </div>
+  {% if truck_id %}
+    {% if not truck %}<p class="empty">Truck not found.</p>
+    {% elif truck.latitude is none %}<p class="empty">No location for Unit {{ unit_label(truck.unit_number) }} yet.</p>
+    {% else %}
+    <div class="suggest-head">
+      <div>
+        <strong>Unit {{ unit_label(truck.unit_number) }}</strong>
+        {% if truck.driver_name %}<span class="subtle">· {{ truck.driver_name }}</span>{% endif %}
+        {% if truck.fuel_percent is not none %}<span class="subtle">· Tank {{ truck.fuel_percent|number }}%</span>{% endif %}
+        {% if live.range %}<span class="subtle">· {{ live.range|number }} mi left</span>{% endif %}
+        {% if truck.located_at %}<span class="subtle">· seen {{ truck.located_at|ago }}</span>{% endif %}
+      </div>
+      {% if truck.telegram_chat_id and live.options %}
+      <form method="post" action="/fuel/offers/send">
+        <input type="hidden" name="csrf" value="{{ session.csrf }}">
+        <input type="hidden" name="truck_id" value="{{ truck.id }}">
+        <button class="btn" type="submit">Send to driver</button>
+      </form>
+      {% endif %}
+    </div>
+    <div id="suggest-map" data-suggest='{{ live_map|json_attr }}'></div>
+    {% if live.options %}
+    <ol class="suggest-list">
+      {% for option in live.options %}
+      <li class="{{ 'best' if loop.first }}">
+        <span class="suggest-rank">{{ loop.index }}</span>
+        <div class="suggest-body">
+          <div><strong>{{ option.name }}</strong>{% if loop.first %} <span class="badge ok">Best</span>{% endif %}</div>
+          <div class="subtle">{{ [option.city, option.state]|select|join(', ') }} · {{ option.miles }} mi {{ option.compass }}{% if option.behind %} · behind{% endif %}</div>
+        </div>
+        <div class="suggest-price">
+          {% if option.net is not none %}<strong>${{ '%.3f'|format(option.net) }}</strong>
+            <div class="subtle">{{ 'today, website' if option.price_source == 'website' else 'price list' if option.price_source == 'price_file' else 'paid' }}{% if option.price_seen and option.price_source != 'website' %} {{ option.price_seen|ago }}{% endif %}</div>
+            {% if option.saves and option.saves >= 5 %}<div class="fuel-good">saves ${{ '%.0f'|format(option.saves) }}</div>{% endif %}
+          {% else %}<span class="subtle">no price</span>{% endif %}
+        </div>
+        <a class="btn ghost small" href="{{ live_map.stations[loop.index0].url }}" target="_blank" rel="noopener">Map</a>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}<p class="empty">No EFS stations within {{ live.radius }} mi.</p>{% endif %}
+    {% endif %}
+  {% else %}
+  {% if fleet %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Unit</th><th>Driver</th><th class="right">Tank</th><th>Location</th><th>Telegram</th><th></th></tr></thead>
+    <tbody>
+      {% for item in fleet %}
+      <tr>
+        <td><a href="/trucks/{{ item.id }}">{{ unit_label(item.unit_number) }}</a></td>
+        <td>{{ item.driver_name or '—' }}</td>
+        <td class="right">{% if item.fuel_percent is not none %}{{ item.fuel_percent|number }}%{% else %}—{% endif %}</td>
+        <td>{% if item.latitude is not none %}{{ item.location or '' }} <span class="subtle">{{ item.located_at|ago }}</span>{% else %}<span class="subtle">no location</span>{% endif %}</td>
+        <td>{% if item.telegram_chat_id %}<span class="badge ok">Connected</span>{% else %}<span class="subtle">—</span>{% endif %}</td>
+        <td class="right">{% if item.latitude is not none %}<a class="btn ghost small" href="/fuel/offers?truck_id={{ item.id }}">Suggest</a>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="empty">No active trucks.</p>{% endif %}
+  {% endif %}
+</section>
+<section class="panel">
+  <div class="panel-head"><h2>History</h2></div>
   {% if entries %}
   <div class="table-wrap"><table>
-    <thead><tr><th>Sent</th><th>Unit</th><th>Driver</th><th class="right">Tank</th><th>Stops offered</th><th>Answer</th><th>Fuelled</th><th class="right">Saved</th></tr></thead>
+    <thead><tr><th>When</th><th>Unit</th><th>Driver</th><th class="right">Tank</th><th>Stops offered</th><th>Answer</th><th>Fuelled</th><th class="right">Saved</th></tr></thead>
     <tbody>
       {% for entry in entries %}
       <tr>
-        <td>{{ entry.created_at|ago }}<div class="subtle">{{ 'asked with /fuel' if entry.reason == 'asked' else 'low tank' if entry.reason == 'low' else entry.reason }}</div></td>
-        <td><a href="/trucks/{{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
+        <td>{{ entry.created_at|ago }}<div class="subtle">{{ 'asked with /fuel' if entry.reason == 'asked' else 'low tank' if entry.reason == 'low' else 'sent by office' if entry.reason == 'office' else entry.reason }}</div></td>
+        <td><a href="/fuel/offers?truck_id={{ entry.truck_id }}">{{ entry.unit_number }}</a></td>
         <td>{% if entry.driver_id %}<a href="/drivers/{{ entry.driver_id }}">{{ entry.driver_name or '—' }}</a>{% else %}{{ entry.driver_name or '—' }}{% endif %}</td>
         <td class="right">{% if entry.fuel_percent is not none %}{{ entry.fuel_percent|number }}%{% if entry.range_miles %}<div class="subtle">{{ entry.range_miles|number }} mi left</div>{% endif %}{% else %}—{% endif %}</td>
         <td><ol class="fuel-options">
@@ -34,7 +104,15 @@
         <td>
           {% if entry.chosen_station_id %}<span class="badge ok">Took {{ entry.chosen_name }}</span>
           {% elif entry.skip_reason %}<span class="badge warn">Skipped</span> <span class="subtle">{{ skip_labels.get(entry.skip_reason, entry.skip_reason) }}</span>
-          {% elif entry.status == 'expired' %}<span class="badge muted">No answer</span>
+          {% elif entry.status == 'ready' %}
+            {% if entry.telegram_chat_id and entry.options %}
+            <form method="post" action="/fuel/offers/{{ entry.id }}/send">
+              <input type="hidden" name="csrf" value="{{ session.csrf }}">
+              <input type="hidden" name="back" value="{{ request.full_path }}">
+              <button class="btn small" type="submit">Send</button>
+            </form>
+            {% else %}<span class="badge muted">On page</span>{% endif %}
+          {% elif entry.status == 'expired' %}<span class="badge muted">{{ 'No answer' if entry.chat_id else 'Not sent' }}</span>
           {% elif entry.status == 'failed' %}<span class="badge bad">Not delivered</span>
           {% else %}<span class="badge info">Waiting</span>{% endif %}
         </td>

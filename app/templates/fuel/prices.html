@@ -5,6 +5,15 @@
 </div>
 {% set tab = 'prices' %}{% include "fuel/_tabs.html" %}
 <section class="panel">
+  <div class="panel-head"><h2>EFS station list</h2>
+    {% if efs and efs.total %}<span class="subtle">{{ efs.total|number }} locations · {{ efs.located|number }} matched to stations{% if efs.pending %} · {{ efs.pending|number }} still being matched{% endif %} · uploaded {{ efs.uploaded_at|ago }}</span>{% endif %}</div>
+  <form method="post" action="/fuel/efs-network" enctype="multipart/form-data" class="fuel-upload">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <label class="field"><span>CSV or Excel file</span><input type="file" name="sheet" accept=".csv,.xlsx,.xlsm,.txt" required></label>
+    <div class="form-actions"><button class="btn" type="submit">{{ 'Replace the list' if efs and efs.total else 'Upload the list' }}</button></div>
+  </form>
+</section>
+<section class="panel">
   <div class="panel-head"><h2>Upload a price list</h2></div>
   <form method="post" action="/fuel/prices" enctype="multipart/form-data" class="fuel-upload">
     <input type="hidden" name="csrf" value="{{ session.csrf }}">

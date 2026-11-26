@@ -1796,3 +1796,30 @@ begin
        and user_id is not distinct from g.user_id and truck_id is not distinct from g.truck_id;
   end loop;
 end $$;
+
+create table if not exists efs_network (
+  id bigserial primary key,
+  company_id int not null references companies(id) on delete cascade,
+  name text not null,
+  address text,
+  city text,
+  state text,
+  zip text,
+  latitude numeric(9,6),
+  longitude numeric(9,6),
+  station_ids int[] not null default '{}',
+  checked_at timestamptz,
+  uploaded_at timestamptz not null default now()
+);
+create index if not exists efs_network_company_idx on efs_network (company_id);
+alter table efs_network enable row level security;
+alter table efs_network force row level security;
+drop policy if exists company_lock on efs_network;
+create policy company_lock on efs_network
+  using (coalesce(current_setting('kaido.company_id', true), '') = '' or company_id = nullif(current_setting('kaido.company_id', true), '')::int)
+  with check (coalesce(current_setting('kaido.company_id', true), '') = '' or company_id = nullif(current_setting('kaido.company_id', true), '')::int);
+
+alter table fuel_offers drop constraint if exists fuel_offers_reason_check;
+alter table fuel_offers add constraint fuel_offers_reason_check check (reason in ('low', 'asked', 'test', 'office'));
+alter table fuel_offers drop constraint if exists fuel_offers_status_check;
+alter table fuel_offers add constraint fuel_offers_status_check check (status in ('ready', 'sent', 'accepted', 'skipped', 'expired', 'fueled', 'failed'));

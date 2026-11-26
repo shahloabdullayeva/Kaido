@@ -112,7 +112,8 @@ No build step, no frontend framework. Shell scripts in `bin/` run it.
 
 ## Signing in
 
-Password and a captcha, then a six-digit code sent to Telegram on every sign-in.
+Password and a captcha, then a six-digit code sent to Telegram on every sign-in. The code is
+sent as its own `<code>` line, so tapping it in Telegram copies just the number.
 No browser is remembered.
 
 The captcha is a built-in picture of five characters. Set `HCAPTCHA_SITE_KEY` and
@@ -359,6 +360,10 @@ already saved (same Google Maps place, or same name within ~100 m) are skipped, 
 a new note is added to them. Rows without coordinates are looked up by address, then by
 city. Sheets named Towing, Mobile service and Tire shops set the shop's `service`, which
 the finder reads with the name and note to sort towing, road service and tires.
+
+A finished work order with a shop name shows **Save shop** with a comment box (prefilled
+with the work order's shop comment). It uses the work order's map spot, or looks up the shop
+address; once saved, the work order shows it as a saved shop.
 
 A Google Maps link also works in the shop finder's search box.
 
@@ -627,9 +632,27 @@ repair, truck parking, truck wash), each with its own Google queries or OpenStre
 "Copy the job". Work orders have a shop rating (1-5) and comment; the shop list shows visits, average cost,
 rating, days in the shop and the last comment for shops used before (all work, not only oil).
 
-**Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, only for
-companies with the fuel assistant switched on in Fuel → Settings, only for trucks with a
-Telegram group and a tank reading under 90 minutes old):
+**Fuel stop suggestions** (`fuel_bot.run`, every 5 minutes from `bin/followup.sh`, for every
+active truck with a position and a tank reading under 90 minutes old):
+- **Fuel → Driver suggestions** works for every truck, Telegram or not. All trucks lists the
+  fleet lowest tank first; picking one shows a live suggestion with a map (truck, the active
+  trip's route when there is one, numbered stations, the best one larger and green) and the
+  ranked list. A truck with a connected Telegram group gets **Send to driver**; without one the
+  suggestion stays on the page. Low-tank suggestions for trucks that are not sent to Telegram
+  are saved with status `ready` and show in History, with a **Send** button once the group is
+  connected. Only delivered suggestions count as "sent" in reports.
+- **EFS only.** Stations are limited to the EFS network list uploaded on Fuel → Prices
+  (`efs_network`, `app/efs_network.py`) plus any station the company has paid at with EFS.
+  Before a list is uploaded, only the paid-at stations are used. The upload needs a location
+  name and either city and state or latitude and longitude; address and zip help. Rows are
+  matched to known stations by coordinates (0.35 mi), then brand or name in the same city
+  (store numbers must agree); the rest are looked up in the background
+  (`manage.py efs-network-match`, Nominatim, about 1 a second). A new upload replaces the list.
+- The Telegram card is sent automatically only when the fuel assistant is on (Fuel → Settings)
+  and the truck has a group.
+- The search radius is the truck's range, never less than 25 mi (a tank under the reserve
+  used to search the full 150 mi). The same store listed under two names (brand + store
+  number) shows once.
 - A card is sent when the tank is at or below the alert level (company default 35%, or the
   driver's own). It is not repeated for 4 hours, or for 90 minutes once the tank is under 15%.
 - Stations are picked around wherever the truck is now (ahead of its heading when moving).

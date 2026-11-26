@@ -487,6 +487,12 @@ def cmd_import_shops(args):
     return 0
 
 
+def cmd_efs_network_match(args):
+    from app import efs_network
+    print(efs_network.match_rest(args.company_id))
+    return 0
+
+
 def cmd_pti_cleanup(args):
     from app import pti
     print(f"removed {pti.cleanup_media()} PTI photos/videos older than {pti.KEEP_MEDIA_DAYS} days")
@@ -827,6 +833,9 @@ def main():
     details_parser = sub.add_parser("saved-shop-details", help="fill missing saved-shop addresses from OpenStreetMap")
     details_parser.add_argument("--limit", type=int, default=2000)
     details_parser.set_defaults(func=cmd_saved_shop_details)
+    efs_match = sub.add_parser("efs-network-match", help="match uploaded EFS locations to fuel stations")
+    efs_match.add_argument("--company-id", dest="company_id", type=int)
+    efs_match.set_defaults(func=cmd_efs_network_match)
     import_shops = sub.add_parser("import-shops", help="add saved shops from a spreadsheet (Title, Area, Latitude, Longitude, Note, Map link)")
     import_shops.add_argument("file")
     import_shops.add_argument("--company", required=True)
