@@ -68,18 +68,11 @@
         <td class="right">{% if order.down_days is not none %}{{ order.down_days|number(1) }} d{% endif %}</td>
         <td class="right">{% if order.comments %}{{ order.comments }}{% endif %}</td>
         <td class="right">{% if order.cost is not none %}{{ order.cost|money }}{% endif %}</td>
-        <td class="wo-row-actions">
-          <a class="btn ghost small" href="/maintenance/{{ order.id }}">Open</a>
-          {% if at_least(role, 'admin') %}
-          {% if order.status not in ('done', 'cancelled') %}<form method="post" action="/maintenance/{{ order.id }}/status" class="inline" data-confirm="Mark work order #{{ order.id }} done?">
-            <input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="status" value="done">
-            <input type="hidden" name="back" value="{{ request.full_path.rstrip('?') }}">
-            <button class="btn ghost small" type="submit">Done</button></form>{% endif %}
+        <td class="wo-row-actions">{% if at_least(role, 'admin') %}
           <form method="post" action="/maintenance/{{ order.id }}/delete" class="inline" data-confirm="Delete work order #{{ order.id }} with its comments and files? This cannot be undone.">
             <input type="hidden" name="csrf" value="{{ session.csrf }}">
             <input type="hidden" name="back" value="{{ request.full_path.rstrip('?') }}">
-            <button class="btn ghost small danger" type="submit">Delete</button></form>
-          {% endif %}
+            <button class="wo-x" type="submit" title="Delete" aria-label="Delete work order #{{ order.id }}" data-busy="…">&times;</button></form>{% endif %}
         </td>
       </tr>
       {% endfor %}

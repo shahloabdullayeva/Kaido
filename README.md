@@ -781,9 +781,8 @@ with the other logs (`deploy/kaido.logrotate`, installed at `/etc/logrotate.d/ka
 
 ## Work orders
 
-Each row on the Maintenance list has **Open**, **Done** (not shown once done or cancelled) and
-**Delete** (asks first), so an order can be closed or removed without opening it. Done and
-Delete are for admins and return to the same filtered list.
+Each row on the Maintenance list has an **×** that deletes the work order (asks first, admins
+only) and returns to the same filtered list.
 
 Maintenance → one list (`maintenance_orders`, `app/views/maintenance.py`). Cases (breakdowns) were merged into it
 on 25 Nov 2026: each old case became a work order with `breakdown = true` and `from_breakdown_id` set (case 12 joined

@@ -818,3 +818,5 @@ form.inline { display: inline; }
 .shop-sort select { width: auto; }
 .wo-row-actions { white-space: nowrap; text-align: right; }
 .wo-row-actions form.inline { display: inline; }
+.wo-x { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 6px; cursor: pointer; border-radius: 4px; }
+.wo-x:hover { color: var(--bad); background: var(--bad-bg, rgba(204, 0, 0, .08)); }
