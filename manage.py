@@ -385,6 +385,108 @@ def cmd_saved_shop_details(args):
     return 0
 
 
+SHEET_SERVICE = {"towing": "towing", "mobile service": "mobile service", "tire shops": "tires"}
+
+
+def _maps_cid(link):
+    import re
+    found = re.search(r"cid=(\d+)", link or "") or re.search(r":0x([0-9a-f]+)", link or "")
+    if not found:
+        return None
+    return str(int(found.group(1), 16 if found.group(0).startswith(":") else 10))
+
+
+def cmd_import_shops(args):
+    import time
+    from openpyxl import load_workbook
+    from app import shops
+    company = one("select * from companies where lower(name) = lower(%s)", (args.company,))
+    if not company:
+        print(f"no company named {args.company}")
+        return 1
+    user = one("select id from users where lower(email) = lower(%s)", (args.user,)) if args.user else None
+    places, order = {}, []
+    for sheet in load_workbook(args.file, read_only=True, data_only=True):
+        header = None
+        service = SHEET_SERVICE.get(sheet.title.strip().lower())
+        for values in sheet.iter_rows(values_only=True):
+            if header is None:
+                header = [str(value or "").strip().lower() for value in values]
+                continue
+            row = dict(zip(header, values))
+            name = str(row.get("title") or "").strip()
+            if not name:
+                continue
+            link = str(row.get("map link") or "").strip() or None
+            area = str(row.get("area / address") or row.get("area") or "").strip() or None
+            lat, lon = row.get("latitude"), row.get("longitude")
+            key = _maps_cid(link) or f"{name.lower()}|{area}"
+            note = str(row.get("note") or "").strip() or None
+            place = places.get(key)
+            if not place:
+                place = places[key] = {"name": name, "link": link, "area": area, "lat": lat, "lon": lon,
+                                       "notes": [], "service": None}
+                order.append(key)
+            if place["lat"] is None and lat is not None:
+                place.update(lat=lat, lon=lon)
+            if note and note not in place["notes"]:
+                place["notes"].append(note)
+            place["service"] = place["service"] or service
+    existing = rows("select id, name, latitude, longitude, maps_url, note, service from saved_shops where company_id = %s",
+                    (company["id"],))
+    by_cid = {_maps_cid(row["maps_url"]): row for row in existing if _maps_cid(row["maps_url"])}
+    by_name = {(row["name"].strip().lower(), round(float(row["latitude"]), 3), round(float(row["longitude"]), 3)): row
+               for row in existing}
+    added = updated = same = 0
+    missing = []
+    for key in order:
+        place = places[key]
+        if place["lat"] is None:
+            lookup = place["area"] or place["name"]
+            found = None
+            tries = [lookup] + ([", ".join(lookup.replace(", United States", "").split(", ")[-2:])] if "," in lookup else [])
+            for text in tries:
+                try:
+                    found = shops.geocode(text)
+                except Exception as err:
+                    print(f"{place['name']}: lookup failed ({err})")
+                time.sleep(1)
+                if found:
+                    break
+            if not found:
+                missing.append(place["name"])
+                continue
+            place.update(lat=found["latitude"], lon=found["longitude"])
+        note = " · ".join(place["notes"]) or None
+        match = by_cid.get(_maps_cid(place["link"])) or by_name.get(
+            (place["name"].lower(), round(float(place["lat"]), 3), round(float(place["lon"]), 3)))
+        if match:
+            fresh_note = note if note and note not in (match["note"] or "") else None
+            new_service = place["service"] if place["service"] and not match["service"] else None
+            if fresh_note or new_service:
+                merged = " · ".join(part for part in [match["note"], fresh_note] if part) if fresh_note else match["note"]
+                if not args.dry_run:
+                    execute("update saved_shops set note = %s, service = coalesce(service, %s) where id = %s",
+                            (merged[:600] if merged else None, new_service, match["id"]))
+                updated += 1
+            else:
+                same += 1
+            continue
+        address = place["area"] if place["area"] and place["area"][0].isdigit() else None
+        if not args.dry_run:
+            insert(
+                """insert into saved_shops (company_id, name, address, latitude, longitude, maps_url, source_url,
+                     note, service, added_by)
+                   values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) returning id""",
+                (company["id"], place["name"][:160], address, place["lat"], place["lon"], place["link"],
+                 Path(args.file).name, note[:600] if note else None, place["service"], user and user["id"]),
+            )
+        added += 1
+    print(f"{company['name']}: {added} added, {updated} updated, {same} already there"
+          + (f", {len(missing)} not found: {', '.join(missing)}" if missing else ""))
+    return 0
+
+
 def cmd_pti_cleanup(args):
     from app import pti
     print(f"removed {pti.cleanup_media()} PTI photos/videos older than {pti.KEEP_MEDIA_DAYS} days")
@@ -725,6 +827,12 @@ def main():
     details_parser = sub.add_parser("saved-shop-details", help="fill missing saved-shop addresses from OpenStreetMap")
     details_parser.add_argument("--limit", type=int, default=2000)
     details_parser.set_defaults(func=cmd_saved_shop_details)
+    import_shops = sub.add_parser("import-shops", help="add saved shops from a spreadsheet (Title, Area, Latitude, Longitude, Note, Map link)")
+    import_shops.add_argument("file")
+    import_shops.add_argument("--company", required=True)
+    import_shops.add_argument("--user", help="email of the user the shops are added by")
+    import_shops.add_argument("--dry-run", dest="dry_run", action="store_true")
+    import_shops.set_defaults(func=cmd_import_shops)
     summary_parser = sub.add_parser("summary", help="send the twice-weekly summary to company admins")
     summary_parser.add_argument("--backup", nargs="*")
     summary_parser.set_defaults(func=cmd_summary)

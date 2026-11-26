@@ -352,6 +352,14 @@ first, with a blue pin and a "saved by" badge, and Claude is told to prefer them
 Reading a link costs nothing: the name and position come from the link itself and the
 Google place id is an ID-only lookup, which Google does not bill.
 
+A spreadsheet of shops goes in from the shell:
+`venv/bin/python manage.py import-shops FILE.xlsx --company NAME [--user EMAIL] [--dry-run]`.
+Columns: Title, Area / Address (or Area), Latitude, Longitude, Note, Map link. Shops
+already saved (same Google Maps place, or same name within ~100 m) are skipped, and only
+a new note is added to them. Rows without coordinates are looked up by address, then by
+city. Sheets named Towing, Mobile service and Tire shops set the shop's `service`, which
+the finder reads with the name and note to sort towing, road service and tires.
+
 A Google Maps link also works in the shop finder's search box.
 
 **The search remembers where it looked.** Typing a place or clicking the map stores it

@@ -77,7 +77,8 @@ SERVICES = {"tow": "towing", "road": "road service", "light": "roadside & light 
 def service_of(shop):
     if LIGHT_WORDS.search(shop.get("name") or ""):
         return "light"
-    text = " ".join(str(part) for part in [shop.get("name"), (shop.get("saved") or {}).get("note"), shop.get("kind")] if part)
+    saved = shop.get("saved") or {}
+    text = " ".join(str(part) for part in [shop.get("name"), saved.get("note"), saved.get("service"), shop.get("kind")] if part)
     if TOW_WORDS.search(text):
         return "tow"
     if ROAD_WORDS.search(text):
@@ -86,7 +87,8 @@ def service_of(shop):
 
 
 def needs_of(shop):
-    text = " ".join(str(part) for part in [shop.get("name"), shop.get("kind"), (shop.get("saved") or {}).get("note")] if part)
+    saved = shop.get("saved") or {}
+    text = " ".join(str(part) for part in [shop.get("name"), shop.get("kind"), saved.get("note"), saved.get("service")] if part)
     kind = shop.get("kind") or ""
     found = set()
     if kind == "parking" or kind == "truck_stop" or PARK_WORDS.search(text):
@@ -667,7 +669,7 @@ def with_saved(shops, saved, latitude, longitude, now, details_budget=3):
             "hours_text": hours_text or "hours not listed",
             "hours_lines": live.get("hours_lines") or [],
             "opening_hours": live.get("opening_hours"),
-            "saved": {"id": row["id"], "note": row["note"], "by": row.get("added_by_name")},
+            "saved": {"id": row["id"], "note": row["note"], "by": row.get("added_by_name"), "service": row.get("service")},
         })
     return merged + rest
 
