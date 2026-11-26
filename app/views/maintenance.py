@@ -708,6 +708,11 @@ def update(order_id):
     return redirect(f"/maintenance/{order_id}")
 
 
+def list_back():
+    back = request.form.get("back") or ""
+    return back if back == "/maintenance" or back.startswith("/maintenance?") else None
+
+
 @bp.post("/maintenance/<int:order_id>/status")
 @login_required
 @role_required("admin")
@@ -728,6 +733,10 @@ def change_status(order_id):
         if truck:
             apply_completion(updated, truck)
         audit("maintenance.status", "maintenance_order", order_id, {"from": order["status"], "to": status})
+    back = list_back()
+    if back:
+        flash(f"Work order #{order_id} marked {status.replace('_', ' ')}.", "ok")
+        return redirect(back)
     return redirect(f"/maintenance/{order_id}#comments")
 
 
@@ -804,7 +813,7 @@ def delete(order_id):
     work_orders.delete_order(g.company["id"], order_id)
     audit("maintenance.deleted", "maintenance_order", order_id, {"unit": order["unit_number"], "description": order["description"][:200]})
     flash(f"Work order #{order_id} deleted.", "ok")
-    return redirect("/maintenance")
+    return redirect(list_back() or "/maintenance")
 
 
 @bp.get("/maintenance/<int:order_id>/files/<int:file_id>")

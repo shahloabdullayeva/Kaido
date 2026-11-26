@@ -816,3 +816,5 @@ form.inline { display: inline; }
 .wo-save-shop .field { flex: 1; min-width: 240px; margin: 0; }
 .shop-sort { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
 .shop-sort select { width: auto; }
+.wo-row-actions { white-space: nowrap; text-align: right; }
+.wo-row-actions form.inline { display: inline; }
