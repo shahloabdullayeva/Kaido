@@ -14,7 +14,7 @@
   <input type="hidden" name="csrf" value="{{ session.csrf }}">
   <input type="hidden" name="count" value="{{ steps|length + 1 }}">
   <div class="table-wrap"><table class="steps-table">
-    <thead><tr><th>#</th><th>Title (EN / ES / FR)</th><th>Spoken prompt (EN / ES / FR)</th><th>What the camera must show</th><th>Arrow</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>Title (EN / RU / UZ)</th><th>Spoken prompt (EN / RU / UZ)</th><th>What the camera must show</th><th>Arrow</th><th></th></tr></thead>
     <tbody>
     {% for step in steps + [{'key': '', 'arrow': 'none', 'look': '', 'title': {}, 'say': {}}] %}
       {% set n = loop.index0 %}

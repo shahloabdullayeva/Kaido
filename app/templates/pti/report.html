@@ -19,7 +19,7 @@
     <div><span>Started</span><strong>{{ item.started_at|stamp if item.started_at else '—' }}{% if walk.seconds is not none and item.mode == 'live' %} · took {{ (walk.seconds // 60) }} min {{ walk.seconds % 60 }} s{% endif %}</strong></div>
     <div><span>Phone location</span><strong>{% if item.gps_lat is not none %}<a href="https://www.google.com/maps?q={{ item.gps_lat }},{{ item.gps_lon }}" target="_blank" rel="noopener">{{ '%.5f'|format(item.gps_lat) }}, {{ '%.5f'|format(item.gps_lon) }}</a>{% else %}not shared{% endif %}</strong></div>
     <div><span>Distance to the truck's GPS</span><strong>{% if item.gps_miles is not none %}{{ item.gps_miles }} mi{% else %}no truck position near that time{% endif %}</strong></div>
-    {% if item.lang %}<div><span>Language</span><strong>{{ {'en': 'English', 'es': 'Spanish', 'fr': 'French'}.get(item.lang, item.lang) }}</strong></div>{% endif %}
+    {% if item.lang %}<div><span>Language</span><strong>{{ {'en': 'English', 'ru': 'Russian', 'uz': 'Uzbek'}.get(item.lang, item.lang) }}</strong></div>{% endif %}
     {% if item.ai_result and item.ai_result.missing_steps %}<div><span>Steps not shown</span><strong>{{ item.ai_result.missing_steps|join(', ') }}</strong></div>{% endif %}
     {% if item.ai_result and item.ai_result.cost_usd is defined %}<div><span>AI cost</span><strong>${{ '%.3f'|format(item.ai_result.cost_usd) }} for the review</strong></div>{% endif %}
   </div>

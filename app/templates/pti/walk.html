@@ -15,7 +15,7 @@
 
 <section class="walk-intro" data-screen="intro">
   <div class="walk-brand">{% include "_logo.html" %}</div>
-  <div class="walk-langs"><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button><button type="button" data-lang="fr">FR</button></div>
+  <div class="walk-langs"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button><button type="button" data-lang="uz">UZ</button></div>
   <h1>Unit {{ truck.unit_number }}</h1>
   <p class="walk-sub">{{ truck.company_name }}{% if truck.year or truck.make %} · {{ truck.year or '' }} {{ truck.make or '' }}{% endif %}</p>
   {% if redo %}<div class="walk-note bad"><span data-t="redo"></span> {{ redo.review_note }}</div>{% endif %}

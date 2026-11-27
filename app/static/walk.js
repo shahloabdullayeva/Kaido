@@ -12,30 +12,30 @@
       pick: 'Pick photos or one video of the truck', working: 'Preparing your files…', noFiles: 'Pick at least one photo or video.',
       oldForm: 'Use the old form', redo: 'Your last inspection was rejected:', speakOn: 'Voice on', speakOff: 'Voice off',
       possible: 'Possible problem:', heard: 'Heard:' },
-    es: { start: 'Empezar inspección', upload: 'Subir de la galería', pre: 'Pre-viaje', post: 'Post-viaje', who: 'Chofer',
-      someone: 'Otra persona', name: 'Su nombre', step: 'Paso', of: 'de', looking: 'Buscando…', got: 'Listo',
-      skip: 'Saltar', wrong: '¿Algo mal?', wrongHint: '¿Algo que la cámara no ve, como una fuga de aire?',
-      hold: 'Mantenga presionado para grabar', recording: 'Grabando… suelte para parar', allGood: 'No, todo bien',
-      send: 'Enviar nota de voz', again: 'Grabar otra vez', done: 'Listo', doneHint: 'Su inspección está guardada. Gracias.',
-      sending: 'Enviando en segundo plano', sent: 'Todo está enviado.', keepOpen: 'Deje esta página abierta hasta que diga que todo está enviado. Si la cierra, sigue la próxima vez que abra el enlace.',
-      noCamera: 'La cámara no abrió. Permita la cámara o suba fotos o un video de su galería.',
-      telegram: 'La cámara puede no funcionar dentro de Telegram. Toque el menú (⋮ o ...) y elija Abrir en el navegador.',
-      pick: 'Elija fotos o un video del camión', working: 'Preparando sus archivos…', noFiles: 'Elija al menos una foto o un video.',
-      oldForm: 'Usar el formulario anterior', redo: 'Su última inspección fue rechazada:', speakOn: 'Voz activada', speakOff: 'Voz apagada',
-      possible: 'Posible problema:', heard: 'Se escuchó:' },
-    fr: { start: 'Commencer le tour', upload: 'Importer de la galerie', pre: 'Avant départ', post: 'Après trajet', who: 'Chauffeur',
-      someone: 'Quelqu\'un d\'autre', name: 'Votre nom', step: 'Étape', of: 'sur', looking: 'Recherche…', got: 'C\'est bon',
-      skip: 'Passer', wrong: 'Un problème ?', wrongHint: 'Quelque chose que la caméra ne voit pas, comme une fuite d\'air ?',
-      hold: 'Maintenez pour enregistrer', recording: 'Enregistrement… relâchez pour arrêter', allGood: 'Non, tout va bien',
-      send: 'Envoyer la note vocale', again: 'Recommencer', done: 'Terminé', doneHint: 'Votre inspection est enregistrée. Merci.',
-      sending: 'Envoi en arrière-plan', sent: 'Tout est envoyé.', keepOpen: 'Gardez cette page ouverte jusqu\'à ce que tout soit envoyé. Si vous la fermez, l\'envoi reprend à la prochaine ouverture du lien.',
-      noCamera: 'La caméra ne s\'est pas ouverte. Autorisez la caméra ou importez des photos ou une vidéo de la galerie.',
-      telegram: 'La caméra peut ne pas marcher dans Telegram. Touchez le menu (⋮ ou ...) et choisissez Ouvrir dans le navigateur.',
-      pick: 'Choisissez des photos ou une vidéo du camion', working: 'Préparation des fichiers…', noFiles: 'Choisissez au moins une photo ou une vidéo.',
-      oldForm: 'Utiliser l\'ancien formulaire', redo: 'Votre dernière inspection a été refusée :', speakOn: 'Voix activée', speakOff: 'Voix coupée',
-      possible: 'Problème possible :', heard: 'Entendu :' },
+    ru: { start: 'Начать осмотр', upload: 'Загрузить из галереи', pre: 'Перед рейсом', post: 'После рейса', who: 'Водитель',
+      someone: 'Другой', name: 'Ваше имя', step: 'Шаг', of: 'из', looking: 'Ищу…', got: 'Готово',
+      skip: 'Пропустить', wrong: 'Есть проблема?', wrongHint: 'То, что камера не видит, например утечка воздуха?',
+      hold: 'Удерживайте, чтобы записать голос', recording: 'Запись… отпустите, чтобы остановить', allGood: 'Нет, всё в порядке',
+      send: 'Отправить голосовую заметку', again: 'Записать заново', done: 'Готово', doneHint: 'Ваш осмотр сохранён. Спасибо.',
+      sending: 'Отправка в фоне', sent: 'Всё отправлено.', keepOpen: 'Не закрывайте страницу, пока не появится «Всё отправлено». Если закроете, отправка продолжится при следующем открытии ссылки.',
+      noCamera: 'Камера не открылась. Разрешите доступ к камере или загрузите фото или видео из галереи.',
+      telegram: 'В Telegram камера может не работать. Нажмите меню (⋮ или ...) и выберите «Открыть в браузере».',
+      pick: 'Выберите фото или одно видео грузовика', working: 'Подготовка файлов…', noFiles: 'Выберите хотя бы одно фото или видео.',
+      oldForm: 'Старая форма', redo: 'Ваш прошлый осмотр отклонён:', speakOn: 'Голос вкл.', speakOff: 'Голос выкл.',
+      possible: 'Возможная проблема:', heard: 'Распознано:' },
+    uz: { start: "Ko'rikni boshlash", upload: 'Galereyadan yuklash', pre: 'Reysdan oldin', post: 'Reysdan keyin', who: 'Haydovchi',
+      someone: 'Boshqa', name: 'Ismingiz', step: 'Qadam', of: '/', looking: 'Qidirilmoqda…', got: 'Tayyor',
+      skip: "O'tkazib yuborish", wrong: 'Muammo bormi?', wrongHint: "Kamera ko'rmaydigan narsa, masalan havo oqishi?",
+      hold: 'Ovozli xabar yozish uchun bosib turing', recording: "Yozilmoqda… to'xtatish uchun qo'yib yuboring", allGood: "Yo'q, hammasi joyida",
+      send: 'Ovozli xabarni yuborish', again: 'Qayta yozish', done: 'Tayyor', doneHint: "Ko'rigingiz saqlandi. Rahmat.",
+      sending: 'Fonda yuborilmoqda', sent: 'Hammasi yuborildi.', keepOpen: "«Hammasi yuborildi» chiqmaguncha sahifani yopmang. Yopsangiz, havolani keyingi ochganingizda yuborish davom etadi.",
+      noCamera: "Kamera ochilmadi. Kameraga ruxsat bering yoki galereyadan rasm yoki video yuklang.",
+      telegram: "Telegram ichida kamera ishlamasligi mumkin. Menyuni (⋮ yoki ...) bosing va «Brauzerda ochish»ni tanlang.",
+      pick: 'Mashinaning rasmlarini yoki bitta videosini tanlang', working: 'Fayllar tayyorlanmoqda…', noFiles: 'Kamida bitta rasm yoki video tanlang.',
+      oldForm: 'Eski shakl', redo: "Oldingi ko'rigingiz rad etildi:", speakOn: 'Ovoz yoqilgan', speakOff: "Ovoz o'chirilgan",
+      possible: 'Ehtimoliy muammo:', heard: 'Eshitildi:' },
   };
-  const VOICES = { en: 'en-US', es: 'es-US', fr: 'fr-CA' };
+  const VOICES = { en: 'en-US', ru: 'ru-RU', uz: 'uz-UZ' };
   const QUEUE_DB = 'kaido-walk';
 
   const openDb = () => new Promise((resolve, reject) => {
@@ -194,6 +194,9 @@
     if (!speakOn || !('speechSynthesis' in window)) return;
     try {
       speechSynthesis.cancel();
+      const voices = speechSynthesis.getVoices();
+      const want = VOICES[lang].slice(0, 2);
+      if (voices.length && !voices.some((v) => (v.lang || '').toLowerCase().startsWith(want))) return;
       const u = new SpeechSynthesisUtterance(text);
       u.lang = VOICES[lang];
       speechSynthesis.speak(u);
