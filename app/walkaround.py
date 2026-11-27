@@ -154,10 +154,14 @@ def start(truck, form, ip):
         picked = int(form.get("driver_id") or 0)
     except ValueError:
         picked = 0
+    driver = None
     if picked:
         driver = one("select id, name from drivers where id = %s and company_id = %s", (picked, truck["company_id"]))
-        if driver:
-            driver_id, driver_name = driver["id"], driver["name"]
+    elif driver_name:
+        driver = one("""select id, name from drivers where company_id = %s and lower(name) = lower(%s)
+                        order by (status = 'active') desc limit 1""", (truck["company_id"], driver_name))
+    if driver:
+        driver_id, driver_name = driver["id"], driver["name"]
     try:
         meta = json.loads(form.get("meta") or "{}")
     except ValueError:

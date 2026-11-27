@@ -20,13 +20,8 @@
   <p class="walk-sub">{{ truck.company_name }}{% if truck.year or truck.make %} · {{ truck.year or '' }} {{ truck.make or '' }}{% endif %}</p>
   {% if redo %}<div class="walk-note bad"><span data-t="redo"></span> {{ redo.review_note }}</div>{% endif %}
   <div class="walk-note warn" data-telegram hidden data-t="telegram"></div>
-  <label class="walk-field"><span data-t="who"></span>
-    <select data-driver>
-      {% for driver in drivers %}<option value="{{ driver.id }}" {% if driver.id == truck.driver_id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
-      <option value="" {% if not truck.driver_id %}selected{% endif %} data-t="someone"></option>
-    </select>
-  </label>
-  <label class="walk-field" data-driver-name-wrap><input data-driver-name maxlength="120" autocomplete="name" placeholder="Name"></label>
+  <label class="walk-field"><span data-t="name"></span>
+    <input data-driver-name maxlength="120" autocomplete="name"></label>
   <div class="walk-note bad" data-intro-error hidden></div>
   <button type="button" class="walk-go" data-start><span class="walk-cam"></span><span data-t="start"></span></button>
   <button type="button" class="walk-alt" data-upload data-t="upload"></button>
@@ -47,7 +42,7 @@
     <div class="walk-problem" data-problem hidden></div>
     <div class="walk-row"><span class="walk-status" data-status></span>
       <button type="button" class="walk-skip" data-speak data-t="speakOn"></button>
-      <button type="button" class="walk-skip" data-skip data-t="skip"></button></div>
+</div>
   </div>
 </section>
 

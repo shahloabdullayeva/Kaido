@@ -318,3 +318,4 @@ rather than an empty map.
 - 27 Nov 2026 (night): Stage 7 built, walkaround PTI with vision AI (README -> Walkaround PTI). Claude key is in .env now, Sonnet 5.5 (`AI_PHOTO_MODEL`). Tested end to end with a real check (3.9 s) and review ($0.012); test records removed. Not tested on a real phone yet: camera, speech, voice recording and the Telegram in-app browser need her phone. Videos are cut into frames on the phone because the server has no ffmpeg.
 - 27 Nov 2026 (night): Learn redesigned again around 11 truck systems with hub pages, shelves, reading progress and Mark as read.
 - 27 Nov 2026: Maintenance list un-squeezed at her request: priority under status, Owner and Resolved by in one column, short columns kept on one line, descriptions clamped to two lines.
+- 27 Nov 2026: walkaround is pre-trip only, has no Skip button and no driver list (the public link no longer shows the company's driver names); the driver types a name.

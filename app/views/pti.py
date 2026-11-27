@@ -309,7 +309,7 @@ def walk_page(token):
     g.walkaround = True
     return render_template(
         "pti/walk.html", title=f"PTI · Unit {truck['unit_number']}", truck=truck, token=token,
-        steps=walkaround.steps_for(truck["company_id"]), drivers=driver_options(truck["company_id"]),
+        steps=walkaround.steps_for(truck["company_id"]),
         redo=latest if latest and latest["review_status"] == "rejected" else None,
         ai_on=walkaround.available(),
     )

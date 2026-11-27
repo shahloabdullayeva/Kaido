@@ -180,11 +180,7 @@
   }
 
   const kind = 'pre_trip';
-  const driverPick = $('[data-driver]');
   const driverName = $('[data-driver-name]');
-  const syncDriver = () => { driverName.closest("label").hidden = Boolean(driverPick.value); };
-  driverPick.addEventListener('change', syncDriver);
-  syncDriver();
 
   const newKey = () => {
     const bytes = new Uint8Array(16);
@@ -192,7 +188,7 @@
     return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
   };
   let key = null;
-  const sessionFields = () => ({ key, kind, lang, driver_id: driverPick.value, driver_name: driverName.value });
+  const sessionFields = () => ({ key, kind, lang, driver_name: driverName.value.trim() });
 
   const speak = (text) => {
     if (!speakOn || !('speechSynthesis' in window)) return;
@@ -319,13 +315,6 @@
     stepTimer = setTimeout(() => { if (mine === stepToken) { current += 1; runStep(); } }, 700);
   };
 
-  $('[data-skip]').addEventListener('click', async () => {
-    const step = steps[current];
-    stepToken += 1;
-    if (step) await saveFrame(step.key, null);
-    current += 1;
-    runStep();
-  });
 
   const startLive = async () => {
     key = newKey();
@@ -352,7 +341,15 @@
     current = 0;
     runStep();
   };
+  const needName = () => {
+    if (driverName.value.trim()) return false;
+    $('[data-intro-error]').textContent = t('name');
+    $('[data-intro-error]').hidden = false;
+    driverName.focus();
+    return true;
+  };
   $('[data-start]').addEventListener('click', () => {
+    if (needName()) return;
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       $('[data-intro-error]').textContent = t('noCamera');
       $('[data-intro-error]').hidden = false;
@@ -579,7 +576,7 @@
   });
 
   const gallery = $('[data-gallery]');
-  $('[data-upload]').addEventListener('click', () => gallery.click());
+  $('[data-upload]').addEventListener('click', () => { if (!needName()) gallery.click(); });
   gallery.addEventListener('change', async () => {
     const files = Array.from(gallery.files || []);
     if (!files.length) return;
