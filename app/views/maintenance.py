@@ -150,6 +150,9 @@ def store_extras(order_id, parts, form):
         flash(problem, "bad")
     if saved:
         audit("maintenance.files_added", "maintenance_order", order_id, {"files": [row["name"] for row in saved]})
+        problem = work_orders.fill_from_invoice(g.company["id"], order_id, saved)
+        if problem:
+            flash(problem, "bad")
 
 
 LIST_FILTERS = ["all", "open"] + work_orders.STATUSES

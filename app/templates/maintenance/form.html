@@ -188,8 +188,8 @@
   <div class="panel-head"><h2>Which oil</h2></div>
   <div id="oil-body"></div>
 </section>
-{% if order.truck_id and order.asset_type == 'truck' %}
-<section class="panel" id="shop-panel" hidden{% if order.status not in ('done', 'cancelled') and not order.vendor %} data-find{% endif %}>
+{% if order.truck_id and order.asset_type == 'truck' and order.status not in ('done', 'cancelled') %}
+<section class="panel" id="shop-panel" hidden{% if not order.vendor %} data-find{% endif %}>
   <div class="panel-head"><h2>Where to send it</h2><span class="subtle" id="shop-status"></span></div>
   <div class="progress pad" id="shop-progress" hidden></div>
   <div id="shop-body"></div>

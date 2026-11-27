@@ -811,7 +811,9 @@ or PDF per comment, stored in `uploads/maintenance/comments/`), then the details
 payment and shop rating folded into "Costs and invoice" (open once the order is done or has any cost). Choosing an invoice PDF or
 photo there sends it (up to 3 files) to `POST /maintenance/invoice/read` (`advisor.read_invoice`, the `AI_MODEL`
 under `AI_DAILY_USD`, about $0.014 a read) and fills parts, labor, tax and fees, invoice number, paid with and next
-due when the invoice shows them; fields already filled are left alone, and nothing is saved until Save. Every status
+due when the invoice shows them; fields already filled are left alone, and nothing is saved until Save. If an
+invoice is saved onto an order with no costs or parts yet, the server reads it the same way
+(`work_orders.fill_from_invoice`). "Where to send it" is not shown on done or cancelled orders. Every status
 change writes "<name> changed status from X to Y" into the thread. Cancelled orders are hidden from the list unless
 the Status filter is Cancelled; Delete asks first and removes the order with its comments, files and reminders.
 The list shows the comment count per order and filters by status, truck/trailer and system.

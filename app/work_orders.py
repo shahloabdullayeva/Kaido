@@ -1,4 +1,5 @@
 import io
+from datetime import datetime
 import uuid
 
 from . import forms
@@ -319,3 +320,39 @@ def invoices_first(order_id, record_pdf):
     out = io.BytesIO()
     writer.write(out)
     return out.getvalue()
+
+
+def fill_from_invoice(company_id, order_id, files):
+    from . import advisor
+    order = one("select * from maintenance_orders where id = %s and company_id = %s", (order_id, company_id))
+    if not order or not files or order["cost"] or order["labor_cost"] or order["tax"] or parts_of(order_id):
+        return None
+    attachments = []
+    for item in files[:3]:
+        path = file_path(item)
+        if path and item["content_type"] in ("application/pdf", "image/jpeg", "image/png", "image/webp"):
+            attachments.append((item["content_type"], path.read_bytes()))
+    if not attachments:
+        return None
+    read, problem = advisor.read_invoice(attachments)
+    if not read:
+        return problem
+    save_parts(company_id, order_id, [
+        {"name": p.name[:200], "part_number": p.part_number[:60] or None, "quantity": p.quantity or 1,
+         "unit_price": p.unit_price} for p in read.parts if p.name.strip()][:MAX_PARTS])
+    due = None
+    if read.next_due_date:
+        try:
+            due = datetime.strptime(read.next_due_date, "%Y-%m-%d").date()
+        except ValueError:
+            due = None
+    execute(
+        """update maintenance_orders set labor_cost = %s, tax = %s, cost = %s,
+             invoice_no = coalesce(nullif(invoice_no, ''), %s), paid_with = coalesce(paid_with, %s),
+             next_due_on = coalesce(next_due_on, %s), next_due_odometer = coalesce(next_due_odometer, %s),
+             odometer = coalesce(odometer, %s), updated_at = now()
+           where id = %s and company_id = %s""",
+        (read.labor or None, read.tax_and_fees or None, read.total or None, read.invoice_number[:40] or None,
+         read.paid_with or None, due, read.next_due_odometer or None, read.odometer or None, order_id, company_id),
+    )
+    return None
