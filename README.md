@@ -1002,8 +1002,8 @@ token, and Love's.
 
 ## Walkaround PTI (camera, vision AI)
 
-The PTI link and QR sticker (`/pti/<token>`) now open a guided camera walkaround instead of the form (the form is still at
-`/pti/<token>/form`, linked as "Use the old form"). The walkaround is always a pre-trip (her choice, 27 Nov). The page lists no driver names; the driver types their name (matched to a driver of the company when it is the same name), taps Start
+The PTI link and QR sticker (`/pti/<token>`) now open a guided camera walkaround instead of the form (the old form still works at
+`/pti/<token>/form` but nothing links to it). The walkaround is always a pre-trip (her choice, 27 Nov). The page lists no driver names; the driver types their name (matched to a driver of the company when it is the same name), taps Start
 walkaround, and the phone camera opens. Each step (`app/walkaround.py` DEFAULT_STEPS: front with lights, left steer,
 left side and drives, left trailer tires, rear with lights, right side, right steer, dash with the engine running) shows a
 big arrow and short text and is spoken by the browser in English, Russian or Uzbek (Latin script; picked from the phone language,
