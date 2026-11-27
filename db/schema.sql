@@ -1824,3 +1824,9 @@ alter table fuel_offers drop constraint if exists fuel_offers_reason_check;
 alter table fuel_offers add constraint fuel_offers_reason_check check (reason in ('low', 'asked', 'test', 'office'));
 alter table fuel_offers drop constraint if exists fuel_offers_status_check;
 alter table fuel_offers add constraint fuel_offers_status_check check (status in ('ready', 'sent', 'accepted', 'skipped', 'expired', 'fueled', 'failed'));
+
+alter table maintenance_orders add column if not exists resolved_by int references users(id) on delete set null;
+update maintenance_orders m set resolved_by = coalesce((select c.created_by from work_order_comments c
+    where c.order_id = m.id and c.kind = 'status' and c.body like '% to done' and c.created_by is not null
+    order by c.created_at desc, c.id desc limit 1), m.created_by)
+  where m.status = 'done' and m.resolved_by is null;

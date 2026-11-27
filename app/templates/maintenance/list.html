@@ -1,4 +1,5 @@
 {% extends "layout.html" %}
+{% macro sort_link(key, text) %}{% set args = request.args.to_dict() %}{% set _ = args.update({'sort': '' if sort == key else key}) %}<a class="sortlink" href="/maintenance?{{ args|urlencode }}">{{ text }}{% if sort == key %} &#9662;{% endif %}</a>{% endmacro %}
 {% block body %}
 <div class="page-head">
   <div><h1>Maintenance</h1><p>{{ spend.month_orders }} completed this month · {{ spend.month_cost|money }}</p></div>
@@ -41,6 +42,13 @@
           <option value="comebacks" {% if flag == 'comebacks' %}selected{% endif %}>Possible comebacks</option>
         </select>
       </label>
+      <label class="field"><span>Person</span>
+        <select name="person">
+          <option value="">All</option>
+          {% for p in people %}<option value="{{ p.id }}" {% if person == p.id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+      </label>
+      {% if sort %}<input type="hidden" name="sort" value="{{ sort }}">{% endif %}
       <label class="field"><span>System</span>
         <select name="group">
           <option value="">All</option>
@@ -52,11 +60,10 @@
   </div>
   {% if orders %}
   <div class="table-wrap"><table>
-    <thead><tr><th>#</th><th>Unit</th><th>Work</th><th>Priority</th><th>Status</th><th>Shop</th><th>Date</th><th class="right">At shop</th><th class="right">Comments</th><th class="right">Total</th><th></th></tr></thead>
+    <thead><tr><th>Unit</th><th>Work</th><th>Priority</th><th>Status</th><th>Shop</th><th>{{ sort_link('owner', 'Owner') }}</th><th>{{ sort_link('resolver', 'Resolved by') }}</th><th>Date</th><th class="right">At shop</th><th class="right">Comments</th><th class="right">Total</th><th></th></tr></thead>
     <tbody>
       {% for order in orders %}
-      <tr class="clickrow" data-href="/maintenance/{{ order.id }}" title="Open work order #{{ order.id }}">
-        <td><a class="rowlink" href="/maintenance/{{ order.id }}">{{ order.id }}</a></td>
+      <tr class="clickrow" data-href="/maintenance/{{ order.id }}" >
         <td><a class="rowlink" href="{{ ('/trailers/' ~ order.trailer_id) if order.asset_type == 'trailer' else ('/trucks/' ~ order.truck_id) }}">{{ order.unit_number }}</a>
           {% if order.asset_type == 'trailer' %}<div class="subtle">trailer{% if not order.truck_id and order.location %} · {{ order.location }}{% endif %}</div>{% elif order.driver_name %}<div class="subtle">{{ order.driver_name }}</div>{% endif %}</td>
         <td>{{ order.kind|work }}{% if order.breakdown %} <span class="badge bad">breakdown</span>{% endif %}{% if order.comeback %} <span class="badge bad">comeback?</span>{% endif %}
@@ -64,15 +71,17 @@
         <td><span class="badge {{ order.priority|tone }}">{{ order.priority }}</span></td>
         <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
         <td>{{ order.vendor or '' }}</td>
+        <td>{{ order.owner_name or '' }}</td>
+        <td>{{ order.resolver_name or '' }}</td>
         <td>{{ (order.performed_on or order.scheduled_for or order.reported_at)|day }}</td>
         <td class="right">{% if order.times %}{{ order.times.total|span }}{% if order.times.waiting is not none %}<div class="subtle{{ ' wo-waiting' if order.times.stage == 'waiting' }}">waited {{ order.times.waiting|span }}</div>{% endif %}{% endif %}</td>
         <td class="right">{% if order.comments %}{{ order.comments }}{% endif %}</td>
         <td class="right">{% if order.cost is not none %}{{ order.cost|money }}{% endif %}</td>
         <td class="wo-row-actions">{% if at_least(role, 'admin') %}
-          <form method="post" action="/maintenance/{{ order.id }}/delete" class="inline" data-confirm="Delete work order #{{ order.id }} with its comments and files? This cannot be undone.">
+          <form method="post" action="/maintenance/{{ order.id }}/delete" class="inline" data-confirm="Delete this work order for {{ order.unit_number }} with its comments and files? This cannot be undone.">
             <input type="hidden" name="csrf" value="{{ session.csrf }}">
             <input type="hidden" name="back" value="{{ request.full_path.rstrip('?') }}">
-            <button class="wo-x" type="submit" title="Delete" aria-label="Delete work order #{{ order.id }}" data-busy="…">&times;</button></form>{% endif %}
+            <button class="wo-x" type="submit" title="Delete" aria-label="Delete work order for {{ order.unit_number }}" data-busy="…">&times;</button></form>{% endif %}
         </td>
       </tr>
       {% endfor %}

@@ -122,11 +122,12 @@ def close_out(order, status):
     if status == "done":
         execute(
             """update maintenance_orders set resolved_at = coalesce(resolved_at, now()),
+                 resolved_by = coalesce(resolved_by, %s),
                  performed_on = coalesce(performed_on, current_date) where id = %s""",
-            (order["id"],),
+            (g.session["user_id"], order["id"]),
         )
     elif status != "cancelled":
-        execute("update maintenance_orders set resolved_at = null where id = %s", (order["id"],))
+        execute("update maintenance_orders set resolved_at = null, resolved_by = null where id = %s", (order["id"],))
 
 
 def driver_contact_for(form, driver_id):
@@ -158,6 +159,13 @@ def store_extras(order_id, parts, form):
 LIST_FILTERS = ["all", "open"] + work_orders.STATUSES
 
 
+SORTS = {
+    "": "",
+    "owner": "lower(coalesce(nullif(ou.name, ''), ou.email)) nulls last, ",
+    "resolver": "lower(coalesce(nullif(ru.name, ''), ru.email)) nulls last, ",
+}
+
+
 @bp.get("/maintenance")
 @login_required
 @company_required
@@ -166,6 +174,18 @@ def index():
     group = forms.pick(request.args.get("group"), list(GROUP_LABELS), "")
     asset = forms.pick(request.args.get("asset"), ["truck", "trailer"], "")
     flag = forms.pick(request.args.get("flag"), ["comebacks"], "")
+    sort = forms.pick(request.args.get("sort"), ["owner", "resolver"], "")
+    people = rows(
+        """select distinct u.id, coalesce(nullif(u.name, ''), u.email) as name from users u
+           where u.id in (select created_by from maintenance_orders where company_id = %s
+                          union select resolved_by from maintenance_orders where company_id = %s)
+              or u.id in (select user_id from memberships where company_id = %s)
+           order by 2""",
+        (g.company["id"], g.company["id"], g.company["id"]),
+    )
+    person = forms.integer(request.args.get("person"))
+    if person not in {p["id"] for p in people}:
+        person = None
     downtime.refresh(g.company["id"])
     params = [g.company["id"]]
     clause = ""
@@ -186,6 +206,9 @@ def index():
         if value:
             clause += f" and m.{key} = %s"
             params.append(value)
+    if person:
+        clause += " and (m.created_by = %s or m.resolved_by = %s)"
+        params += [person, person]
     if group:
         clause += " and (m.kind = any(%s) or m.kind like %s)" if group == "pm" else " and m.kind = any(%s)"
         params.append(kinds_in(group))
@@ -197,11 +220,15 @@ def index():
                    (select count(*) from maintenance_files f where f.order_id = m.id) as files,
                    (select count(*) from work_order_comments c where c.order_id = m.id and c.kind = 'comment') as comments,
                    (select count(*) from maintenance_comebacks c where c.order_id = m.id and c.dismissed_at is null) as comeback,
+                   coalesce(nullif(ou.name, ''), ou.email) as owner_name,
+                   coalesce(nullif(ru.name, ''), ru.email) as resolver_name,
                    {work_orders.SHOP_TIMES_COLS}
             from maintenance_orders m {work_orders.UNIT_JOIN}
             left join drivers d on d.id = m.driver_id
+            left join users ou on ou.id = m.created_by
+            left join users ru on ru.id = m.resolved_by
             where m.company_id = %s{clause}
-            order by (m.status in ('done', 'cancelled')), coalesce(m.performed_on, m.scheduled_for, m.reported_at::date) desc,
+            order by {SORTS[sort]}(m.status in ('done', 'cancelled')), coalesce(m.performed_on, m.scheduled_for, m.reported_at::date) desc,
                      m.id desc limit 300""",
         tuple(params),
     )
@@ -228,6 +255,7 @@ def index():
     return render_template("maintenance/list.html", title="Maintenance", active="/maintenance", flag=flag, shops=shops,
                            comeback_days=one("select comeback_days from companies where id = %s", (g.company["id"],))["comeback_days"],
                            orders=orders, status=status, statuses=work_orders.STATUSES, spend=spend,
+                           people=people, person=person, sort=sort,
                            group=group, group_labels=GROUP_LABELS, asset=asset, cancelled=cancelled)
 
 
