@@ -1004,7 +1004,9 @@ token, and Love's.
 PTI page: reports not yet reviewed sit in "Waiting for review" at the top; the all-units "Today" board is gone (27 Nov).
 PTI -> Driver link (`/pti/links`): pick a unit, pick a driver or type a new one (name, phone; a new driver row is made),
 Generate. Each link is its own token in `pti_links` (the truck's sticker token keeps working), opens the same walkaround
-with the driver's name filled in, and is posted to the truck's Telegram group when one is connected.
+with the driver's name filled in, and is posted to the truck's Telegram group when one is connected. With no group it shows the link with Copy
+and a "Send to <driver> on Telegram" button (t.me/<username> or t.me/+<phone> with the message filled in; the share picker
+if neither is known). The form also takes a Telegram username, saved on the driver.
 
 The PTI link and QR sticker (`/pti/<token>`) now open a guided camera walkaround instead of the form (the old form still works at
 `/pti/<token>/form` but nothing links to it). The walkaround is always a pre-trip (her choice, 27 Nov). The page lists no driver names; the driver types their name (matched to a driver of the company when it is the same name), taps Start

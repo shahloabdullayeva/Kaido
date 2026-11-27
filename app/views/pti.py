@@ -252,8 +252,16 @@ def links():
     if made:
         url = pti.link_for(made["token"])
         message = link_message(made["unit_number"], made["driver_name"], url)
-        made = dict(made, url=url, message=message,
-                    telegram="https://t.me/share/url?" + urlencode({"url": url, "text": message}))
+        who = one("select telegram_username, phone from drivers where id = %s", (made["driver_id"],)) if made["driver_id"] else None
+        username = ((who or {}).get("telegram_username") or "").strip().lstrip("@")
+        phone = "".join(ch for ch in (made["phone"] or (who or {}).get("phone") or "") if ch.isdigit())
+        if username:
+            direct = f"https://t.me/{username}?" + urlencode({"text": message})
+        elif len(phone) >= 10:
+            direct = f"https://t.me/+{phone if len(phone) > 10 else '1' + phone}?" + urlencode({"text": message})
+        else:
+            direct = "https://t.me/share/url?" + urlencode({"url": url, "text": message})
+        made = dict(made, url=url, message=message, telegram=direct, direct=bool(username or len(phone) >= 10))
     for item in recent:
         item["url"] = pti.link_for(item["token"])
     return render_template("pti/links.html", title="Driver link", active="/pti", trucks=trucks,
@@ -275,6 +283,7 @@ def links_make():
     driver_id = forms.integer(request.form.get("driver_id"))
     name = (request.form.get("name") or "").strip()[:120]
     phone = (request.form.get("phone") or "").strip()[:40] or None
+    username = (request.form.get("telegram") or "").strip().lstrip("@")[:64] or None
     driver = None
     if driver_id:
         driver = one("select id, name, phone from drivers where id = %s and company_id = %s",
@@ -293,6 +302,8 @@ def links_make():
         return redirect("/pti/links")
     if phone and not driver["phone"]:
         execute("update drivers set phone = %s, updated_at = now() where id = %s", (phone, driver["id"]))
+    if username:
+        execute("update drivers set telegram_username = %s, updated_at = now() where id = %s", (username, driver["id"]))
     link = pti.make_link(g.company["id"], truck, driver["id"], driver["name"], phone or driver["phone"], g.session["user_id"])
     sent_to = None
     if truck.get("telegram_chat_id"):

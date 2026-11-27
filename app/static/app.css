@@ -1062,3 +1062,4 @@ table.wo-list > thead > tr > th.wo-work, table.wo-list > tbody > tr > td.wo-work
 table.wo-list > thead > tr > th.wo-work, table.wo-list > tbody > tr > td.wo-work { min-width: 200px; }
 .wo-list .wo-desc { max-width: 380px; }
 .pti-made-url { width: 100%; box-sizing: border-box; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: inherit; }
+.pti-made { display: flex; gap: 8px; } .pti-made .pti-made-url { flex: 1; min-width: 0; }

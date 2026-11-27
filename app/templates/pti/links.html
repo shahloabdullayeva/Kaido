@@ -9,13 +9,18 @@
 <section class="panel">
   <div class="panel-head"><h2>Unit {{ made.unit_number }} · {{ made.driver_name }}</h2>
     {% if made.sent_ok %}<span class="badge ok">sent to {{ made.sent_to }}</span>
-    {% elif made.sent_to %}<span class="badge bad">not sent</span>{% endif %}</div>
+    {% elif made.sent_to %}<span class="badge bad">not sent to group</span>{% endif %}</div>
   <div class="pad">
-    <input class="pti-made-url" readonly value="{{ made.url }}">
-    <div class="actions-row" style="margin-top:10px">
-      <button class="btn small" type="button" data-copy="{{ made.message }}">Copy message</button>
-      <a class="btn ghost small" href="{{ made.telegram }}" target="_blank" rel="noopener">Share on Telegram</a>
+    <div class="pti-made">
+      <input class="pti-made-url" readonly value="{{ made.url }}">
+      <button class="btn ghost" type="button" data-copy="{{ made.url }}">Copy link</button>
     </div>
+    {% if not made.sent_ok %}
+    <div class="actions-row" style="margin-top:10px">
+      <a class="btn" href="{{ made.telegram }}" target="_blank" rel="noopener">{{ 'Send to ' ~ made.driver_name ~ ' on Telegram' if made.direct else 'Send on Telegram' }}</a>
+      <button class="btn ghost" type="button" data-copy="{{ made.message }}">Copy message</button>
+    </div>
+    {% endif %}
   </div>
 </section>
 {% endif %}
@@ -39,6 +44,8 @@
         <input name="name" maxlength="120" autocomplete="off"></label>
       <label class="field"><span>Phone</span>
         <input name="phone" maxlength="40" inputmode="tel" autocomplete="off"></label>
+      <label class="field"><span>Telegram username</span>
+        <input name="telegram" maxlength="64" autocomplete="off" placeholder="@username"></label>
     </div>
     <div class="actions-row" style="margin-top:12px"><button class="btn" type="submit">Generate</button></div>
   </form>
