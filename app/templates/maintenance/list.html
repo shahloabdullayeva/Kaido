@@ -59,20 +59,20 @@
     {% if status == 'all' and cancelled %}<a class="subtle" href="/maintenance?status=cancelled">{{ cancelled }} cancelled</a>{% endif %}
   </div>
   {% if orders %}
-  <div class="table-wrap"><table>
-    <thead><tr><th>Unit</th><th>Work</th><th>Priority</th><th>Status</th><th>Shop</th><th>{{ sort_link('owner', 'Owner') }}</th><th>{{ sort_link('resolver', 'Resolved by') }}</th><th>Date</th><th class="right">At shop</th><th class="right">Comments</th><th class="right">Total</th><th></th></tr></thead>
+  <div class="table-wrap"><table class="wo-list">
+    <thead><tr><th>Unit</th><th class="wo-work">Work</th><th>Status</th><th>Shop</th><th>{{ sort_link('owner', 'Owner') }} / {{ sort_link('resolver', 'Resolved by') }}</th><th>Date</th><th class="right">At shop</th><th class="right">Notes</th><th class="right">Total</th><th></th></tr></thead>
     <tbody>
       {% for order in orders %}
       <tr class="clickrow" data-href="/maintenance/{{ order.id }}" >
         <td><a class="rowlink" href="{{ ('/trailers/' ~ order.trailer_id) if order.asset_type == 'trailer' else ('/trucks/' ~ order.truck_id) }}">{{ order.unit_number }}</a>
           {% if order.asset_type == 'trailer' %}<div class="subtle">trailer{% if not order.truck_id and order.location %} · {{ order.location }}{% endif %}</div>{% elif order.driver_name %}<div class="subtle">{{ order.driver_name }}</div>{% endif %}</td>
-        <td>{{ order.kind|work }}{% if order.breakdown %} <span class="badge bad">breakdown</span>{% endif %}{% if order.comeback %} <span class="badge bad">comeback?</span>{% endif %}
-          <div class="subtle">{{ (order.description or '')[:70] }}</div></td>
-        <td><span class="badge {{ order.priority|tone }}">{{ order.priority }}</span></td>
-        <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span></td>
+        <td class="wo-work">{{ order.kind|work }}{% if order.breakdown %} <span class="badge bad">breakdown</span>{% endif %}{% if order.comeback %} <span class="badge bad">comeback?</span>{% endif %}
+          <div class="subtle wo-desc" title="{{ order.description or '' }}">{{ order.description or '' }}</div></td>
+        <td><span class="badge {{ order.status|tone }}">{{ order.status|label }}</span>
+          <div class="wo-prio"><span class="badge {{ order.priority|tone }}">{{ order.priority }}</span></div></td>
         <td>{{ order.vendor or '' }}</td>
-        <td>{{ order.owner_name or '' }}</td>
-        <td>{{ order.resolver_name or '' }}</td>
+        <td class="wo-people">{% if order.owner_name %}<div>{{ order.owner_name }}</div>{% endif %}
+          {% if order.resolver_name %}<div class="subtle">done by {{ order.resolver_name }}</div>{% endif %}</td>
         <td>{{ (order.performed_on or order.scheduled_for or order.reported_at)|day }}</td>
         <td class="right">{% if order.times %}{{ order.times.total|span }}{% if order.times.waiting is not none %}<div class="subtle{{ ' wo-waiting' if order.times.stage == 'waiting' }}">waited {{ order.times.waiting|span }}</div>{% endif %}{% endif %}</td>
         <td class="right">{% if order.comments %}{{ order.comments }}{% endif %}</td>

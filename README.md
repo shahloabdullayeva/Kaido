@@ -800,7 +800,8 @@ order), then the work order. A file that cannot be read is skipped and logged.
 Each row on the Maintenance list has an **×** that deletes the work order (asks first, admins
 only) and returns to the same filtered list.
 
-The list has no work order number column. **Owner** is the person who opened the work order (`created_by`) and
+The list has no work order number column; priority sits under the status badge, and Owner and Resolved by share one
+column (the owner on top, "done by" under it) so the Work column keeps its width. **Owner** is the person who opened the work order (`created_by`) and
 **Resolved by** is the person who set it to done (`resolved_by`, cleared again if it is reopened; older done orders were
 filled from their status history). Clicking either heading sorts the list by that person; the **Person** filter shows
 the orders a person owns or resolved.

@@ -1039,3 +1039,13 @@ th .sortlink:hover { text-decoration: underline; }
 .ln [hidden] { display: none !important; }
 .ln-search input[type=search], .ln-search input[type=search]:focus { background: transparent; border: 0; box-shadow: none; color: #1a1d24; padding: 8px 0; }
 .ln-quick { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); }
+.wo-list th, .wo-list td { white-space: nowrap; }
+.wo-list th.wo-work, .wo-list td.wo-work { white-space: normal; width: 100%; min-width: 260px; }
+.wo-list .wo-desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 520px; }
+.wo-list td:first-child .subtle { white-space: nowrap; max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+table.wo-list > thead > tr > th, table.wo-list > tbody > tr > td { white-space: nowrap !important; }
+table.wo-list > thead > tr > th.wo-work, table.wo-list > tbody > tr > td.wo-work { white-space: normal !important; }
+.wo-list .wo-prio { margin-top: 4px; }
+.wo-list .wo-people .subtle { font-size: 12px; }
+table.wo-list > thead > tr > th.wo-work, table.wo-list > tbody > tr > td.wo-work { min-width: 200px; }
+.wo-list .wo-desc { max-width: 380px; }
