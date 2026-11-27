@@ -73,14 +73,18 @@
   {% endif %}
   {% if inspections %}
   <div class="table-wrap"><table>
-    <thead><tr><th>When</th><th>Type</th><th>Driver</th><th>Result</th></tr></thead>
+    <thead><tr><th>When</th><th>Type</th><th>Driver</th><th>Result</th><th>How</th></tr></thead>
     <tbody>
       {% for item in inspections %}
       <tr class="clickrow" data-href="/pti/report/{{ item.id }}"><td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.submitted_at|stamp }}</a></td>
         <td>{{ pti_kinds.get(item.kind, 'Inspection') }}</td><td>{{ item.driver_name or '—' }}</td>
         <td>{% if not item.defect_count %}<span class="badge ok">no defects</span>
           {% elif item.certified_at %}<span class="badge muted">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, signed off</span>
-          {% else %}<span class="badge bad">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, open</span>{% endif %}</td></tr>
+          {% else %}<span class="badge bad">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, open</span>{% endif %}
+          {% if item.ai_status == 'flagged' %}<span class="badge bad">AI flagged</span>{% elif item.ai_status == 'clear' %}<span class="badge ok">AI clear</span>{% endif %}</td>
+        <td>{% if item.mode == 'live' %}live camera{% elif item.mode == 'upload' %}uploaded{% else %}form{% endif %}
+          {% for flag in item.media_flags or [] if flag != 'uploaded' %}<span class="badge bad">{{ {'old_media': 'old media', 'location_mismatch': 'location mismatch', 'no_metadata': 'no metadata', 'no_gps': 'no phone location'}.get(flag, flag) }}</span>{% endfor %}
+          {% if item.gps_miles is not none %}<div class="subtle">{{ item.gps_miles }} mi from truck GPS · {{ item.started_at|stamp if item.started_at else '' }}</div>{% endif %}</td></tr>
       {% endfor %}
     </tbody>
   </table></div>

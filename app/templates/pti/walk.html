@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#10131c">
+<title>{{ title }} · Kaido</title>
+<link rel="stylesheet" href="/static/app.css?v={{ cat_version }}">
+<link rel="icon" href="/static/favicon.svg?v=3">
+</head>
+<body class="walk-body">
+<main class="walk" data-walk data-token="{{ token }}" data-ai="{{ '1' if ai_on else '0' }}">
+<script type="application/json" id="walk-steps">{{ steps|tojson }}</script>
+
+<section class="walk-intro" data-screen="intro">
+  <div class="walk-brand">{% include "_logo.html" %}</div>
+  <div class="walk-langs"><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button><button type="button" data-lang="fr">FR</button></div>
+  <h1>Unit {{ truck.unit_number }}</h1>
+  <p class="walk-sub">{{ truck.company_name }}{% if truck.year or truck.make %} · {{ truck.year or '' }} {{ truck.make or '' }}{% endif %}</p>
+  {% if redo %}<div class="walk-note bad"><span data-t="redo"></span> {{ redo.review_note }}</div>{% endif %}
+  <div class="walk-note warn" data-telegram hidden data-t="telegram"></div>
+  <div class="walk-toggle">
+    <button type="button" class="on" data-kind="pre_trip" data-t="pre"></button>
+    <button type="button" data-kind="post_trip" data-t="post"></button>
+  </div>
+  <label class="walk-field"><span data-t="who"></span>
+    <select data-driver>
+      {% for driver in drivers %}<option value="{{ driver.id }}" {% if driver.id == truck.driver_id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}
+      <option value="" {% if not truck.driver_id %}selected{% endif %} data-t="someone"></option>
+    </select>
+  </label>
+  <label class="walk-field" data-driver-name-wrap><input data-driver-name maxlength="120" autocomplete="name" placeholder="Name"></label>
+  <div class="walk-note bad" data-intro-error hidden></div>
+  <button type="button" class="walk-go" data-start><span class="walk-cam"></span><span data-t="start"></span></button>
+  <button type="button" class="walk-alt" data-upload data-t="upload"></button>
+  <input type="file" accept="image/*,video/*" multiple hidden data-gallery>
+  <a class="walk-old" href="/pti/{{ token }}/form" data-t="oldForm"></a>
+</section>
+
+<section class="walk-camera" data-screen="camera" hidden>
+  <video data-video playsinline muted autoplay></video>
+  <div class="walk-top">
+    <div class="walk-bar"><span data-progress></span></div>
+    <div class="walk-count" data-step-count></div>
+    <h2 data-step-title></h2>
+  </div>
+  <div class="walk-arrow" data-arrow></div>
+  <div class="walk-bottom">
+    <p data-step-say></p>
+    <div class="walk-problem" data-problem hidden></div>
+    <div class="walk-row"><span class="walk-status" data-status></span>
+      <button type="button" class="walk-skip" data-speak data-t="speakOn"></button>
+      <button type="button" class="walk-skip" data-skip data-t="skip"></button></div>
+  </div>
+</section>
+
+<section class="walk-intro" data-screen="working" hidden>
+  <div class="walk-spin"></div>
+  <h2 data-t="working"></h2>
+</section>
+
+<section class="walk-intro" data-screen="voice" hidden>
+  <h1 data-t="wrong"></h1>
+  <p class="walk-sub" data-t="wrongHint"></p>
+  <button type="button" class="walk-hold" data-hold data-t="hold"></button>
+  <div class="walk-heard" data-heard hidden></div>
+  <div class="walk-voice-actions" data-voice-actions hidden>
+    <button type="button" class="walk-go" data-send-voice data-t="send"></button>
+    <button type="button" class="walk-alt" data-again data-t="again"></button>
+  </div>
+  <button type="button" class="walk-alt" data-all-good data-t="allGood"></button>
+</section>
+
+<section class="walk-intro" data-screen="done" hidden>
+  <div class="walk-check"></div>
+  <h1 data-t="done"></h1>
+  <p class="walk-sub" data-t="doneHint"></p>
+  <div class="walk-queue" data-queue></div>
+  <p class="walk-small" data-t="keepOpen"></p>
+</section>
+</main>
+<script src="/static/walk.js?v={{ cat_version }}"></script>
+</body>
+</html>

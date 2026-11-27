@@ -1833,3 +1833,57 @@ update maintenance_orders m set resolved_by = coalesce((select c.created_by from
 
 alter table companies add column if not exists safety_all boolean not null default false;
 update companies set safety_all = true where name = 'DFK transportation' and not safety_all;
+
+alter table companies add column if not exists walkaround_steps jsonb;
+alter table inspections add column if not exists mode text not null default 'form';
+alter table inspections add column if not exists media_flags text[] not null default '{}';
+alter table inspections add column if not exists gps_lat double precision;
+alter table inspections add column if not exists gps_lon double precision;
+alter table inspections add column if not exists gps_miles numeric(8,2);
+alter table inspections add column if not exists started_at timestamptz;
+alter table inspections add column if not exists voice_text text;
+alter table inspections add column if not exists lang text;
+alter table inspection_photos add column if not exists step text;
+alter table inspection_photos add column if not exists taken_at timestamptz;
+alter table inspection_photos add column if not exists latitude double precision;
+alter table inspection_photos add column if not exists longitude double precision;
+alter table inspection_photos add column if not exists live_check jsonb;
+
+create table if not exists walk_sessions (
+  id bigserial primary key,
+  key text not null unique,
+  company_id int not null references companies(id) on delete cascade,
+  truck_id int not null references trucks(id) on delete cascade,
+  driver_id int references drivers(id) on delete set null,
+  driver_name text,
+  kind text not null default 'pre_trip',
+  mode text not null default 'live' check (mode in ('live', 'upload')),
+  lang text,
+  latitude double precision,
+  longitude double precision,
+  accuracy_m int,
+  meta jsonb not null default '{}',
+  checks int not null default 0,
+  ip text,
+  started_at timestamptz not null default now(),
+  finished_at timestamptz,
+  inspection_id bigint references inspections(id) on delete set null
+);
+create index if not exists walk_sessions_truck_idx on walk_sessions (truck_id, started_at desc);
+
+create table if not exists walk_frames (
+  id bigserial primary key,
+  session_id bigint not null references walk_sessions(id) on delete cascade,
+  client_id text not null,
+  step text,
+  path text not null,
+  content_type text not null default 'image/jpeg',
+  bytes int,
+  taken_at timestamptz,
+  latitude double precision,
+  longitude double precision,
+  live_check jsonb,
+  photo_id bigint references inspection_photos(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (session_id, client_id)
+);

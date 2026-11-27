@@ -1,8 +1,8 @@
 from urllib.parse import urlencode
 
-from flask import Blueprint, flash, g, redirect, render_template, request, send_file
+from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, send_file
 
-from .. import forms, pti, pti_ai, pti_driver
+from .. import forms, pti, pti_ai, pti_driver, walkaround
 from ..audit import audit, client_ip
 from ..auth import login_required, throttle
 from ..db import one, rows
@@ -46,7 +46,7 @@ def index():
     return render_template(
         "pti/list.html", title="PTI", active="/pti", items=items, show=show, board=board, day=day,
         missing=[t for t in board if t["missing"]], open_count=len(pti.open_defects(g.company["id"])),
-        kinds=pti.KINDS,
+        kinds=pti.KINDS, flag_text=walkaround.FLAG_TEXT,
     )
 
 
@@ -85,10 +85,21 @@ def report(inspection_id):
     reviewed = None
     if item["reviewed_previous_id"]:
         reviewed = one("select id, submitted_at, driver_name from inspections where id = %s", (item["reviewed_previous_id"],))
+    walk = None
+    if item["mode"] != "form":
+        steps = walkaround.steps_for(g.company["id"])
+        findings = {f["photo_id"]: f for f in (item["ai_result"] or {}).get("findings", [])}
+        frames = [p for p in photos if p["kind"] == "photo"]
+        order = {s["key"]: n for n, s in enumerate(steps)}
+        frames.sort(key=lambda p: (order.get(p["step"], 99), p["id"]))
+        walk = {"frames": [{**p, "title": walkaround.step_title(steps, p["step"]), "finding": findings.get(p["id"])}
+                           for p in frames],
+                "voice": [p for p in photos if p["kind"] == "audio"], "flags": walkaround.FLAG_TEXT,
+                "seconds": int((item["submitted_at"] - item["started_at"]).total_seconds()) if item["started_at"] else None}
     return render_template(
         "pti/report.html", title=f"PTI #{item['id']}", active="/pti", item=item, sections=sections,
         defects=pti.defects_of(item), photos=by_item, kinds=pti.KINDS, certifications=pti.CERTIFICATIONS,
-        reviewed=reviewed, history=history,
+        reviewed=reviewed, history=history, walk=walk,
     )
 
 
@@ -178,7 +189,8 @@ def ai_check(inspection_id):
         flash("Today's AI spending cap is used up, so the check cannot run again until tomorrow.", "bad")
         return redirect(f"/pti/report/{inspection_id}")
     execute("update inspections set ai_checked_at = null, ai_status = null where id = %s", (inspection_id,))
-    result = pti_ai.review(inspection_id)
+    fresh = one("select * from inspections where id = %s", (inspection_id,))
+    result = walkaround.review(fresh) if fresh["mode"] != "form" else pti_ai.review(inspection_id)
     audit("pti.ai_recheck", "inspection", inspection_id)
     flash("AI check done." if result else "The AI check could not run on these photos.", "ok" if result else "bad")
     return redirect(f"/pti/report/{inspection_id}")
@@ -286,6 +298,132 @@ def driver_options(company_id):
 
 
 @bp.get("/pti/<token>")
+def walk_page(token):
+    truck = pti.truck_by_token(token)
+    if not truck:
+        return render_template("pti/gone.html", title="PTI"), 404
+    latest = one(
+        "select review_status, review_note, kind from inspections where truck_id = %s order by submitted_at desc limit 1",
+        (truck["id"],),
+    )
+    g.walkaround = True
+    return render_template(
+        "pti/walk.html", title=f"PTI · Unit {truck['unit_number']}", truck=truck, token=token,
+        steps=walkaround.steps_for(truck["company_id"]), drivers=driver_options(truck["company_id"]),
+        redo=latest if latest and latest["review_status"] == "rejected" else None,
+        ai_on=walkaround.available(),
+    )
+
+
+def walk_truck(token):
+    truck = pti.truck_by_token(token)
+    if not truck:
+        return None, (jsonify({"ok": False, "error": "gone"}), 404)
+    return truck, None
+
+
+def walk_session(token):
+    truck, error = walk_truck(token)
+    if error:
+        return None, None, error
+    session = walkaround.session_for(truck, request.form.get("key"))
+    if not session:
+        return truck, None, (jsonify({"ok": False, "error": "no_session"}), 409)
+    return truck, session, None
+
+
+@bp.post("/pti/<token>/walk/start")
+def walk_start(token):
+    truck, error = walk_truck(token)
+    if error:
+        return error
+    blocked, _until = throttle(f"walk:{truck['id']}", 40, 60, 30)
+    if blocked:
+        return jsonify({"ok": False, "error": "busy"}), 429
+    session = walkaround.start(truck, request.form, client_ip())
+    if not session:
+        return jsonify({"ok": False, "error": "bad_key"}), 400
+    return jsonify({"ok": True})
+
+
+@bp.post("/pti/<token>/walk/check")
+def walk_check(token):
+    truck, session, error = walk_session(token)
+    if error:
+        return error
+    upload = request.files.get("image")
+    if not upload:
+        return jsonify({"in_frame": "unknown"})
+    return jsonify(walkaround.live_check(session, request.form.get("step"), upload.stream.read(4 * 1024 * 1024)))
+
+
+@bp.post("/pti/<token>/walk/frame")
+def walk_frame(token):
+    truck, session, error = walk_session(token)
+    if error:
+        return error
+    walkaround.save_frame(session, request.form, request.files.get("image"))
+    return jsonify({"ok": True})
+
+
+@bp.post("/pti/<token>/walk/voice")
+def walk_voice(token):
+    truck, session, error = walk_session(token)
+    if error:
+        return error
+    walkaround.save_voice(session, request.form, request.files.get("audio"))
+    return jsonify({"ok": True})
+
+
+@bp.post("/pti/<token>/walk/finish")
+def walk_finish(token):
+    truck, session, error = walk_session(token)
+    if error:
+        return error
+    inspection_id = walkaround.finish(truck, session, request.form)
+    audit("pti.walkaround", "inspection", inspection_id, {"unit": truck["unit_number"], "mode": session["mode"]},
+          company_id=truck["company_id"], actor=session["driver_name"])
+    return jsonify({"ok": True})
+
+
+@bp.get("/pti/steps")
+@login_required
+@role_required("admin")
+def walk_steps():
+    return render_template("pti/steps.html", title="Walkaround steps", active="/pti",
+                           steps=walkaround.steps_for(g.company["id"]), langs=walkaround.LANGS,
+                           arrows=walkaround.ARROWS, estimate=walkaround.estimate(), model=walkaround.MODEL)
+
+
+@bp.post("/pti/steps")
+@login_required
+@role_required("admin")
+def walk_steps_save():
+    import json
+    if request.form.get("reset") == "1":
+        execute("update companies set walkaround_steps = null where id = %s", (g.company["id"],))
+        flash("Steps reset to the default eight.", "ok")
+        return redirect("/pti/steps")
+    count = forms.integer(request.form.get("count")) or 0
+    raw = []
+    for n in range(min(count, 30)):
+        if request.form.get(f"remove_{n}"):
+            continue
+        raw.append({"key": request.form.get(f"key_{n}"), "arrow": request.form.get(f"arrow_{n}"),
+                    "look": request.form.get(f"look_{n}"),
+                    "title": {lang: request.form.get(f"title_{n}_{lang}") for lang in walkaround.LANGS},
+                    "say": {lang: request.form.get(f"say_{n}_{lang}") for lang in walkaround.LANGS}})
+    steps = walkaround.clean_steps(raw)
+    if not steps:
+        flash("Keep at least one step with an English title.", "bad")
+        return redirect("/pti/steps")
+    execute("update companies set walkaround_steps = %s::jsonb where id = %s", (json.dumps(steps), g.company["id"]))
+    audit("pti.steps", "company", g.company["id"], {"steps": len(steps)})
+    flash("Walkaround steps saved.", "ok")
+    return redirect("/pti/steps")
+
+
+@bp.get("/pti/<token>/form")
 def driver_form(token):
     truck = pti.truck_by_token(token)
     if not truck:

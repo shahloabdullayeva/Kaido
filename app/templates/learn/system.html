@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="ln">
+<nav class="ln-crumbs"><a href="/learn">Learn</a><span>›</span><span>{{ system.title }}</span></nav>
+<section class="ln-sys-head">
+  <span class="ln-icon big">{{ system.icon_svg|safe }}</span>
+  <div><h1>{{ system.title }}</h1><p>{{ system.blurb }}</p></div>
+</section>
+<div class="ln-sys-grid">
+  <section class="ln-step">
+    <div class="ln-step-n">1</div>
+    <h2>Learn how it works</h2>
+    {% for item in system.topic_items %}
+    <a class="ln-card" href="/learn/{{ item.slug }}" data-topic="{{ item.slug }}"><strong>{{ item.title }}</strong><span>{{ item.summary }}</span><small>{{ minutes(item) }} min read</small><i class="ln-read-mark"></i></a>
+    {% endfor %}
+  </section>
+  <section class="ln-step">
+    <div class="ln-step-n">2</div>
+    <h2>Know the parts</h2>
+    {% for item in system.part_items %}
+    <a class="ln-card" href="/learn/{{ item.slug }}" data-topic="{{ item.slug }}"><strong>{{ item.title }}</strong><span>{{ item.summary }}</span><small>{{ minutes(item) }} min read</small><i class="ln-read-mark"></i></a>
+    {% endfor %}
+  </section>
+</div>
+<section class="ln-step ln-step-wide">
+  <div class="ln-step-n">3</div>
+  <h2>What goes wrong <span class="subtle">{{ system.issue_count }} issues</span></h2>
+  <div class="sev-legend"><span><span class="sev-dot sev-stop"></span>Stop now</span><span><span class="sev-dot sev-soon"></span>Fix today</span><span><span class="sev-dot sev-watch"></span>Schedule it</span></div>
+  {% for page in system.issue_items %}
+  <h3 class="ln-issue-group"><a href="/learn/{{ page.slug }}">{{ page.title }}</a></h3>
+  <ul class="ln-issue-list">
+    {% for issue in page.issues %}
+    <li><a href="/learn/{{ page.slug }}#{{ issue.anchor }}"><span class="sev-dot sev-{{ issue.severity }}"></span><span>{{ issue.title }}</span>
+      {% for key, value in issue.fields if key == 'looks' %}<small>{{ value[:110] }}{{ '…' if value|length > 110 }}</small>{% endfor %}</a></li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+</section>
+<h2 class="ln-h">Other systems</h2>
+<div class="ln-chips">{% for s in systems if s.key != system.key %}<a href="/learn/system/{{ s.key }}"><span class="ln-icon small">{{ s.icon_svg|safe }}</span>{{ s.title }}</a>{% endfor %}</div>
+</div>
+<script src="/static/learn.js?v={{ cat_version }}"></script>
+{% endblock %}

@@ -1,3 +1,5 @@
+import re
+
 from flask import Flask, g, redirect, render_template, request, url_for
 
 from . import cat, filters, logs, reminders
@@ -5,6 +7,9 @@ from .auth import ANON_CSRF_COOKIE, SESSION_COOKIE, load_session
 from .config import IS_PROD, config
 from .security import csrf_matches, random_token
 from .tenancy import ROLE_LABELS, at_least, is_platform, resolve_company
+
+
+WALK_POST = re.compile(r"^/pti/[A-Za-z0-9_-]+/walk/(start|check|frame|voice|finish)$")
 
 
 def anon_csrf():
@@ -36,7 +41,7 @@ def create_app():
         g.role = None
         if g.session:
             resolve_company()
-        if request.method == "POST":
+        if request.method == "POST" and not WALK_POST.match(request.path):
             submitted = request.form.get("csrf")
             if g.session:
                 if not csrf_matches(g.session["csrf_secret"], submitted):
@@ -83,7 +88,11 @@ def create_app():
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=()"
+        if getattr(g, "walkaround", False):
+            response.headers["Permissions-Policy"] = "geolocation=(self), microphone=(self), camera=(self), payment=()"
+            response.headers["Content-Security-Policy"] += "; media-src 'self' blob:; connect-src 'self'"
+        else:
+            response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=()"
         response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
         if IS_PROD:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"

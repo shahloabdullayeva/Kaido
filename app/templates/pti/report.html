@@ -10,6 +10,39 @@
   </div>
 </div>
 
+{% if walk %}
+<section class="panel">
+  <div class="panel-head"><h2>Walkaround</h2>
+    <div class="actions-row"><span class="badge {{ 'warn' if item.mode == 'upload' else 'ok' }}">{{ 'uploaded' if item.mode == 'upload' else 'live camera' }}</span>
+    {% for flag in item.media_flags if flag != 'uploaded' %}<span class="badge bad">{{ walk.flags.get(flag, flag) }}</span>{% endfor %}</div></div>
+  <div class="detail-list">
+    <div><span>Started</span><strong>{{ item.started_at|stamp if item.started_at else '—' }}{% if walk.seconds is not none and item.mode == 'live' %} · took {{ (walk.seconds // 60) }} min {{ walk.seconds % 60 }} s{% endif %}</strong></div>
+    <div><span>Phone location</span><strong>{% if item.gps_lat is not none %}<a href="https://www.google.com/maps?q={{ item.gps_lat }},{{ item.gps_lon }}" target="_blank" rel="noopener">{{ '%.5f'|format(item.gps_lat) }}, {{ '%.5f'|format(item.gps_lon) }}</a>{% else %}not shared{% endif %}</strong></div>
+    <div><span>Distance to the truck's GPS</span><strong>{% if item.gps_miles is not none %}{{ item.gps_miles }} mi{% else %}no truck position near that time{% endif %}</strong></div>
+    {% if item.lang %}<div><span>Language</span><strong>{{ {'en': 'English', 'es': 'Spanish', 'fr': 'French'}.get(item.lang, item.lang) }}</strong></div>{% endif %}
+    {% if item.ai_result and item.ai_result.missing_steps %}<div><span>Steps not shown</span><strong>{{ item.ai_result.missing_steps|join(', ') }}</strong></div>{% endif %}
+    {% if item.ai_result and item.ai_result.cost_usd is defined %}<div><span>AI cost</span><strong>${{ '%.3f'|format(item.ai_result.cost_usd) }} for the review</strong></div>{% endif %}
+  </div>
+  {% if item.voice_text or walk.voice %}
+  <div class="pad"><strong>Voice note</strong>
+    {% if item.voice_text %}<p>{{ item.voice_text }}</p>{% endif %}
+    {% for clip in walk.voice %}<audio controls preload="none" src="/pti/photo/{{ clip.id }}"></audio>{% endfor %}</div>
+  {% endif %}
+  <p class="subtle pad">AI notes are suggestions to check, not a safety guarantee.</p>
+  <div class="walk-frames">
+    {% for frame in walk.frames %}
+    <figure class="walk-frame {{ 'bad' if frame.finding and frame.finding.verdict in ('issue', 'wrong_photo') else '' }}">
+      <a href="/pti/photo/{{ frame.id }}" target="_blank" rel="noopener"><img src="/pti/photo/{{ frame.id }}" alt="{{ frame.title }}" loading="lazy"></a>
+      <figcaption><strong>{{ frame.title }}</strong>
+        {% if frame.finding %}<span class="badge {{ {'ok': 'ok', 'issue': 'bad', 'wrong_photo': 'bad', 'unclear': 'warn'}[frame.finding.verdict] }}">{{ frame.finding.verdict|replace('_', ' ') }}{% if frame.finding.severity not in (none, 'none') %}, {{ frame.finding.severity }}{% endif %}</span>
+          <span>{{ frame.finding.note }}</span>{% elif frame.live_check and frame.live_check.problem %}<span>{{ frame.live_check.problem }}</span>{% endif %}
+        <span class="subtle">{{ frame.taken_at|stamp if frame.taken_at else 'no time' }}</span></figcaption>
+    </figure>
+    {% else %}<p class="empty">No frames arrived yet. They upload in the background from the driver's phone.</p>{% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <div class="stats">
   <div class="stat {{ 'bad' if item.defect_count and not item.certified_at else '' }}"><div class="stat-label">Result</div>
     <div class="stat-value">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}</div>
@@ -50,6 +83,9 @@
   {% endif %}
 </section>
 
+{% if walk and item.maintenance_order_id %}
+<section class="panel"><div class="panel-head"><h2>Work order</h2><a class="btn ghost small" href="/maintenance/{{ item.maintenance_order_id }}">Open the work order ({{ item.order_status|label }})</a></div></section>
+{% endif %}
 {% if item.defect_count %}
 <section class="panel">
   <div class="panel-head"><h2>Repair sign-off</h2>
@@ -110,6 +146,7 @@
   {% else %}<p class="empty">Not checked.</p>{% endif %}
 </section>
 
+{% if not walk %}
 <section class="panel">
   <div class="panel-head"><h2>Checklist</h2></div>
   <div class="table-wrap"><table>
@@ -129,8 +166,9 @@
     </tbody>
   </table></div>
 </section>
+{% endif %}
 
-{% if item.notes or photos.get('general') or photos.get('') %}
+{% if not walk and item.notes or photos.get('general') or photos.get('') %}
 <section class="panel">
   <div class="panel-head"><h2>Notes and photos</h2></div>
   {% if item.notes %}<p>{{ item.notes }}</p>{% endif %}

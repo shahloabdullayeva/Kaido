@@ -1,42 +1,60 @@
 {% extends "layout.html" %}
 {% block body %}
-<section class="learn-hero">
-  <div>
+<div class="ln" data-learn-home>
+<section class="ln-hero">
+  <div class="ln-hero-text">
     <h1>Learn</h1>
-    <p>{{ topics|length }} topics · {{ issue_count }} issues with what they look like, sound like and cost</p>
+    <p>Truck systems, what goes wrong, what it looks like and what to do. {{ topics|length }} topics, {{ issue_count }} issues.</p>
   </div>
-  <form method="get" action="/learn" class="learn-search">
-    <input type="search" name="q" value="{{ query }}" placeholder="Search: DPF, slack adjuster, white smoke, FMI 4..." maxlength="100" autofocus>
+  <form method="get" action="/learn" class="ln-search">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input type="search" name="q" value="{{ query }}" placeholder="Search: white smoke, slack adjuster, SPN 3251, pink crust…" maxlength="100">
     <button class="btn" type="submit">Search</button>
   </form>
-  <nav class="learn-quick">
-    <a href="/learn/issues"><strong>Issues library</strong><span>{{ issue_count }} problems, filter by system</span></a>
-    <a href="/learn/dash-lamps"><strong>Dash lamps</strong><span>Every warning light, drawn</span></a>
-    <a href="/learn/leaks-smoke-colors"><strong>Leaks and smoke</strong><span>Color tells you the fluid</span></a>
-    <a href="/learn/tire-wear-patterns"><strong>Tire wear</strong><span>Patterns and what causes them</span></a>
-    <a href="/learn/fault-codes"><strong>Fault codes</strong><span>SPN, FMI and the common ones</span></a>
-    <a href="/learn/glossary"><strong>Glossary</strong><span>Every word in one place</span></a>
-    {% if has_manual %}<a href="/learn/fleet-from-scratch.pdf"><strong>Fleet From Scratch</strong><span>The PDF manual</span></a>{% endif %}
-  </nav>
+  <div class="ln-progress" data-progress-box hidden>
+    <div><strong data-read-count>0</strong> of {{ topics|length }} read</div>
+    <div class="ln-bar"><span data-read-bar></span></div>
+    <a data-continue hidden>Continue: <span></span></a>
+  </div>
 </section>
+
 {% if hits is not none %}
-<section class="panel">
+<section class="panel ln-results">
   <div class="panel-head"><h2>{{ hits|length }} result{{ '' if hits|length == 1 else 's' }} for "{{ query }}"</h2><a class="btn ghost small" href="/learn">Clear</a></div>
   {% for hit in hits %}
-  <a class="learn-hit" href="/learn/{{ hit.slug }}"><strong>{{ hit.title }}</strong><span>...{{ hit.snippet }}...</span></a>
+  <a class="learn-hit" href="/learn/{{ hit.slug }}"><strong>{{ hit.title }}</strong><span>…{{ hit.snippet }}…</span></a>
   {% else %}<p class="empty">Nothing found.</p>{% endfor %}
 </section>
 {% endif %}
-{% for name, items in groups %}
-<h2 class="learn-group">{{ name }}<span>{{ items|length }}</span></h2>
-<div class="learn-grid">
+
+<div class="ln-quick">
+  <a href="/learn/issues" class="ln-quick-main"><strong>Issues library</strong><span>All {{ issue_count }} problems in one list. Filter by system and urgency.</span></a>
+  {% for item in see %}<a href="/learn/{{ item.slug }}" data-topic="{{ item.slug }}"><strong>{{ item.title }}</strong><span>{{ item.summary }}</span></a>{% endfor %}
+</div>
+
+<h2 class="ln-h">Truck systems</h2>
+<div class="ln-systems">
+  {% for s in systems %}
+  <a class="ln-system" href="/learn/system/{{ s.key }}">
+    <span class="ln-icon">{{ s.icon_svg|safe }}</span>
+    <strong>{{ s.title }}</strong>
+    <span class="ln-blurb">{{ s.blurb }}</span>
+    <span class="ln-meta">{{ s.issue_count }} issues{% if s.stop_count %} · <em>{{ s.stop_count }} stop-now</em>{% endif %} · {{ s.part_items|length }} parts page{{ '' if s.part_items|length == 1 else 's' }}</span>
+  </a>
+  {% endfor %}
+</div>
+
+{% for title, note, items in shelves %}
+<h2 class="ln-h">{{ title }}<span>{{ note }}</span></h2>
+<div class="ln-shelf">
   {% for item in items %}
-  <a class="learn-card" href="/learn/{{ item.slug }}">
-    <span class="learn-num">{{ item.number }}{% if item.issues %} · {{ item.issues|length }} issues{% endif %}</span>
-    <strong>{{ item.title }}</strong>
-    <span>{{ item.summary }}</span>
+  <a class="ln-card" href="/learn/{{ item.slug }}" data-topic="{{ item.slug }}">
+    <strong>{{ item.title }}</strong><span>{{ item.summary }}</span><i class="ln-read-mark"></i>
   </a>
   {% endfor %}
 </div>
 {% endfor %}
+{% if has_manual %}<p class="ln-manual"><a href="/learn/fleet-from-scratch.pdf">Fleet From Scratch, the full PDF manual</a></p>{% endif %}
+</div>
+<script src="/static/learn.js?v={{ cat_version }}"></script>
 {% endblock %}

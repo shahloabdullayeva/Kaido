@@ -1,0 +1,35 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Walkaround steps</h1><p>{{ steps|length }} steps · about ${{ '%.2f'|format(estimate.typical) }} of AI per walkaround with {{ model }}</p></div>
+  <a class="btn ghost" href="/pti">PTI</a>
+</div>
+<section class="panel">
+  <div class="detail-list">
+    <div><span>Live check per frame</span><strong>about ${{ '%.4f'|format(estimate.per_check) }} (a frame every couple of seconds until the step is confirmed, at most 4 per step)</strong></div>
+    <div><span>Final review</span><strong>about ${{ '%.3f'|format(estimate.review) }} per walkaround</strong></div>
+  </div>
+</section>
+<form method="post" action="/pti/steps" class="panel">
+  <input type="hidden" name="csrf" value="{{ session.csrf }}">
+  <input type="hidden" name="count" value="{{ steps|length + 1 }}">
+  <div class="table-wrap"><table class="steps-table">
+    <thead><tr><th>#</th><th>Title (EN / ES / FR)</th><th>Spoken prompt (EN / ES / FR)</th><th>What the camera must show</th><th>Arrow</th><th></th></tr></thead>
+    <tbody>
+    {% for step in steps + [{'key': '', 'arrow': 'none', 'look': '', 'title': {}, 'say': {}}] %}
+      {% set n = loop.index0 %}
+      <tr>
+        <td>{{ n + 1 if step.key else 'New' }}<input type="hidden" name="key_{{ n }}" value="{{ step.key }}"></td>
+        <td>{% for lang in langs %}<input name="title_{{ n }}_{{ lang }}" value="{{ step.title.get(lang, '') }}" maxlength="80" placeholder="{{ lang|upper }}">{% endfor %}</td>
+        <td>{% for lang in langs %}<textarea name="say_{{ n }}_{{ lang }}" maxlength="300" placeholder="{{ lang|upper }}">{{ step.say.get(lang, '') }}</textarea>{% endfor %}</td>
+        <td><textarea name="look_{{ n }}" maxlength="300">{{ step.look }}</textarea></td>
+        <td><select name="arrow_{{ n }}">{% for arrow in arrows %}<option value="{{ arrow }}" {% if step.arrow == arrow %}selected{% endif %}>{{ arrow }}</option>{% endfor %}</select></td>
+        <td>{% if step.key %}<label class="checkbox"><input type="checkbox" name="remove_{{ n }}" value="1"> <span>Remove</span></label>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  <div class="form-actions"><button class="btn" type="submit">Save steps</button>
+    <button class="btn ghost" type="submit" name="reset" value="1" data-confirm="Put back the default eight steps?">Reset to default</button></div>
+</form>
+{% endblock %}

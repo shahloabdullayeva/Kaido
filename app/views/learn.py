@@ -14,7 +14,8 @@ MANUAL = Path(__file__).resolve().parents[2] / "uploads" / "learn" / "Fleet_From
 def index():
     query = (request.args.get("q") or "").strip()[:100]
     return render_template("learn/index.html", title="Learn", active="/learn", topics=learn.topics(), groups=learn.grouped(), query=query, has_manual=MANUAL.exists(),
-                           issue_count=len(learn.all_issues()),
+                           issue_count=len(learn.all_issues()), systems=learn.system_groups(), shelves=learn.shelves(),
+                           see=[t for t in learn.topics() if t["code"].startswith("v")],
                            hits=learn.search(query) if query else None)
 
 
@@ -35,6 +36,16 @@ def issues():
                            counts={key: sum(1 for i in found if i["severity"] == key) for key in learn.SEVERITY})
 
 
+@bp.get("/learn/system/<key>")
+@login_required
+def system(key):
+    found = learn.system(key)
+    if not found:
+        abort(404)
+    return render_template("learn/system.html", title=found["title"], active="/learn", system=found,
+                           systems=learn.system_groups(), minutes=learn.minutes)
+
+
 @bp.get("/learn/<name>")
 @login_required
 def show(name):
@@ -44,5 +55,6 @@ def show(name):
     items = learn.topics()
     place = items.index(item)
     return render_template("learn/show.html", title=item["title"], active="/learn", item=item, topics=items,
+                           system=learn.system_of(item["slug"]), minutes=learn.minutes(item),
                            previous=items[place - 1] if place else None,
                            following=items[place + 1] if place + 1 < len(items) else None)

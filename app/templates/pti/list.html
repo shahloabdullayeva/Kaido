@@ -3,7 +3,8 @@
 <div class="page-head">
   <div><h1>PTI</h1><p>{{ open_count }} report{{ '' if open_count == 1 else 's' }} with defects not signed off.</p></div>
   {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn" href="/pti/links">Driver links</a>
-    <a class="btn ghost" href="/pti/stickers">QR stickers</a></div>{% endif %}
+    <a class="btn ghost" href="/pti/stickers">QR stickers</a>
+    <a class="btn ghost" href="/pti/steps">Walkaround steps</a></div>{% endif %}
 </div>
 
 <section class="panel">
@@ -47,7 +48,8 @@
       {% for item in items %}
       <tr class="clickrow" data-href="/pti/report/{{ item.id }}" title="Open PTI #{{ item.id }}">
         <td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.unit_number or '—' }}</a>
-          {% if item.source == 'samsara' %}<div class="subtle">from Samsara</div>{% endif %}</td>
+          {% if item.source == 'samsara' %}<div class="subtle">from Samsara</div>{% elif item.mode == 'live' %}<div class="subtle">walkaround</div>{% elif item.mode == 'upload' %}<div class="subtle">walkaround, uploaded</div>{% endif %}
+          {% for flag in item.media_flags if flag != 'uploaded' %}<span class="badge bad">{{ flag_text.get(flag, flag) }}</span>{% endfor %}</td>
         <td>{{ kinds.get(item.kind, 'Inspection') }}</td>
         <td>{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ item.driver_name or '—' }}</a>{% else %}{{ item.driver_name or '—' }}{% endif %}</td>
         <td>{% if not item.defect_count %}<span class="badge ok">no defects</span>

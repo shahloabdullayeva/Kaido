@@ -1,25 +1,33 @@
 {% extends "layout.html" %}
 {% block body %}
-<div class="page-head">
-  <div><h1>{{ item.title }}</h1><p>{{ item.group }} · {{ item.summary }}{% if item.issues %} · {{ item.issues|length }} issues{% endif %}</p></div>
-  <div class="actions-row">{% if item.issues %}<a class="btn ghost" href="/learn/issues">Issues library</a>{% endif %}<a class="btn ghost" href="/learn">All topics</a></div>
-</div>
+<div class="ln-readbar"><span data-readbar></span></div>
+<div class="ln" data-topic-page="{{ item.slug }}" data-title="{{ item.title }}">
+<nav class="ln-crumbs"><a href="/learn">Learn</a><span>›</span>{% if system %}<a href="/learn/system/{{ system.key }}">{{ system.title }}</a><span>›</span>{% else %}<span>{{ item.group }}</span><span>›</span>{% endif %}<span>{{ item.title }}</span></nav>
+<header class="ln-article-head">
+  <h1>{{ item.title }}</h1>
+  <p>{{ item.summary }}</p>
+  <div class="ln-article-meta"><span>{{ minutes }} min read</span>{% if item.issues %}<span>{{ item.issues|length }} issues</span>{% endif %}
+    <button type="button" class="btn ghost small" data-mark-read>Mark as read</button></div>
+</header>
 <div class="learn-page">
   <aside class="learn-side">
-    {% if item.toc %}<div class="learn-toc"><strong>On this page</strong>
+    {% if item.toc %}<div class="learn-toc" data-toc><strong>On this page</strong>
       {% for anchor, text in item.toc %}<a href="#{{ anchor }}">{{ text }}</a>{% endfor %}</div>{% endif %}
     {% if item.issues %}<div class="learn-toc learn-toc-issues"><strong>Issues</strong>
       {% for issue in item.issues %}<a href="#{{ issue.anchor }}"><span class="sev-dot sev-{{ issue.severity }}"></span>{{ issue.title }}</a>{% endfor %}</div>{% endif %}
-    <div class="learn-toc"><strong>{{ item.group }}</strong>
-      {% for other in topics if other.group == item.group %}<a href="/learn/{{ other.slug }}" {% if other.slug == item.slug %}class="on"{% endif %}>{{ other.number }}. {{ other.title }}</a>{% endfor %}</div>
+    {% if system %}<div class="learn-toc"><strong>{{ system.title }}</strong>
+      {% for other in system.topic_items + system.part_items + system.issue_items %}<a href="/learn/{{ other.slug }}" {% if other.slug == item.slug %}class="on"{% endif %} data-topic="{{ other.slug }}">{{ other.title }}<i class="ln-read-mark"></i></a>{% endfor %}</div>{% endif %}
   </aside>
   <article class="panel learn-body">
     {% if item.issues %}<div class="sev-legend"><span><span class="sev-dot sev-stop"></span>Stop now: unsafe or will cause damage</span><span><span class="sev-dot sev-soon"></span>Fix today: at the next shop</span><span><span class="sev-dot sev-watch"></span>Schedule it: next PM or when convenient</span></div>{% endif %}
     {{ item.html|safe }}
-    <div class="learn-next">
-      {% if previous %}<a class="btn ghost" href="/learn/{{ previous.slug }}">{{ previous.title }}</a>{% else %}<span></span>{% endif %}
-      {% if following %}<a class="btn" href="/learn/{{ following.slug }}">{{ following.title }}</a>{% endif %}
-    </div>
+    <div class="ln-done"><button type="button" class="btn" data-mark-read>Mark as read</button></div>
+    <nav class="ln-next">
+      {% if previous %}<a href="/learn/{{ previous.slug }}"><small>Previous</small><strong>{{ previous.title }}</strong></a>{% else %}<span></span>{% endif %}
+      {% if following %}<a class="right" href="/learn/{{ following.slug }}"><small>Next</small><strong>{{ following.title }}</strong></a>{% endif %}
+    </nav>
   </article>
 </div>
+</div>
+<script src="/static/learn.js?v={{ cat_version }}"></script>
 {% endblock %}

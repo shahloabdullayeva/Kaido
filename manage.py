@@ -227,6 +227,13 @@ def cmd_followup(args):
     sent = followup.run()
     from app import pti_driver
     drivers = pti_driver.run()
+    from app import walkaround
+    try:
+        walked = walkaround.run_pending()
+        if walked:
+            print(f"walkaround reviews {walked}")
+    except Exception as err:
+        print(f"walkaround review failed: {err}")
     from app import fuel_bot, fuel_report
     fueled, reports = {"offers": [], "refuels": 0, "receipts": 0}, {}
     try:

@@ -999,6 +999,40 @@ Service schedule, the daily follow-up and the fleet status report.
 The EFS automatic feed (the report import works today), DVIR scope on the Samsara
 token, and Love's.
 
+## Walkaround PTI (camera, vision AI)
+
+The PTI link and QR sticker (`/pti/<token>`) now open a guided camera walkaround instead of the form (the form is still at
+`/pti/<token>/form`, linked as "Use the old form"). The driver picks Pre-trip or Post-trip and their name, taps Start
+walkaround, and the phone camera opens. Each step (`app/walkaround.py` DEFAULT_STEPS: front with lights, left steer,
+left side and drives, left trailer tires, rear with lights, right side, right steer, dash with the engine running) shows a
+big arrow and short text and is spoken by the browser in English, Spanish or French (picked from the phone language,
+EN/ES/FR switch on the first screen). About every two seconds a 768px frame goes to `/walk/check`, where Claude
+(`AI_PHOTO_MODEL`, Sonnet 5.5) says whether the step's part is in frame and names any obvious problem; the step moves
+on when it is confirmed, or after about 9 seconds (5 without AI). At most 4 checks per step, 60 per walkaround.
+Upload from gallery takes several photos or one or two videos: the phone cuts each video into frames and reads the
+time and GPS from photo EXIF and MP4 metadata, so only small JPEGs are sent. The last step is optional: "Anything
+wrong? Hold to record a voice note"; the phone's own speech recognition writes the words (Claude does not take audio),
+and the recording is kept.
+
+Everything is put in an IndexedDB queue on the phone and sent in order (start, frames, voice, finish) with retries
+and backoff until it gets through; the driver sees Done at once, and the queue resumes the next time the link is
+opened. These routes (`/pti/<token>/walk/start|check|frame|voice|finish`) are authorized by the walk key the phone
+makes, not by the CSRF cookie, because the anonymous CSRF cookie expires after an hour. Camera, microphone and
+location are allowed by Permissions-Policy only on the walkaround page.
+
+On finish (`walk_sessions` -> `inspections` with `mode` live or upload) Kaido sets flags that never block: uploaded,
+old media (taken more than 4 hours before), location mismatch (more than 1 mile from the truck's Samsara position
+within 3 hours of the photo), no metadata, no phone location. The follow-up cron runs the final review within about
+5 minutes (`walkaround.run_pending`): one Claude call over up to 20 frames that assigns uploaded frames to steps, marks
+each ok / issue / wrong photo / unclear with a severity, reads the odometer and lists missing steps. An issue or a voice
+note opens a work order for the unit (priority urgent / high / medium from the worst severity) with the flagged frames
+and the voice note attached, and the office gets one alert. AI notes are labelled as suggestions, not a safety
+guarantee. The PTI page, the report and the truck page show live or uploaded, flags, GPS distance and time; the report
+has the frames by step and the voice note. Admins edit the steps (titles, spoken text in three languages, what the
+camera must show, arrow) on PTI -> Walkaround steps (`companies.walkaround_steps`; Reset goes back to the default eight).
+Cost with Sonnet 5.5: about $0.003 per live check and $0.03 for the review, about $0.07 for a typical walkaround;
+both count against the daily AI cap. Old form PTIs are only AI-checked when someone presses the button.
+
 ## Learn
 
 `/learn` (any signed-in user, Learn in the menu): 74 topics in five groups. The file prefix sets the group: `s` study plan, `v` See it (dash lamps drawn as icons, leak and smoke colors, tire wear patterns, sounds/smells/feelings, normal readings), `i` Issues by system (20 pages, 212 issues), none = Topics (28 pages, each one subject, merging what was written for Kaido with her Claude Docs manual "Fleet From Scratch"; the manual's part of a page starts at "More detail" or headings marked "(in depth)"), and `p` Parts A to Z (20 pages from the same manual). The Topics are for someone new to fleet maintenance, from what a
@@ -1012,6 +1046,9 @@ Issue cards are written as `::: issue Title | stop|soon|watch` followed by `key:
 each renders as a card with an urgency badge (Stop now, Fix today, Schedule it). `/learn/issues` lists every issue from every page with
 a text filter and System and Urgency dropdowns (all by default). Other syntax: `> tip|warn|stop|note: text` callouts,
 `{{#rrggbb}}` color swatches, `{{lamp:name}}` dash lamp icons from `app/static/learn/lamps/`, `@svg file | caption` drawings
-(tire wear diagrams in `app/static/learn/wear/`), and `[text](/learn/slug)` links between pages. The landing page has a search box and
-quick links to the Issues library, Dash lamps, Leaks and smoke, Tire wear, Fault codes and Glossary.
+(tire wear diagrams in `app/static/learn/wear/`), and `[text](/learn/slug)` links between pages. The landing page (`learn/index.html`) has search, reading progress and Continue (kept in the browser's localStorage,
+per person), the See it pages, 11 truck systems and three shelves (Start here, The office side, Quick reference).
+Each system (`learn.SYSTEMS`) has a hub at `/learn/system/<key>`: how it works, the parts pages and every issue with its
+urgency. Topic pages have a breadcrumb, reading time, a reading bar, the current section highlighted in the side list,
+and Mark as read.
 The manual PDF is served from `uploads/learn/Fleet_From_Scratch.pdf` at `/learn/fleet-from-scratch.pdf` (sign-in required; the file is not in git). Edit a file and restart `kaido.service` to see the change (topics are cached in memory).
