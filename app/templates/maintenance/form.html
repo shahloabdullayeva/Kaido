@@ -178,6 +178,7 @@
       <label class="field full file-drop"><span>{{ 'Attach more' if files else 'Attach the invoice' }}</span>
         <input type="file" name="invoice_files" multiple accept="application/pdf,image/*">
       </label>
+      {% if admin %}<p class="subtle" data-invoice-status hidden></p>{% endif %}
     </details>
     {% if admin %}<div class="form-actions"><button class="btn" type="submit">Save changes</button></div>{% endif %}
   </form>

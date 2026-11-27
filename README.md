@@ -808,7 +808,10 @@ whether it is broken down, with shop and scheduled date folded away. A trailer o
 (a dropped trailer) and records where it is sitting (`location`). The status is open, or scheduled when a shop or
 date is given. On the work order page: a status bar (one click per status), a comments thread (author, time, a photo
 or PDF per comment, stored in `uploads/maintenance/comments/`), then the details, with parts, labor, tax, invoice,
-payment and shop rating folded into "Costs and invoice" (open once the order is done or has any cost). Every status
+payment and shop rating folded into "Costs and invoice" (open once the order is done or has any cost). Choosing an invoice PDF or
+photo there sends it (up to 3 files) to `POST /maintenance/invoice/read` (`advisor.read_invoice`, the `AI_MODEL`
+under `AI_DAILY_USD`, about $0.014 a read) and fills parts, labor, tax and fees, invoice number, paid with and next
+due when the invoice shows them; fields already filled are left alone, and nothing is saved until Save. Every status
 change writes "<name> changed status from X to Y" into the thread. Cancelled orders are hidden from the list unless
 the Status filter is Cancelled; Delete asks first and removes the order with its comments, files and reminders.
 The list shows the comment count per order and filters by status, truck/trailer and system.

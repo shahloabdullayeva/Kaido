@@ -541,6 +541,27 @@ def shops_advice(truck_id):
                     "notes": {str(note.number): note.note for note in advice.notes}})
 
 
+@bp.post("/maintenance/invoice/read")
+@login_required
+@role_required("admin")
+def invoice_read():
+    attachments = []
+    for upload in request.files.getlist("invoice_files")[:3]:
+        data = upload.read(work_orders.MAX_FILE_BYTES + 1)
+        kind = (upload.mimetype or "").lower()
+        if (upload.filename or "").lower().endswith(".pdf"):
+            kind = "application/pdf"
+        if len(data) > work_orders.MAX_FILE_BYTES or not (kind == "application/pdf" or kind.startswith("image/")):
+            continue
+        attachments.append((kind, data))
+    if not attachments:
+        return jsonify({"ok": False, "message": "Pick a PDF or a photo of the invoice."})
+    result, problem = advisor.read_invoice(attachments)
+    if not result:
+        return jsonify({"ok": False, "message": problem})
+    return jsonify({"ok": True, "invoice": result.model_dump()})
+
+
 @bp.get("/maintenance/places")
 @login_required
 @company_required

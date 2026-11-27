@@ -403,6 +403,68 @@ def _attachment_blocks(attachments):
     return blocks
 
 
+class InvoicePart(BaseModel):
+    name: str
+    part_number: str
+    quantity: float
+    unit_price: float
+
+
+class InvoiceRead(BaseModel):
+    is_invoice: bool
+    parts: List[InvoicePart]
+    labor: float
+    tax_and_fees: float
+    total: float
+    invoice_number: str
+    paid_with: Literal["", "company_card", "efs", "comdata", "driver_paid", "invoice", "cash", "warranty", "other"]
+    shop_name: str
+    odometer: int
+    next_due_date: str
+    next_due_odometer: int
+
+
+INVOICE_SYSTEM = (
+    "You read a truck repair shop invoice, receipt or estimate and copy its numbers into a work order. "
+    "parts: every part, fluid and material line with its part number (empty if none), quantity and unit price; "
+    "never put labor lines here. labor: the sum of all labor charges. tax_and_fees: everything else charged "
+    "(sales tax, shop supplies, environmental, disposal, misc fees), minus any discount, so that the parts total "
+    "plus labor plus tax_and_fees equals total exactly. total: the final amount due or paid. "
+    "paid_with: only when the document shows it: a card number or card payment is company_card, EFS is efs, "
+    "Comdata or Comchek is comdata, cash is cash, net terms or a balance due is invoice, warranty or no charge "
+    "is warranty; otherwise empty. next_due_date as YYYY-MM-DD and next_due_odometer only when printed as the "
+    "next service; odometer is the truck mileage in. Use 0 or an empty string for anything not on the page. "
+    "Never invent a number. If the file is not an invoice or receipt, set is_invoice false."
+)
+
+
+def read_invoice(attachments):
+    if not available():
+        return None, "Invoice reading is off because no Anthropic key is set."
+    if over_budget():
+        return None, "Today's AI budget is used up. Fill it in by hand or try tomorrow."
+    blocks = _attachment_blocks(attachments)
+    if not blocks:
+        return None, "Could not open that file."
+    try:
+        response = _client().messages.parse(
+            model=MODEL,
+            max_tokens=4000,
+            system=INVOICE_SYSTEM,
+            messages=[{"role": "user", "content": blocks + [{"type": "text", "text": "Read this invoice."}]}],
+            output_format=InvoiceRead,
+            **_effort(MODEL),
+        )
+    except Exception as err:
+        log.warning("invoice read failed: %s", err)
+        return None, "Could not read the invoice right now."
+    _remember(response.usage)
+    parsed = response.parsed_output
+    if parsed is None or not parsed.is_invoice:
+        return None, "That file does not look like an invoice."
+    return parsed, None
+
+
 def chat_reply(context, history, question, scope="truck", attachments=None):
     if not available():
         return None, "The assistant is off because no Anthropic key is set."
