@@ -1893,7 +1893,7 @@ create table if not exists pti_links (
   company_id integer not null references companies(id) on delete cascade,
   truck_id integer not null references trucks(id) on delete cascade,
   driver_id integer references drivers(id) on delete set null,
-  driver_name text not null,
+  driver_name text,
   phone text,
   token text not null unique,
   sent_ok boolean,
@@ -1913,3 +1913,5 @@ begin
     'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
     'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)';
 end $$;
+
+alter table pti_links alter column driver_name drop not null;

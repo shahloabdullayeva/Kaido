@@ -269,7 +269,8 @@ def links():
 
 
 def link_message(unit, driver_name, url):
-    return f"Unit {unit} PTI link for {driver_name}. Open it before every trip: {url}"
+    who = f" for {driver_name}" if driver_name else ""
+    return f"Unit {unit} PTI link{who}. Open it before every trip: {url}"
 
 
 @bp.post("/pti/links")
@@ -297,12 +298,13 @@ def links_make():
                 (g.company["id"], name, phone),
             )
             audit("driver.created", "driver", driver["id"], {"from": "pti_link"})
+    if not driver and truck.get("driver_id"):
+        driver = one("select id, name, phone from drivers where id = %s", (truck["driver_id"],))
     if not driver:
-        flash("Pick a driver or type a name.", "bad")
-        return redirect("/pti/links")
-    if phone and not driver["phone"]:
+        driver = {"id": None, "name": None, "phone": phone}
+    elif phone and not driver["phone"]:
         execute("update drivers set phone = %s, updated_at = now() where id = %s", (phone, driver["id"]))
-    if username:
+    if username and driver["id"]:
         execute("update drivers set telegram_username = %s, updated_at = now() where id = %s", (username, driver["id"]))
     link = pti.make_link(g.company["id"], truck, driver["id"], driver["name"], phone or driver["phone"], g.session["user_id"])
     sent_to = None

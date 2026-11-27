@@ -7,7 +7,7 @@
 
 {% if made %}
 <section class="panel">
-  <div class="panel-head"><h2>Unit {{ made.unit_number }} · {{ made.driver_name }}</h2>
+  <div class="panel-head"><h2>Unit {{ made.unit_number }}{% if made.driver_name %} · {{ made.driver_name }}{% endif %}</h2>
     {% if made.sent_ok %}<span class="badge ok">sent to {{ made.sent_to }}</span>
     {% elif made.sent_to %}<span class="badge bad">not sent to group</span>{% endif %}</div>
   <div class="pad">
@@ -17,7 +17,7 @@
     </div>
     {% if not made.sent_ok %}
     <div class="actions-row" style="margin-top:10px">
-      <a class="btn" href="{{ made.telegram }}" target="_blank" rel="noopener">{{ 'Send to ' ~ made.driver_name ~ ' on Telegram' if made.direct else 'Send on Telegram' }}</a>
+      <a class="btn" href="{{ made.telegram }}" target="_blank" rel="noopener">{{ 'Send to ' ~ made.driver_name ~ ' on Telegram' if made.direct and made.driver_name else 'Send on Telegram' }}</a>
       <button class="btn ghost" type="button" data-copy="{{ made.message }}">Copy message</button>
     </div>
     {% endif %}
@@ -31,13 +31,13 @@
     <input type="hidden" name="csrf" value="{{ session.csrf }}">
     <div class="form-grid">
       <label class="field"><span>Unit</span>
-        <select name="truck_id" required>
+        <select name="truck_id" required data-unit-driver>
           <option value="">Pick a unit</option>
-          {% for truck in trucks %}<option value="{{ truck.id }}">{{ truck.unit_number }}{% if truck.telegram_chat_id %} · group connected{% endif %}</option>{% endfor %}
+          {% for truck in trucks %}<option value="{{ truck.id }}" data-driver="{{ truck.driver_id or '' }}">{{ truck.unit_number }}{% if truck.telegram_chat_id %} · group connected{% endif %}</option>{% endfor %}
         </select></label>
       <label class="field"><span>Driver</span>
         <select name="driver_id">
-          <option value="">New driver</option>
+          <option value="">None or new</option>
           {% for driver in drivers %}<option value="{{ driver.id }}">{{ driver.name }}</option>{% endfor %}
         </select></label>
       <label class="field"><span>New driver name</span>
@@ -60,7 +60,7 @@
       {% for item in recent %}
       <tr>
         <td>{{ item.unit_number }}</td>
-        <td>{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ item.driver_name }}</a>{% else %}{{ item.driver_name }}{% endif %}</td>
+        <td>{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ item.driver_name }}</a>{% else %}{{ item.driver_name or '—' }}{% endif %}</td>
         <td>{{ item.phone or '—' }}</td>
         <td>{% if item.sent_ok %}<span class="badge ok">sent</span>{% elif item.sent_to %}<span class="badge bad">failed</span>{% else %}—{% endif %}</td>
         <td>{{ item.created_at|stamp }}</td>

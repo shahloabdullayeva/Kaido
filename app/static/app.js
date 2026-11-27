@@ -137,3 +137,13 @@ document.querySelectorAll('[data-doc-owner]').forEach((pick) => {
     });
   });
 });
+
+document.querySelectorAll('[data-unit-driver]').forEach((unit) => {
+  const form = unit.closest('form');
+  const driver = form && form.querySelector('select[name="driver_id"]');
+  if (!driver) return;
+  unit.addEventListener('change', () => {
+    const picked = unit.selectedOptions[0];
+    driver.value = (picked && picked.dataset.driver) || '';
+  });
+});
