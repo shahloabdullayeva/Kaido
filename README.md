@@ -598,9 +598,9 @@ for 6 hours. Listed under Trucks → Faults → Truck health.
 
 **Alerts group** (`app/alert_group.py`). Make a Telegram group with Topics on, add the bot as admin with
 "Manage topics", and send `/alerts` there (or just promote the bot, if you are a Kaido admin). Every active
-company you are admin of with `companies.alerts_group` on is linked (`alert_groups`; only BOOKIT for now), one topic per issue is created (`alert_topics`: check
+company you are admin of with `companies.alerts_group` on is linked (`alert_groups`). If the group's title contains a company's name ("DFK transportation"), only that company is linked; otherwise only companies not already in another group are. BOOKIT and LLAP share one group, DFK has its own. One topic per issue is created (`alert_topics`: check
 engine, stop-lamp faults, battery, charging, engine temperature, oil pressure, DEF, tire pressure, idling, ELD
-not reporting, hours, service, MPG, speeding, harsh driving and camera, fuel checks, fuel reports, PTI,
+not reporting, hours, service, MPG, speeding, harsh driving and camera, harsh turn and crash videos, fuel checks, fuel reports, PTI,
 documents, reminders, daily follow-up, summary), and `manage.py alerts-history --chat <id>` replays every past
 alert, follow-up and summary into its topic, oldest first, about 18 a minute. Once a company has a group, its
 office alerts go there instead of to each person's Telegram; driver messages are unchanged. A deleted topic is
@@ -610,7 +610,9 @@ made again on the next alert. Removing the bot from the group unlinks it.
 safety events and speeding intervals (30 days backfilled on first run) into `safety_events`. Crash, harsh
 braking/turn/acceleration, phone use, no seatbelt, drowsiness and heavy or severe speeding go to the office at once,
 one per truck and type in 6 hours. Everything is on Trucks → Safety (per-driver counts and the event list; light
-speeding only under the Speeding filter).
+speeding only under the Speeding filter). Harsh turn, crash and rollover events also send their Samsara camera
+video (forward camera, else inward) to the group's "Harsh turn and crash videos" topic, once each (`safety_events.video_sent_at`),
+within 24 hours of the event; only when the company has an alerts group. Videos over 49 MB are skipped (bot upload limit).
 
 **Alerts** page (`/alerts`, top menu): every health, hours, service, MPG, check engine, safety and fuel-check alert in
 one list, filtered by type, status and period (all by default).

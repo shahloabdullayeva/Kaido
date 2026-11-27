@@ -71,7 +71,7 @@ def call(method, payload=None, files=None):
         url = f"{API}/bot{config.TELEGRAM_BOT_TOKEN}/{method}"
         if files:
             data = {k: (v if isinstance(v, (str, int, float)) else json.dumps(v)) for k, v in (payload or {}).items()}
-            response = requests.post(url, data=data, files=files, timeout=30)
+            response = requests.post(url, data=data, files=files, timeout=120)
         else:
             response = requests.post(url, json=payload or {}, timeout=10)
         data = response.json()
@@ -93,6 +93,15 @@ def send_photo(chat_id, png, caption=None, **extra):
     if caption:
         payload["caption"] = caption[:1024]
     return call("sendPhoto", payload, files={"photo": ("report.png", png, "image/png")})
+
+
+def send_video(chat_id, video, caption=None, **extra):
+    if not chat_id:
+        return {"ok": False, "reason": "no_chat_id"}
+    payload = {"chat_id": chat_id, "parse_mode": "HTML", "supports_streaming": "true", **extra}
+    if caption:
+        payload["caption"] = caption[:1024]
+    return call("sendVideo", payload, files={"video": ("event.mp4", video, "video/mp4")})
 
 
 def edit(chat_id, message_id, text, **extra):

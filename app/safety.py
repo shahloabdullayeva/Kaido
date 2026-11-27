@@ -17,6 +17,9 @@ LOOKBACK_HOURS = 3
 BACKFILL_DAYS = 30
 ALERT_WITHIN_MINUTES = 90
 REPEAT_HOURS = 6
+VIDEO_KINDS = {"harshTurn", "crash", "rollover", "rolloverProtection"}
+VIDEO_WITHIN_HOURS = 24
+MAX_VIDEO_BYTES = 49 * 1024 * 1024
 KMH_TO_MPH = 0.621371
 ASSET_CHUNK = 50
 INSTANT = {"braking", "harshBrake", "harshTurn", "harshAccel", "acceleration", "crash", "rollover",
@@ -66,11 +69,21 @@ def save(company_id, link, external_id, kind, label, severity, at, ended=None, s
     return 1 if found else 0
 
 
-def pull_events(company_id, client, start, linked):
+def video_url(event):
+    for key in ("downloadForwardVideoUrl", "downloadTrackedInwardVideoUrl", "downloadInwardVideoUrl"):
+        if event.get(key):
+            return event[key]
+    return None
+
+
+def pull_events(company_id, client, start, linked, videos=None):
     saved = 0
     end = datetime.now(timezone.utc)
     events = client.paginate("/fleet/safety-events", {"startTime": iso(start), "endTime": iso(end), "limit": 100})
     for event in events:
+        if videos is not None and video_url(event) and any(
+                l.get("label") in VIDEO_KINDS for l in event.get("behaviorLabels") or []):
+            videos[f"event:{event['id']}"] = video_url(event)
         link = linked.get(str((event.get("vehicle") or {}).get("id") or ""))
         labels = event.get("behaviorLabels") or [{}]
         first = labels[0]
@@ -152,6 +165,46 @@ def alert(company):
     return sent
 
 
+def download(url):
+    import requests
+    try:
+        response = requests.get(url, timeout=90, stream=True)
+        if not response.ok:
+            return None
+        data = b""
+        for chunk in response.iter_content(1 << 16):
+            data += chunk
+            if len(data) > MAX_VIDEO_BYTES:
+                return None
+        return data
+    except requests.RequestException as err:
+        log.warning("video download failed: %s", err)
+        return None
+
+
+def send_videos(company, videos):
+    from .alert_group import chat_of, office_video
+    if not videos or not chat_of(company["id"]):
+        return 0
+    pending = rows(
+        """select e.*, t.unit_number, coalesce(d.name, initcap(e.raw->'driver'->>'name')) as driver_name from safety_events e
+           left join trucks t on t.id = e.truck_id left join drivers d on d.id = e.driver_id
+           where e.company_id = %s and e.video_sent_at is null and e.external_id = any(%s)
+             and e.happened_at > now() - make_interval(hours => %s) order by e.happened_at""",
+        (company["id"], list(videos), VIDEO_WITHIN_HOURS),
+    )
+    sent = 0
+    for event in pending:
+        video = download(videos[event["external_id"]])
+        if not video:
+            continue
+        result = office_video(company["id"], "videos", video, message(event, company))
+        if result and result.get("ok"):
+            execute("update safety_events set video_sent_at = now() where id = %s", (event["id"],))
+            sent += 1
+    return sent
+
+
 def run():
     result = {}
     for company in rows(
@@ -161,9 +214,11 @@ def run():
         try:
             client, _ = client_for(company["id"])
             linked = links(company["id"])
-            events = pull_events(company["id"], client, since(company["id"], "event"), linked)
+            videos = {}
+            events = pull_events(company["id"], client, since(company["id"], "event"), linked, videos)
             speeding = pull_speeding(company["id"], client, since(company["id"], "speed"), linked)
-            result[company["name"]] = {"events": events, "speeding": speeding, "alerts": alert(company)}
+            result[company["name"]] = {"events": events, "speeding": speeding, "alerts": alert(company),
+                                     "videos": send_videos(company, videos)}
         except SamsaraError as err:
             log.warning("safety pull failed for %s: %s", company["id"], err)
             result[company["name"]] = {"error": str(err)[:200]}

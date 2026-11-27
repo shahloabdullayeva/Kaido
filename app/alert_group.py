@@ -1,3 +1,4 @@
+import re
 import subprocess
 import sys
 import time
@@ -6,7 +7,7 @@ from pathlib import Path
 
 from .db import execute, one, rows
 from .logs import get
-from .telegram import call, send, send_photo
+from .telegram import call, send, send_photo, send_video
 
 log = get("alert-group")
 
@@ -28,6 +29,7 @@ TOPICS = {
     "mpg": "MPG",
     "speeding": "Speeding",
     "safety": "Harsh driving and camera",
+    "videos": "Harsh turn and crash videos",
     "fuel": "Fuel checks",
     "fuel_reports": "Fuel reports",
     "pti": "PTI",
@@ -109,13 +111,20 @@ def lost_thread(result):
     return "thread not found" in reason or "topic_deleted" in reason or "topic deleted" in reason
 
 
-def post(chat_id, topic, text, png=None):
+def deliver(chat_id, text, png=None, video=None, **extra):
+    if video is not None:
+        return send_video(chat_id, video, text, **extra)
+    if png is not None:
+        return send_photo(chat_id, png, text, **extra)
+    return send(chat_id, text, **extra)
+
+
+def post(chat_id, topic, text, png=None, video=None):
     for fresh in (False, True):
         thread = thread_of(chat_id, topic, fresh)
         if not thread:
-            return send(chat_id, text) if png is None else send_photo(chat_id, png, text)
-        result = (send(chat_id, text, message_thread_id=thread) if png is None
-                  else send_photo(chat_id, png, text, message_thread_id=thread))
+            return deliver(chat_id, text, png, video)
+        result = deliver(chat_id, text, png, video, message_thread_id=thread)
         if result.get("ok") or not lost_thread(result):
             return result
     return result
@@ -135,12 +144,25 @@ def office_photo(company_id, topic, png, caption):
     return post(chat, topic, caption, png) if chat else None
 
 
+def office_video(company_id, topic, video, caption):
+    chat = chat_of(company_id)
+    return post(chat, topic, caption, video=video) if chat else None
+
+
+def simple(name):
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", (name or "").lower()).replace(" llc", " ").split())
+
+
 def link(chat, user):
-    companies = rows(
-        """select c.id, c.name from memberships m join companies c on c.id = m.company_id
+    mine = rows(
+        """select c.id, c.name, g.chat_id from memberships m join companies c on c.id = m.company_id
+           left join alert_groups g on g.company_id = c.id
            where m.user_id = %s and m.role = 'admin' and c.status = 'active' and c.alerts_group order by c.id""",
         (user["id"],),
     )
+    title = simple(chat.get("title"))
+    named = [c for c in mine if len(title) >= 3 and len(simple(c["name"])) >= 3 and (simple(c["name"]) in title or title in simple(c["name"]))]
+    companies = named or [c for c in mine if c["chat_id"] in (None, chat["id"])]
     for company in companies:
         execute("""insert into alert_groups (company_id, chat_id, linked_by) values (%s, %s, %s)
                    on conflict (company_id) do update set chat_id = excluded.chat_id, linked_by = excluded.linked_by,

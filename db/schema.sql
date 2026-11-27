@@ -1368,6 +1368,7 @@ create table if not exists alert_topics (
   primary key (chat_id, topic)
 );
 alter table companies add column if not exists alerts_group boolean not null default false;
+alter table safety_events add column if not exists video_sent_at timestamptz;
 
 alter table maintenance_orders add column if not exists priority text not null default 'medium';
 alter table maintenance_orders add column if not exists reported_at timestamptz;
