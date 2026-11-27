@@ -392,8 +392,7 @@ PTI, under the same `AI_DAILY_USD` cap as the rest. Checks past the cap wait for
 the next day.
 
 A defect sends a Telegram alert. An admin signs it off (repaired or not needed) and
-the next driver has to confirm they read it. The PTI page lists trucks that drove
-10+ miles today with no pre-trip. Photos and videos are deleted after 92 days
+the next driver has to confirm they read it. Photos and videos are deleted after 92 days
 (`manage.py pti-cleanup`), past the three months FMCSA asks for.
 
 **Truck groups.** Each truck has its own Telegram group with its driver and the
