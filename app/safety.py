@@ -19,6 +19,7 @@ ALERT_WITHIN_MINUTES = 90
 REPEAT_HOURS = 6
 VIDEO_KINDS = {"harshTurn", "crash", "rollover", "rolloverProtection"}
 VIDEO_WITHIN_HOURS = 24
+VIDEOS_PER_RUN = 20
 MAX_VIDEO_BYTES = 49 * 1024 * 1024
 KMH_TO_MPH = 0.621371
 ASSET_CHUNK = 50
@@ -27,7 +28,14 @@ INSTANT = {"braking", "harshBrake", "harshTurn", "harshAccel", "acceleration", "
 NAMES = {"speeding:light": "Speeding, light", "speeding:moderate": "Speeding", "speeding:heavy": "Speeding, heavy",
          "speeding:severe": "Speeding, severe", "mobileUsage": "Phone use", "noSeatbelt": "No seatbelt",
          "braking": "Harsh braking", "harshBrake": "Harsh braking", "harshTurn": "Harsh turn",
-         "harshAccel": "Harsh acceleration", "acceleration": "Harsh acceleration", "crash": "Crash"}
+         "harshAccel": "Harsh acceleration", "acceleration": "Harsh acceleration", "crash": "Crash",
+         "rollover": "Rollover", "rolloverProtection": "Rollover protection", "followingDistance": "Following distance",
+         "followingDistanceSevere": "Following distance, severe", "followingDistanceModerate": "Following distance",
+         "forwardCollisionWarning": "Forward collision warning", "laneDeparture": "Lane departure",
+         "rollingStop": "Rolling stop", "didNotYield": "Did not yield", "drowsy": "Drowsy driving",
+         "drowsiness": "Drowsy driving", "inattentiveDriving": "Distracted driving", "obstructedCamera": "Camera blocked",
+         "eatingDrinking": "Eating or drinking", "smoking": "Smoking", "defensiveDriving": "Defensive driving",
+         "edgeRailroadCrossingViolation": "Railroad crossing", "nearCollision": "Near collision", "unsafeParking": "Unsafe parking"}
 
 
 def iso(moment):
@@ -76,13 +84,17 @@ def video_url(event):
     return None
 
 
-def pull_events(company_id, client, start, linked, videos=None):
+def wants_video(event, every):
+    return bool(video_url(event)) and (every or any(
+        l.get("label") in VIDEO_KINDS for l in event.get("behaviorLabels") or []))
+
+
+def pull_events(company_id, client, start, linked, videos=None, every=False):
     saved = 0
     end = datetime.now(timezone.utc)
     events = client.paginate("/fleet/safety-events", {"startTime": iso(start), "endTime": iso(end), "limit": 100})
     for event in events:
-        if videos is not None and video_url(event) and any(
-                l.get("label") in VIDEO_KINDS for l in event.get("behaviorLabels") or []):
+        if videos is not None and wants_video(event, every):
             videos[f"event:{event['id']}"] = video_url(event)
         link = linked.get(str((event.get("vehicle") or {}).get("id") or ""))
         labels = event.get("behaviorLabels") or [{}]
@@ -142,12 +154,15 @@ def message(event, company):
 
 
 def alert(company):
+    from .alert_group import chat_of
+    every = bool(company.get("safety_all")) and bool(chat_of(company["id"]))
     fresh = rows(
         """select e.*, t.unit_number, d.name as driver_name from safety_events e
            left join trucks t on t.id = e.truck_id left join drivers d on d.id = e.driver_id
-           where e.company_id = %s and e.alerted_at is null and e.kind = any(%s)
+           where e.company_id = %s and e.alerted_at is null
+             and (e.kind = any(%s) or (%s and e.kind not like 'speeding%%'))
              and e.happened_at > now() - make_interval(mins => %s) order by e.happened_at""",
-        (company["id"], list(INSTANT), ALERT_WITHIN_MINUTES),
+        (company["id"], list(INSTANT), every, ALERT_WITHIN_MINUTES),
     )
     sent = 0
     for event in fresh:
@@ -190,8 +205,8 @@ def send_videos(company, videos):
         """select e.*, t.unit_number, coalesce(d.name, initcap(e.raw->'driver'->>'name')) as driver_name from safety_events e
            left join trucks t on t.id = e.truck_id left join drivers d on d.id = e.driver_id
            where e.company_id = %s and e.video_sent_at is null and e.external_id = any(%s)
-             and e.happened_at > now() - make_interval(hours => %s) order by e.happened_at""",
-        (company["id"], list(videos), VIDEO_WITHIN_HOURS),
+             and e.happened_at > now() - make_interval(hours => %s) order by e.happened_at limit %s""",
+        (company["id"], list(videos), VIDEO_WITHIN_HOURS, VIDEOS_PER_RUN),
     )
     sent = 0
     for event in pending:
@@ -215,7 +230,8 @@ def run():
             client, _ = client_for(company["id"])
             linked = links(company["id"])
             videos = {}
-            events = pull_events(company["id"], client, since(company["id"], "event"), linked, videos)
+            events = pull_events(company["id"], client, since(company["id"], "event"), linked, videos,
+                                 bool(company.get("safety_all")))
             speeding = pull_speeding(company["id"], client, since(company["id"], "speed"), linked)
             result[company["name"]] = {"events": events, "speeding": speeding, "alerts": alert(company),
                                      "videos": send_videos(company, videos)}

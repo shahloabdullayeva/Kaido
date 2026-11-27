@@ -1,15 +1,24 @@
 {% extends "layout.html" %}
 {% block body %}
-<div class="page-head">
-  <div><h1>Learn</h1><p>{{ topics|length }} topics</p></div>
-  <div class="actions-row">
+<section class="learn-hero">
+  <div>
+    <h1>Learn</h1>
+    <p>{{ topics|length }} topics · {{ issue_count }} issues with what they look like, sound like and cost</p>
+  </div>
   <form method="get" action="/learn" class="learn-search">
-    <input type="search" name="q" value="{{ query }}" placeholder="Search: DPF, slack adjuster, FMI 4..." maxlength="100">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search: DPF, slack adjuster, white smoke, FMI 4..." maxlength="100" autofocus>
     <button class="btn" type="submit">Search</button>
   </form>
-  {% if has_manual %}<a class="btn ghost" href="/learn/fleet-from-scratch.pdf">Fleet From Scratch PDF</a>{% endif %}
-  </div>
-</div>
+  <nav class="learn-quick">
+    <a href="/learn/issues"><strong>Issues library</strong><span>{{ issue_count }} problems, filter by system</span></a>
+    <a href="/learn/dash-lamps"><strong>Dash lamps</strong><span>Every warning light, drawn</span></a>
+    <a href="/learn/leaks-smoke-colors"><strong>Leaks and smoke</strong><span>Color tells you the fluid</span></a>
+    <a href="/learn/tire-wear-patterns"><strong>Tire wear</strong><span>Patterns and what causes them</span></a>
+    <a href="/learn/fault-codes"><strong>Fault codes</strong><span>SPN, FMI and the common ones</span></a>
+    <a href="/learn/glossary"><strong>Glossary</strong><span>Every word in one place</span></a>
+    {% if has_manual %}<a href="/learn/fleet-from-scratch.pdf"><strong>Fleet From Scratch</strong><span>The PDF manual</span></a>{% endif %}
+  </nav>
+</section>
 {% if hits is not none %}
 <section class="panel">
   <div class="panel-head"><h2>{{ hits|length }} result{{ '' if hits|length == 1 else 's' }} for "{{ query }}"</h2><a class="btn ghost small" href="/learn">Clear</a></div>
@@ -23,7 +32,7 @@
 <div class="learn-grid">
   {% for item in items %}
   <a class="learn-card" href="/learn/{{ item.slug }}">
-    <span class="learn-num">{{ item.number }}</span>
+    <span class="learn-num">{{ item.number }}{% if item.issues %} · {{ item.issues|length }} issues{% endif %}</span>
     <strong>{{ item.title }}</strong>
     <span>{{ item.summary }}</span>
   </a>

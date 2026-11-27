@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block body %}
+<div class="page-head">
+  <div><h1>Issues library</h1><p>{{ issues|length }} issues · <span data-shown>{{ issues|length }}</span> shown</p></div>
+  <a class="btn ghost" href="/learn">All topics</a>
+</div>
+<section class="panel issue-filters">
+  <input type="search" data-issue-q placeholder="Filter: leak, smoke, grinding, ABS, pink crust..." maxlength="100">
+  <label class="field"><span>System</span>
+    <select data-issue-system><option value="">All</option>
+      {% for slug, name in systems %}<option value="{{ slug }}">{{ name }}</option>{% endfor %}</select></label>
+  <label class="field"><span>Urgency</span>
+    <select data-issue-sev><option value="">All</option>
+      {% for key, text in severities.items() %}<option value="{{ key }}">{{ text }} ({{ counts[key] }})</option>{% endfor %}</select></label>
+</section>
+<div class="issue-list">
+  {% for issue in issues %}
+  <details class="issue-item" data-system="{{ issue.slug }}" data-sev="{{ issue.severity }}" data-text="{{ issue.text }}">
+    <summary><span class="sev-dot sev-{{ issue.severity }}"></span><strong>{{ issue.title }}</strong>
+      <span class="subtle">{{ issue.topic }}</span><span class="sev-tag sev-{{ issue.severity }}">{{ severities[issue.severity] }}</span></summary>
+    {{ issue.html|safe }}
+    <a class="subtle" href="/learn/{{ issue.slug }}#{{ issue.anchor }}">Open in {{ issue.topic }}</a>
+  </details>
+  {% endfor %}
+</div>
+<p class="empty" data-none hidden>Nothing matches.</p>
+<script>
+(function () {
+  var q = document.querySelector('[data-issue-q]'), sys = document.querySelector('[data-issue-system]'),
+      sev = document.querySelector('[data-issue-sev]'), items = document.querySelectorAll('.issue-item'),
+      shown = document.querySelector('[data-shown]'), none = document.querySelector('[data-none]');
+  function apply() {
+    var words = q.value.toLowerCase().split(/\s+/).filter(Boolean), n = 0;
+    items.forEach(function (el) {
+      var ok = (!sys.value || el.dataset.system === sys.value) && (!sev.value || el.dataset.sev === sev.value) &&
+        words.every(function (w) { return el.dataset.text.indexOf(w) !== -1; });
+      el.hidden = !ok; if (ok) n++;
+      if (words.length && ok) el.open = n <= 3;
+    });
+    shown.textContent = n; none.hidden = n > 0;
+  }
+  [q, sys, sev].forEach(function (el) { el.addEventListener('input', apply); });
+})();
+</script>
+{% endblock %}

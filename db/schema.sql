@@ -1830,3 +1830,6 @@ update maintenance_orders m set resolved_by = coalesce((select c.created_by from
     where c.order_id = m.id and c.kind = 'status' and c.body like '% to done' and c.created_by is not null
     order by c.created_at desc, c.id desc limit 1), m.created_by)
   where m.status = 'done' and m.resolved_by is null;
+
+alter table companies add column if not exists safety_all boolean not null default false;
+update companies set safety_all = true where name = 'DFK transportation' and not safety_all;

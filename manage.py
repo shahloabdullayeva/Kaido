@@ -757,6 +757,62 @@ def cmd_recalls(args):
     print(recalls.run(notify=not args.quiet))
 
 
+def cmd_watch_fuel(args):
+    import json
+    from datetime import date, datetime
+    from html import escape
+    from app import fuel, telegram
+    if datetime.now().date() > date.fromisoformat(args.until):
+        return 0
+    company = one("select * from companies where lower(name) = lower(%s)", (args.company,))
+    truck = company and one("select * from trucks where company_id = %s and unit_number = %s", (company["id"], args.truck))
+    user = one("select * from users where lower(email) = lower(%s)", (args.to,))
+    if not truck or not user or not user["telegram_chat_id"]:
+        print("truck or recipient not found")
+        return 1
+    state_file = ROOT / "logs" / f"watch-fuel-{truck['id']}.json"
+    state = json.loads(state_file.read_text()) if state_file.exists() else {}
+    label = f"Unit {escape(truck['unit_number'])}" + (f" ({escape(args.name)})" if args.name else "")
+    messages = []
+    track = rows(
+        """select fuel_percent, latitude, longitude, speed_mph, recorded_at from truck_positions
+           where truck_id = %s and fuel_percent is not null and recorded_at > now() - interval '3 hours'
+           order by recorded_at""",
+        (truck["id"],),
+    )
+    if len(track) >= 2:
+        low_index = min(range(len(track)), key=lambda i: float(track[i]["fuel_percent"]))
+        low, last = track[low_index], track[-1]
+        rise = float(last["fuel_percent"]) - float(low["fuel_percent"])
+        key = low["recorded_at"].isoformat()
+        if rise >= 15 and low_index < len(track) - 1 and key != state.get("refuel"):
+            seen = state.get("refuel")
+            if not seen or (low["recorded_at"] - datetime.fromisoformat(seen)).total_seconds() > 7200:
+                near = fuel.nearby_stations(low["latitude"], low["longitude"], 1.0)
+                lines = [f"<b>Fueled</b> · {label}"]
+                if near:
+                    where = ", ".join(p for p in [near[0]["city"], near[0]["state"]] if p)
+                    lines.append(escape(near[0]["name"]) + (f", {escape(where)}" if where else ""))
+                lines.append(f"{float(low['fuel_percent']):.0f}% to {float(last['fuel_percent']):.0f}% · about "
+                             f"{round(rise / 100 * float(truck['tank_gallons'] or 200))} gal")
+                messages.append("\n".join(lines))
+            state["refuel"] = key
+    last_tx = state.get("transaction")
+    if last_tx is None:
+        last_tx = (one("select max(id) as id from fuel_transactions where truck_id = %s", (truck["id"],))["id"] or 0)
+    for tx in rows("select * from fuel_transactions where truck_id = %s and id > %s order by id", (truck["id"], last_tx)):
+        messages.append(f"<b>Fuel purchase</b> · {label}\n{float(tx['gallons']):.0f} gal · ${float(tx['total']):,.2f}"
+                        + (f"\n{escape(tx['location'])}" if tx["location"] else ""))
+        last_tx = tx["id"]
+    state["transaction"] = last_tx
+    for text in messages:
+        telegram.send(user["telegram_chat_id"], text)
+    state_file.write_text(json.dumps(state))
+    if messages:
+        print(f"{datetime.now().isoformat()} sent {len(messages)}")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description="Kaido fleet management")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -794,6 +850,14 @@ def main():
     reset = sub.add_parser("reset-password", help="set a new temporary password and send it to the user's Telegram")
     reset.add_argument("email")
     reset.set_defaults(func=cmd_reset_password)
+
+    watch = sub.add_parser("watch-fuel", help="tell one user on Telegram when a truck fuels")
+    watch.add_argument("--company", required=True)
+    watch.add_argument("--truck", required=True)
+    watch.add_argument("--to", required=True)
+    watch.add_argument("--name")
+    watch.add_argument("--until", required=True)
+    watch.set_defaults(func=cmd_watch_fuel)
 
     sync = sub.add_parser("sync", help="pull from Samsara")
     sync.add_argument("--company")

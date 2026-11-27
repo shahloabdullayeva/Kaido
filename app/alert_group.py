@@ -29,7 +29,7 @@ TOPICS = {
     "mpg": "MPG",
     "speeding": "Speeding",
     "safety": "Harsh driving and camera",
-    "videos": "Harsh turn and crash videos",
+    "videos": "Safety event videos",
     "fuel": "Fuel checks",
     "fuel_reports": "Fuel reports",
     "pti": "PTI",

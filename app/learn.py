@@ -6,8 +6,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent / "learn"
 IMAGE = re.compile(r"^!\[(.+?)\]\((.+?)\)$")
-GROUPS = {"s": "Start: study plan", "": "Topics", "p": "Parts A to Z"}
+GROUPS = {"s": "Start: study plan", "v": "See it: what problems look like", "i": "Issues by system", "": "Topics",
+          "p": "Parts A to Z"}
 VIDEO = re.compile(r"^@video (.+?) \| (.+)$")
+ISSUE = re.compile(r"^::: issue (.+?) \| (stop|soon|watch)$")
+CALLOUT = re.compile(r"^> (tip|warn|stop|note): (.+)$")
+SWATCH = re.compile(r"\{\{(#[0-9a-fA-F]{6})\}\}")
+SEVERITY = {"stop": "Stop now", "soon": "Fix today", "watch": "Schedule it"}
+FIELDS = {"looks": "What it looks like", "hear": "What you hear", "smell": "What you smell", "feel": "What the driver feels",
+          "dash": "Dash and codes", "why": "Usual causes", "check": "How to check", "do": "What to do",
+          "cost": "Typical cost", "dot": "DOT / out of service", "ask": "Ask the driver"}
+CALLOUTS = {"tip": "Tip", "warn": "Careful", "stop": "Safety", "note": "Note"}
 
 
 @lru_cache(maxsize=1)
@@ -38,19 +47,62 @@ def inline(text):
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
     text = re.sub(r"\[([^\]]+)\]\((https?://[^)\s]+)\)", r'<a href="\2" target="_blank" rel="noopener">\1</a>', text)
-    return text
+    text = re.sub(r"\[([^\]]+)\]\((/learn/[a-z0-9#-]+)\)", r'<a href="\2">\1</a>', text)
+    text = re.sub(r"\{\{lamp:([a-z0-9-]+)\}\}", r'<img class="lamp" src="/static/learn/lamps/\1.svg" alt="" loading="lazy">', text)
+    return SWATCH.sub(r'<span class="swatch" style="background:\1"></span>', text)
+
+
+def issue_card(title, severity, fields, anchor):
+    rows_html = "".join(f'<div class="issue-row issue-{key}"><dt>{FIELDS[key]}</dt><dd>{inline(value)}</dd></div>'
+                        for key, value in fields)
+    return (f'<article class="issue sev-{severity}" id="{anchor}"><header><h3>{inline(title)}</h3>'
+            f'<span class="sev">{SEVERITY[severity]}</span></header><dl>{rows_html}</dl></article>')
+
+
+def read_issue(lines, index):
+    head = ISSUE.match(lines[index].rstrip())
+    fields = []
+    index += 1
+    while index < len(lines) and lines[index].strip() != ":::":
+        line = lines[index].strip()
+        key, _, value = line.partition(":")
+        if key in FIELDS and value:
+            fields.append((key, value.strip()))
+        elif line and fields:
+            fields[-1] = (fields[-1][0], fields[-1][1] + " " + line)
+        index += 1
+    return head.group(1).strip(), head.group(2), fields, index + 1
 
 
 def slug(text):
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
 
 
-def render(lines):
+def render(lines, issues=None):
     html, toc = [], []
     index = 0
     while index < len(lines):
         line = lines[index].rstrip()
         if not line:
+            index += 1
+            continue
+        if ISSUE.match(line):
+            title, severity, fields, index = read_issue(lines, index)
+            anchor = slug(title)
+            html.append(issue_card(title, severity, fields, anchor))
+            if issues is not None:
+                issues.append({"title": title, "severity": severity, "fields": fields, "anchor": anchor,
+                               "section": toc[-1][1] if toc else ""})
+            continue
+        if CALLOUT.match(line):
+            kind, text = CALLOUT.match(line).groups()
+            html.append(f'<aside class="callout callout-{kind}"><strong>{CALLOUTS[kind]}</strong><span>{inline(text)}</span></aside>')
+            index += 1
+            continue
+        if line.startswith("@svg "):
+            name, _, caption = line[5:].partition(" | ")
+            html.append(f'<figure class="learn-figure learn-svg"><img src="/static/learn/{escape(name.strip())}" '
+                        f'alt="{escape(caption)}" loading="lazy"><figcaption>{inline(caption)}</figcaption></figure>')
             index += 1
             continue
         if IMAGE.match(line):
@@ -90,7 +142,7 @@ def render(lines):
             html.append(f"<{tag}>" + "".join(f"<li>{inline(item)}</li>" for item in items) + f"</{tag}>")
             continue
         para = []
-        while index < len(lines) and lines[index].strip() and not re.match(r"^(## |\||- |\d+\. |!\[|@video )", lines[index]):
+        while index < len(lines) and lines[index].strip() and not re.match(r"^(## |\||- |\d+\. |!\[|@video |@svg |::: |> )", lines[index]):
             para.append(lines[index].strip())
             index += 1
         html.append(f"<p>{inline(' '.join(para))}</p>")
@@ -104,13 +156,15 @@ def topics():
         lines = path.read_text().splitlines()
         title = lines[0].lstrip("# ").strip()
         summary = lines[1].strip() if len(lines) > 1 else ""
-        body, toc = render(lines[2:])
+        issues = []
+        body, toc = render(lines[2:], issues)
         text = re.sub(r"<[^>]+>", " ", body)
         code = path.stem.split("-", 1)[0]
         group = code.rstrip("0123456789")
         found.append({"slug": path.stem.split("-", 1)[1], "number": int(code[len(group):]), "group": GROUPS.get(group, group),
                       "order": (list(GROUPS).index(group) if group in GROUPS else 9, int(code[len(group):])), "title": title,
-                      "summary": summary, "html": body, "toc": toc, "text": " ".join(text.split()).lower()})
+                      "summary": summary, "html": body, "toc": toc, "text": " ".join(text.split()).lower(),
+                      "issues": issues, "code": code})
     found.sort(key=lambda item: item["order"])
     return found
 
@@ -120,6 +174,24 @@ def grouped():
     for item in topics():
         groups.setdefault(item["group"], []).append(item)
     return list(groups.items())
+
+
+def all_issues():
+    found = []
+    for item in topics():
+        for issue in item["issues"]:
+            text = " ".join([issue["title"]] + [value for _, value in issue["fields"]])
+            found.append({**issue, "topic": item["title"], "slug": item["slug"], "html": issue_card(
+                issue["title"], issue["severity"], issue["fields"], issue["anchor"]),
+                "text": re.sub(r"<[^>]+>|\{\{#\w+\}\}", " ", text).lower()})
+    return found
+
+
+def systems():
+    seen = {}
+    for issue in all_issues():
+        seen.setdefault(issue["slug"], issue["topic"])
+    return list(seen.items())
 
 
 def topic(name):

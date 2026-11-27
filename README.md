@@ -202,6 +202,8 @@ off the fleet map and the totals.
 ## Commands
 
     manage.py migrate                     apply db/schema.sql
+    manage.py watch-fuel --company C --truck UNIT --to EMAIL --until YYYY-MM-DD [--name N]
+                                          tell one user on Telegram when that truck's tank rises 15%+ or a fuel purchase is imported
     manage.py bootstrap --email --name    create the first platform owner
     manage.py add-company --name          add a carrier
     manage.py add-user --email --name --company --role
@@ -608,10 +610,12 @@ made again on the next alert. Removing the bot from the group unlinks it.
 
 **Safety** (`app/safety.py`, `manage.py safety` from `bin/sync.sh` every 15 minutes). Pulls Samsara camera
 safety events and speeding intervals (30 days backfilled on first run) into `safety_events`. Crash, harsh
-braking/turn/acceleration, phone use, no seatbelt, drowsiness and heavy or severe speeding go to the office at once,
+braking/turn/acceleration, phone use, no seatbelt, drowsiness and heavy or severe speeding go to the office at once
+(a company with `companies.safety_all` on, DFK, also gets every other event type: following distance, railroad crossing,
+rolling stop, unsafe parking, forward collision warning and so on, but only once its alerts group is linked, so DMs are not flooded),
 one per truck and type in 6 hours. Everything is on Trucks → Safety (per-driver counts and the event list; light
-speeding only under the Speeding filter). Harsh turn, crash and rollover events also send their Samsara camera
-video (forward camera, else inward) to the group's "Harsh turn and crash videos" topic, once each (`safety_events.video_sent_at`),
+speeding only under the Speeding filter). Harsh turn, crash and rollover events (every event with a video for a `safety_all` company) also send their Samsara camera
+video (forward camera, else inward) to the group's "Safety event videos" topic (older groups keep the name "Harsh turn and crash videos"), at most 20 per run, once each (`safety_events.video_sent_at`),
 within 24 hours of the event; only when the company has an alerts group. Videos over 49 MB are skipped (bot upload limit).
 
 **Alerts** page (`/alerts`, top menu): every health, hours, service, MPG, check engine, safety and fuel-check alert in
@@ -997,11 +1001,17 @@ token, and Love's.
 
 ## Learn
 
-`/learn` (any signed-in user, Learn in the menu): 49 topics in three groups. The file prefix sets the group: `s` study plan, none = Topics (28 pages, each one subject, merging what was written for Kaido with her Claude Docs manual "Fleet From Scratch"; the manual's part of a page starts at "More detail" or headings marked "(in depth)"), and `p` Parts A to Z (20 pages from the same manual). The Topics are for someone new to fleet maintenance, from what a
+`/learn` (any signed-in user, Learn in the menu): 74 topics in five groups. The file prefix sets the group: `s` study plan, `v` See it (dash lamps drawn as icons, leak and smoke colors, tire wear patterns, sounds/smells/feelings, normal readings), `i` Issues by system (20 pages, 212 issues), none = Topics (28 pages, each one subject, merging what was written for Kaido with her Claude Docs manual "Fleet From Scratch"; the manual's part of a page starts at "More detail" or headings marked "(in depth)"), and `p` Parts A to Z (20 pages from the same manual). The Topics are for someone new to fleet maintenance, from what a
 truck is made of to breakdown calls, DOT, invoices and a glossary. Each topic is a Markdown-like file in
 `app/learn/NN-name.md` (first line title, second line summary), rendered by `app/learn.py`: `## ` headings,
 `|` tables, `- ` and `1. ` lists, `**bold**`, images as `![caption](file)` from `app/static/learn/`, and
 `@video Title | search words` lines, which become YouTube search links, and `[text](https://...)` links. Photos come from Wikimedia
 Commons under their free licenses; author and license are in `app/learn/credits.json` and show under each
 photo. The diagrams (`*.svg`) were drawn for Kaido. Search on `/learn?q=` matches every word across topics.
+Issue cards are written as `::: issue Title | stop|soon|watch` followed by `key: text` lines (looks, hear, smell, feel, dash, ask, why, check, do, cost, dot) and a closing `:::`;
+each renders as a card with an urgency badge (Stop now, Fix today, Schedule it). `/learn/issues` lists every issue from every page with
+a text filter and System and Urgency dropdowns (all by default). Other syntax: `> tip|warn|stop|note: text` callouts,
+`{{#rrggbb}}` color swatches, `{{lamp:name}}` dash lamp icons from `app/static/learn/lamps/`, `@svg file | caption` drawings
+(tire wear diagrams in `app/static/learn/wear/`), and `[text](/learn/slug)` links between pages. The landing page has a search box and
+quick links to the Issues library, Dash lamps, Leaks and smoke, Tire wear, Fault codes and Glossary.
 The manual PDF is served from `uploads/learn/Fleet_From_Scratch.pdf` at `/learn/fleet-from-scratch.pdf` (sign-in required; the file is not in git). Edit a file and restart `kaido.service` to see the change (topics are cached in memory).

@@ -1,17 +1,20 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>{{ item.title }}</h1><p>{{ item.group }} · {{ item.summary }}</p></div>
-  <a class="btn ghost" href="/learn">All topics</a>
+  <div><h1>{{ item.title }}</h1><p>{{ item.group }} · {{ item.summary }}{% if item.issues %} · {{ item.issues|length }} issues{% endif %}</p></div>
+  <div class="actions-row">{% if item.issues %}<a class="btn ghost" href="/learn/issues">Issues library</a>{% endif %}<a class="btn ghost" href="/learn">All topics</a></div>
 </div>
 <div class="learn-page">
   <aside class="learn-side">
     {% if item.toc %}<div class="learn-toc"><strong>On this page</strong>
       {% for anchor, text in item.toc %}<a href="#{{ anchor }}">{{ text }}</a>{% endfor %}</div>{% endif %}
+    {% if item.issues %}<div class="learn-toc learn-toc-issues"><strong>Issues</strong>
+      {% for issue in item.issues %}<a href="#{{ issue.anchor }}"><span class="sev-dot sev-{{ issue.severity }}"></span>{{ issue.title }}</a>{% endfor %}</div>{% endif %}
     <div class="learn-toc"><strong>{{ item.group }}</strong>
       {% for other in topics if other.group == item.group %}<a href="/learn/{{ other.slug }}" {% if other.slug == item.slug %}class="on"{% endif %}>{{ other.number }}. {{ other.title }}</a>{% endfor %}</div>
   </aside>
   <article class="panel learn-body">
+    {% if item.issues %}<div class="sev-legend"><span><span class="sev-dot sev-stop"></span>Stop now: unsafe or will cause damage</span><span><span class="sev-dot sev-soon"></span>Fix today: at the next shop</span><span><span class="sev-dot sev-watch"></span>Schedule it: next PM or when convenient</span></div>{% endif %}
     {{ item.html|safe }}
     <div class="learn-next">
       {% if previous %}<a class="btn ghost" href="/learn/{{ previous.slug }}">{{ previous.title }}</a>{% else %}<span></span>{% endif %}
