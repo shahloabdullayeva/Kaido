@@ -59,12 +59,31 @@ def item_label(key):
 def truck_by_token(token):
     if not token or len(token) < 20:
         return None
-    return one(
+    truck = one(
         """select t.*, c.name as company_name, c.timezone as company_timezone, d.name as driver_name
            from trucks t join companies c on c.id = t.company_id
            left join drivers d on d.id = t.driver_id
            where t.pti_token = %s and c.status = 'active' and t.status <> 'sold'""",
         (token,),
+    )
+    if truck:
+        return truck
+    return one(
+        """select t.*, c.name as company_name, c.timezone as company_timezone, d.name as driver_name,
+                  l.driver_id as link_driver_id, l.driver_name as link_driver_name
+           from pti_links l join trucks t on t.id = l.truck_id join companies c on c.id = t.company_id
+           left join drivers d on d.id = t.driver_id
+           where l.token = %s and c.status = 'active' and t.status <> 'sold'""",
+        (token,),
+    )
+
+
+def make_link(company_id, truck, driver_id, driver_name, phone, user_id):
+    token = random_token(24)
+    return one(
+        """insert into pti_links (company_id, truck_id, driver_id, driver_name, phone, token, created_by)
+           values (%s, %s, %s, %s, %s, %s, %s) returning *""",
+        (company_id, truck["id"], driver_id, driver_name, phone, token, user_id),
     )
 
 

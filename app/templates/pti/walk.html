@@ -29,7 +29,7 @@
   <div class="walk-actions">
     <div class="walk-note bad" data-intro-error hidden></div>
     <label class="walk-field"><span data-t="name"></span>
-      <input data-driver-name maxlength="120" autocomplete="name"></label>
+      <input data-driver-name maxlength="120" autocomplete="name" value="{{ truck.link_driver_name or '' }}"></label>
     <button type="button" class="walk-go" data-start><span class="walk-cam"></span><span data-t="start"></span></button>
     <button type="button" class="walk-link" data-upload data-t="upload"></button>
   </div>

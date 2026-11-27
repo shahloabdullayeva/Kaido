@@ -1,34 +1,67 @@
 {% extends "layout.html" %}
 {% block body %}
 <div class="page-head">
-  <div><h1>Send PTI links</h1></div>
+  <div><h1>Driver link</h1></div>
   <a class="btn ghost" href="/pti">Back to PTI</a>
 </div>
 
+{% if made %}
 <section class="panel">
-  <div class="panel-head"><h2>Every truck</h2></div>
+  <div class="panel-head"><h2>Unit {{ made.unit_number }} · {{ made.driver_name }}</h2>
+    {% if made.sent_ok %}<span class="badge ok">sent to {{ made.sent_to }}</span>
+    {% elif made.sent_to %}<span class="badge bad">not sent</span>{% endif %}</div>
+  <div class="pad">
+    <input class="pti-made-url" readonly value="{{ made.url }}">
+    <div class="actions-row" style="margin-top:10px">
+      <button class="btn small" type="button" data-copy="{{ made.message }}">Copy message</button>
+      <a class="btn ghost small" href="{{ made.telegram }}" target="_blank" rel="noopener">Share on Telegram</a>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head"><h2>New link</h2></div>
+  <form method="post" action="/pti/links" class="pad">
+    <input type="hidden" name="csrf" value="{{ session.csrf }}">
+    <div class="form-grid">
+      <label class="field"><span>Unit</span>
+        <select name="truck_id" required>
+          <option value="">Pick a unit</option>
+          {% for truck in trucks %}<option value="{{ truck.id }}">{{ truck.unit_number }}{% if truck.telegram_chat_id %} · group connected{% endif %}</option>{% endfor %}
+        </select></label>
+      <label class="field"><span>Driver</span>
+        <select name="driver_id">
+          <option value="">New driver</option>
+          {% for driver in drivers %}<option value="{{ driver.id }}">{{ driver.name }}</option>{% endfor %}
+        </select></label>
+      <label class="field"><span>New driver name</span>
+        <input name="name" maxlength="120" autocomplete="off"></label>
+      <label class="field"><span>Phone</span>
+        <input name="phone" maxlength="40" inputmode="tel" autocomplete="off"></label>
+    </div>
+    <div class="actions-row" style="margin-top:12px"><button class="btn" type="submit">Generate</button></div>
+  </form>
+</section>
+
+{% if recent %}
+<section class="panel">
+  <div class="panel-head"><h2>Links made</h2></div>
   <div class="table-wrap"><table>
-    <thead><tr><th>Unit</th><th>Driver</th><th>Send</th></tr></thead>
+    <thead><tr><th>Unit</th><th>Driver</th><th>Phone</th><th>Group</th><th>Made</th><th></th></tr></thead>
     <tbody>
-      {% for card in cards %}
-      <tr class="clickrow" data-href="/trucks/{{ card.id }}">
-        <td><a class="rowlink" href="/trucks/{{ card.id }}">{{ card.unit }}</a></td>
-        <td>{{ card.driver or '—' }}</td>
-        <td><div class="actions-row">
-          <a class="btn small" href="{{ card.telegram }}" target="_blank" rel="noopener">Telegram</a>
-          <button class="btn ghost small" type="button" data-copy="{{ card.message }}">Copy message</button>
-        </div></td>
+      {% for item in recent %}
+      <tr>
+        <td>{{ item.unit_number }}</td>
+        <td>{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ item.driver_name }}</a>{% else %}{{ item.driver_name }}{% endif %}</td>
+        <td>{{ item.phone or '—' }}</td>
+        <td>{% if item.sent_ok %}<span class="badge ok">sent</span>{% elif item.sent_to %}<span class="badge bad">failed</span>{% else %}—{% endif %}</td>
+        <td>{{ item.created_at|stamp }}</td>
+        <td><button class="btn ghost small" type="button" data-copy="{{ item.url }}">Copy link</button></td>
       </tr>
       {% endfor %}
     </tbody>
   </table></div>
 </section>
-
-<section class="panel">
-  <div class="panel-head"><h2>All links in one message</h2>
-    <button class="btn ghost small" type="button" data-copy-from="#all-links">Copy all</button></div>
-  <div class="pad">
-    <textarea id="all-links" class="pti-all" readonly>{{ everything }}</textarea>
-  </div>
-</section>
+{% endif %}
 {% endblock %}

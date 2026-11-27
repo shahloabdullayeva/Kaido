@@ -1002,6 +1002,11 @@ token, and Love's.
 
 ## Walkaround PTI (camera, vision AI)
 
+PTI page: reports not yet reviewed sit in "Waiting for review" at the top; the all-units "Today" board is gone (27 Nov).
+PTI -> Driver link (`/pti/links`): pick a unit, pick a driver or type a new one (name, phone; a new driver row is made),
+Generate. Each link is its own token in `pti_links` (the truck's sticker token keeps working), opens the same walkaround
+with the driver's name filled in, and is posted to the truck's Telegram group when one is connected.
+
 The PTI link and QR sticker (`/pti/<token>`) now open a guided camera walkaround instead of the form (the old form still works at
 `/pti/<token>/form` but nothing links to it). The walkaround is always a pre-trip (her choice, 27 Nov). The page lists no driver names; the driver types their name (matched to a driver of the company when it is the same name), taps Start
 walkaround, and the phone camera opens. Each step (`app/walkaround.py` DEFAULT_STEPS: front with lights, left steer,
@@ -1032,7 +1037,7 @@ guarantee. The PTI page, the report and the truck page show live or uploaded, fl
 has the frames by step and the voice note. Admins edit the steps (titles, spoken text in three languages, what the
 camera must show, arrow) on PTI -> Walkaround steps (`companies.walkaround_steps`; Reset goes back to the default eight).
 Cost with Sonnet 5.5: about $0.003 per live check and $0.03 for the review, about $0.07 for a typical walkaround;
-both count against the daily AI cap. Old form PTIs are only AI-checked when someone presses the button.
+both count against the daily AI cap. Old form PTIs are AI-checked by the sync job too (since 27 Nov).
 
 ## Learn
 

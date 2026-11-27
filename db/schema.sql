@@ -1887,3 +1887,29 @@ create table if not exists walk_frames (
   created_at timestamptz not null default now(),
   unique (session_id, client_id)
 );
+
+create table if not exists pti_links (
+  id bigserial primary key,
+  company_id integer not null references companies(id) on delete cascade,
+  truck_id integer not null references trucks(id) on delete cascade,
+  driver_id integer references drivers(id) on delete set null,
+  driver_name text not null,
+  phone text,
+  token text not null unique,
+  sent_ok boolean,
+  sent_to text,
+  created_by integer references users(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+create index if not exists pti_links_company_idx on pti_links (company_id, created_at desc);
+
+do $$
+begin
+  execute 'alter table pti_links enable row level security';
+  execute 'alter table pti_links force row level security';
+  execute 'drop policy if exists company_lock on pti_links';
+  execute 'create policy company_lock on pti_links using (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+    'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int) '
+    'with check (coalesce(current_setting(''kaido.company_id'', true), '''') = '''' '
+    'or company_id = nullif(current_setting(''kaido.company_id'', true), '''')::int)';
+end $$;

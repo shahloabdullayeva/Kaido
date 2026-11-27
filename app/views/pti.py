@@ -1,8 +1,9 @@
+from html import escape
 from urllib.parse import urlencode
 
 from flask import Blueprint, flash, g, jsonify, redirect, render_template, request, send_file
 
-from .. import forms, pti, pti_ai, pti_driver, walkaround
+from .. import forms, pti, pti_ai, pti_driver, telegram, walkaround
 from ..audit import audit, client_ip
 from ..auth import login_required, throttle
 from ..db import one, rows
@@ -21,7 +22,6 @@ STATES = ("ok", "defect", "na")
 @company_required
 def index():
     show = forms.pick(request.args.get("show"), ["open", "all", "defects", "review"], "all")
-    day, board = pti.today_board(g.company)
     clause = ""
     if show == "open":
         clause = " and i.defect_count > 0 and i.certified_at is null"
@@ -43,9 +43,11 @@ def index():
             where i.company_id = %s{clause} order by i.submitted_at desc limit 300""",
         tuple(params),
     )
+    waiting = [i for i in items if i["review_status"] is None and i["source"] == "kaido"]
+    items = [i for i in items if not (i["review_status"] is None and i["source"] == "kaido")]
     return render_template(
-        "pti/list.html", title="PTI", active="/pti", items=items, show=show, board=board, day=day,
-        missing=[t for t in board if t["missing"]], open_count=len(pti.open_defects(g.company["id"])),
+        "pti/list.html", title="PTI", active="/pti", items=items, waiting=waiting, show=show,
+        open_count=len(pti.open_defects(g.company["id"])),
         kinds=pti.KINDS, flag_text=walkaround.FLAG_TEXT,
     )
 
@@ -233,21 +235,81 @@ def stickers():
 @role_required("admin")
 def links():
     trucks = rows(
-        """select t.*, d.name as driver_name from trucks t left join drivers d on d.id = t.driver_id
-           where t.company_id = %s and t.status <> 'sold' and not t.is_outside
+        """select t.id, t.unit_number, t.driver_id, t.telegram_chat_id, t.telegram_chat_title
+           from trucks t where t.company_id = %s and t.status <> 'sold' and not t.is_outside
            order by lower(t.unit_number)""",
         (g.company["id"],),
     )
-    cards = []
-    for truck in trucks:
-        url = pti.link_for(pti.ensure_token(truck))
-        message = (f"Unit {truck['unit_number']} PTI link. Save it and open it before every trip, "
-                   f"and after the trip too: {url}")
-        cards.append({"id": truck["id"], "unit": truck["unit_number"], "driver": truck["driver_name"],
-                      "url": url, "message": message,
-                      "telegram": "https://t.me/share/url?" + urlencode({"url": url, "text": message})})
-    everything = "\n".join(f"Unit {c['unit']}: {c['url']}" for c in cards)
-    return render_template("pti/links.html", title="PTI links", active="/pti", cards=cards, everything=everything)
+    recent = rows(
+        """select l.*, t.unit_number from pti_links l join trucks t on t.id = l.truck_id
+           where l.company_id = %s order by l.created_at desc limit 30""",
+        (g.company["id"],),
+    )
+    made = None
+    made_id = forms.integer(request.args.get("made"))
+    if made_id:
+        made = next((r for r in recent if r["id"] == made_id), None)
+    if made:
+        url = pti.link_for(made["token"])
+        message = link_message(made["unit_number"], made["driver_name"], url)
+        made = dict(made, url=url, message=message,
+                    telegram="https://t.me/share/url?" + urlencode({"url": url, "text": message}))
+    for item in recent:
+        item["url"] = pti.link_for(item["token"])
+    return render_template("pti/links.html", title="Driver link", active="/pti", trucks=trucks,
+                           drivers=driver_options(g.company["id"]), recent=recent, made=made)
+
+
+def link_message(unit, driver_name, url):
+    return f"Unit {unit} PTI link for {driver_name}. Open it before every trip: {url}"
+
+
+@bp.post("/pti/links")
+@login_required
+@role_required("admin")
+def links_make():
+    truck = scoped_truck(forms.integer(request.form.get("truck_id")))
+    if not truck:
+        flash("Pick a unit.", "bad")
+        return redirect("/pti/links")
+    driver_id = forms.integer(request.form.get("driver_id"))
+    name = (request.form.get("name") or "").strip()[:120]
+    phone = (request.form.get("phone") or "").strip()[:40] or None
+    driver = None
+    if driver_id:
+        driver = one("select id, name, phone from drivers where id = %s and company_id = %s",
+                     (driver_id, g.company["id"]))
+    elif name:
+        driver = one("""select id, name, phone from drivers where company_id = %s and lower(name) = lower(%s)
+                        order by (status = 'active') desc limit 1""", (g.company["id"], name))
+        if not driver:
+            driver = db_insert(
+                "insert into drivers (company_id, name, phone) values (%s, %s, %s) returning id, name, phone",
+                (g.company["id"], name, phone),
+            )
+            audit("driver.created", "driver", driver["id"], {"from": "pti_link"})
+    if not driver:
+        flash("Pick a driver or type a name.", "bad")
+        return redirect("/pti/links")
+    if phone and not driver["phone"]:
+        execute("update drivers set phone = %s, updated_at = now() where id = %s", (phone, driver["id"]))
+    link = pti.make_link(g.company["id"], truck, driver["id"], driver["name"], phone or driver["phone"], g.session["user_id"])
+    sent_to = None
+    if truck.get("telegram_chat_id"):
+        url = pti.link_for(link["token"])
+        result = telegram.send(truck["telegram_chat_id"],
+                               escape(link_message(truck["unit_number"], driver["name"], url)))
+        sent_to = truck.get("telegram_chat_title") or "the group"
+        execute("update pti_links set sent_ok = %s, sent_to = %s where id = %s",
+                (bool(result.get("ok")), sent_to, link["id"]))
+        if result.get("ok"):
+            flash(f"Link made and sent to {sent_to}.", "ok")
+        else:
+            flash(f"Link made, but Telegram did not accept it for {sent_to}. Send it yourself.", "bad")
+    else:
+        flash("Link made. This unit has no Telegram group, so send it yourself.", "ok")
+    audit("pti.driver_link", "truck", truck["id"], {"driver_id": driver["id"], "sent": bool(sent_to)})
+    return redirect(f"/pti/links?made={link['id']}")
 
 
 @bp.post("/trucks/<int:truck_id>/telegram/send")

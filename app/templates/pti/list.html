@@ -2,31 +2,24 @@
 {% block body %}
 <div class="page-head">
   <div><h1>PTI</h1><p>{{ open_count }} report{{ '' if open_count == 1 else 's' }} with defects not signed off.</p></div>
-  {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn" href="/pti/links">Driver links</a>
+  {% if at_least(role, 'admin') %}<div class="actions-row"><a class="btn" href="/pti/links">Driver link</a>
     <a class="btn ghost" href="/pti/stickers">QR stickers</a>
     <a class="btn ghost" href="/pti/steps">Walkaround steps</a></div>{% endif %}
 </div>
 
+{% if waiting %}
 <section class="panel">
-  <div class="panel-head"><h2>Today, {{ day|day }}</h2>
-    <span class="subtle">{{ missing|length }} truck{{ '' if missing|length == 1 else 's' }} moved without a pre-trip</span></div>
+  <div class="panel-head"><h2>Waiting for review</h2><span class="badge warn">{{ waiting|length }}</span></div>
   <div class="table-wrap"><table>
-    <thead><tr><th>Unit</th><th>Driver</th><th class="right">Moved today</th><th>Pre-trip</th><th>Last PTI</th></tr></thead>
+    <thead><tr><th>Unit</th><th>Type</th><th>Driver</th><th>Result</th><th>Photos</th><th>AI check</th><th>Review</th><th>Sign-off</th><th>When</th></tr></thead>
     <tbody>
-      {% for truck in board %}
-      <tr class="clickrow" data-href="/trucks/{{ truck.id }}">
-        <td><a class="rowlink" href="/trucks/{{ truck.id }}">{{ truck.unit_number }}</a></td>
-        <td>{{ truck.driver_name or '—' }}</td>
-        <td class="right">{{ truck.moved|number }} mi</td>
-        <td>{% if truck.pre_trips %}<span class="badge ok">done</span>
-            {% elif truck.missing %}<span class="badge bad">missing</span>
-            {% else %}<span class="badge muted">not yet</span>{% endif %}</td>
-        <td>{{ truck.last_at|ago if truck.last_at else 'never' }}</td>
-      </tr>
+      {% for item in waiting %}
+      {% include "pti/_row.html" %}
       {% endfor %}
     </tbody>
   </table></div>
 </section>
+{% endif %}
 
 <section class="panel">
   <div class="panel-head">
@@ -46,25 +39,11 @@
     <thead><tr><th>Unit</th><th>Type</th><th>Driver</th><th>Result</th><th>Photos</th><th>AI check</th><th>Review</th><th>Sign-off</th><th>When</th></tr></thead>
     <tbody>
       {% for item in items %}
-      <tr class="clickrow" data-href="/pti/report/{{ item.id }}" title="Open PTI #{{ item.id }}">
-        <td><a class="rowlink" href="/pti/report/{{ item.id }}">{{ item.unit_number or '—' }}</a>
-          {% if item.source == 'samsara' %}<div class="subtle">from Samsara</div>{% elif item.mode == 'live' %}<div class="subtle">walkaround</div>{% elif item.mode == 'upload' %}<div class="subtle">walkaround, uploaded</div>{% endif %}
-          {% for flag in item.media_flags if flag != 'uploaded' %}<span class="badge bad">{{ flag_text.get(flag, flag) }}</span>{% endfor %}</td>
-        <td>{{ kinds.get(item.kind, 'Inspection') }}</td>
-        <td>{% if item.driver_id %}<a href="/drivers/{{ item.driver_id }}">{{ item.driver_name or '—' }}</a>{% else %}{{ item.driver_name or '—' }}{% endif %}</td>
-        <td>{% if not item.defect_count %}<span class="badge ok">no defects</span>
-            {% elif item.safe_to_drive is false %}<span class="badge bad">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}, unsafe</span>
-            {% else %}<span class="badge warn">{{ item.defect_count }} defect{{ '' if item.defect_count == 1 else 's' }}</span>{% endif %}</td>
-        <td><a href="/pti/report/{{ item.id }}">{{ item.photo_count }} photo{{ '' if item.photo_count == 1 else 's' }}{% if item.video_count %}, {{ item.video_count }} video{{ '' if item.video_count == 1 else 's' }}{% endif %}</a></td>
-        <td>{% if item.ai_status == 'flagged' %}<span class="badge bad">flagged</span>{% elif item.ai_status == 'clear' %}<span class="badge ok">clear</span>{% elif item.ai_status == 'over_budget' %}<span class="badge warn">waiting</span>{% elif item.ai_status in ('failed', 'no_photos', 'no_key') %}<span class="badge muted">not run</span>{% elif item.source == 'kaido' and not item.ai_checked_at %}<span class="badge muted">checking</span>{% else %}—{% endif %}</td>
-        <td>{% if item.review_status == 'approved' %}<span class="badge ok">approved</span>{% elif item.review_status == 'rejected' %}<span class="badge bad">rejected</span>{% else %}<span class="badge warn">to review</span>{% endif %}</td>
-        <td>{% if not item.defect_count %}—{% elif item.certified_at %}<span class="badge ok">{{ 'repaired' if item.certification == 'repaired' else 'not needed' }}</span>{% else %}<span class="badge bad">open</span>{% endif %}</td>
-        <td>{{ item.submitted_at|stamp }}</td>
-      </tr>
+      {% include "pti/_row.html" %}
       {% endfor %}
     </tbody>
   </table></div>
-  {% else %}
+  {% elif not waiting %}
   <p class="empty">No PTIs yet.</p>
   {% endif %}
 </section>

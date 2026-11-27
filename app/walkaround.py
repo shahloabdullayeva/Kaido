@@ -148,11 +148,14 @@ def start(truck, form, ip):
     if found:
         return found if found["truck_id"] == truck["id"] else None
     driver_id = None
-    driver_name = (form.get("driver_name") or "").strip()[:120] or None
+    driver_name = (form.get("driver_name") or "").strip()[:120] or truck.get("link_driver_name")
     try:
         picked = int(form.get("driver_id") or 0)
     except ValueError:
         picked = 0
+    if not picked and truck.get("link_driver_id") and (not form.get("driver_name")
+                                                       or form.get("driver_name").strip().lower() == (truck.get("link_driver_name") or "").lower()):
+        picked = truck["link_driver_id"]
     driver = None
     if picked:
         driver = one("select id, name from drivers where id = %s and company_id = %s", (picked, truck["company_id"]))
