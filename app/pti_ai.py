@@ -176,8 +176,8 @@ def _alert(inspection, result):
 
 def run_pending(limit=5):
     pending = rows(
-        """select id from inspections where source = 'kaido' and ai_checked_at is null
-             and coalesce(ai_status, '') not in ('failed')
+        """select id from inspections where source = 'kaido' and mode = 'form' and ai_checked_at is null
+             and coalesce(ai_status, '') not in ('failed', 'over_budget')
              and submitted_at > now() - interval '2 days'
            order by submitted_at limit %s""",
         (limit,),

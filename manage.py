@@ -234,6 +234,13 @@ def cmd_followup(args):
             print(f"walkaround reviews {walked}")
     except Exception as err:
         print(f"walkaround review failed: {err}")
+    from app import pti_ai
+    try:
+        formed = pti_ai.run_pending()
+        if formed:
+            print(f"form pti reviews {formed}")
+    except Exception as err:
+        print(f"form pti review failed: {err}")
     from app import fuel_bot, fuel_report
     fueled, reports = {"offers": [], "refuels": 0, "receipts": 0}, {}
     try:
