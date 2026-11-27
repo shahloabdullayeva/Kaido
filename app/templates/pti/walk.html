@@ -20,10 +20,6 @@
   <p class="walk-sub">{{ truck.company_name }}{% if truck.year or truck.make %} · {{ truck.year or '' }} {{ truck.make or '' }}{% endif %}</p>
   {% if redo %}<div class="walk-note bad"><span data-t="redo"></span> {{ redo.review_note }}</div>{% endif %}
   <div class="walk-note warn" data-telegram hidden data-t="telegram"></div>
-  <div class="walk-toggle">
-    <button type="button" class="on" data-kind="pre_trip" data-t="pre"></button>
-    <button type="button" data-kind="post_trip" data-t="post"></button>
-  </div>
   <label class="walk-field"><span data-t="who"></span>
     <select data-driver>
       {% for driver in drivers %}<option value="{{ driver.id }}" {% if driver.id == truck.driver_id %}selected{% endif %}>{{ driver.name }}</option>{% endfor %}

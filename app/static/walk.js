@@ -179,11 +179,7 @@
     if (warn) warn.hidden = false;
   }
 
-  let kind = 'pre_trip';
-  root.querySelectorAll('[data-kind]').forEach((el) => el.addEventListener('click', () => {
-    kind = el.dataset.kind;
-    root.querySelectorAll('[data-kind]').forEach((b) => b.classList.toggle('on', b === el));
-  }));
+  const kind = 'pre_trip';
   const driverPick = $('[data-driver]');
   const driverName = $('[data-driver-name]');
   const syncDriver = () => { driverName.closest("label").hidden = Boolean(driverPick.value); };
