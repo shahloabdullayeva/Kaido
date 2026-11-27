@@ -325,3 +325,4 @@ rather than an empty map.
 - 27 Nov 2026: form PTIs are now AI-checked by the sync job too (pti_ai.run_pending was never called, so only walkarounds were checked), her request "let ai check all pti's".
 - 27 Nov 2026, her request: PTI page shows unreviewed PTIs on top, the all-units board removed; Driver link page makes per-driver links (pti_links) and posts them to the truck group if connected.
 - 27 Nov 2026: Driver link without a group shows the copyable link and a Send to <driver> on Telegram button (username or phone).
+- 27 Nov 2026: Driver link picks the unit's driver automatically; driver/name/phone optional (pti_links.driver_name nullable).
