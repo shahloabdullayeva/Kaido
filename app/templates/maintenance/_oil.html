@@ -17,6 +17,6 @@
     {% if advice.confidence != 'engine_known' %}<strong>Rough guide only:</strong> the exact engine is not known. {% endif %}{{ advice.caution }}</p>
   <button type="button" class="btn ghost small" data-oil-note="{{ advice.viscosity }} {{ advice.oil }}">Add to work order notes</button>
   {% elif not ai_on %}<p class="empty">Oil suggestions are off because no Anthropic key is set.</p>
-  {% elif ai_paused %}<p class="empty">Today's AI budget is used up. Oil suggestions are back tomorrow.</p>
+  {% elif ai_paused %}<p class="empty">The Anthropic credit has run out. Oil suggestions are back once it is topped up.</p>
   {% else %}<p class="empty">No suggestion came back. Try again in a minute.</p>{% endif %}
 </div>

@@ -35,7 +35,7 @@
     {% if guide.driver_check %}<p><strong>Ask the driver:</strong> {{ guide.driver_check }}</p>{% endif %}
   </div>
   {% elif not ai_on %}<p class="empty">Explanations are off because no Anthropic key is set.</p>
-  {% elif ai_paused %}<p class="empty">Today's AI budget is used up. The explanation will appear tomorrow.</p>
+  {% elif ai_paused %}<p class="empty">The Anthropic credit has run out. The explanation appears once it is topped up.</p>
   {% else %}<p class="empty">Could not get an explanation just now. Reload the page to try again.</p>{% endif %}
 </section>
 

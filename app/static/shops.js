@@ -520,7 +520,7 @@ const fillAdvice = (data) => {
       if (note && text) { note.textContent = text; note.hidden = false; }
     }
   } else if (aiState) {
-    aiState.textContent = data.state === 'paused' ? "AI notes are paused — today's budget is spent. They come back tomorrow."
+    aiState.textContent = data.state === 'paused' ? "AI notes are paused — the Anthropic credit has run out."
       : data.state === 'off' ? 'AI notes are off — no ANTHROPIC_API_KEY set.' : 'AI notes did not come back this time.';
   }
 };

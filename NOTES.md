@@ -326,3 +326,4 @@ rather than an empty map.
 - 27 Nov 2026, her request: PTI page shows unreviewed PTIs on top, the all-units board removed; Driver link page makes per-driver links (pti_links) and posts them to the truck group if connected.
 - 27 Nov 2026: Driver link without a group shows the copyable link and a Send to <driver> on Telegram button (username or phone).
 - 27 Nov 2026: Driver link picks the unit's driver automatically; driver/name/phone optional (pti_links.driver_name nullable).
+- 27 Nov 2026: AI daily cap (AI_DAILY_USD) removed, her request; AI pauses only when Anthropic says the credit is too low.

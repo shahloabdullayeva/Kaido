@@ -79,7 +79,7 @@ def credit_problem():
 
 
 def over_budget():
-    return spent_today() >= config.AI_DAILY_USD
+    return credit_problem() is not None
 
 
 def _cost(usage, model=MODEL):

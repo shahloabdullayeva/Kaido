@@ -613,7 +613,7 @@ def _alert(inspection, result, order_id):
 def run_pending(limit=5):
     pending = rows(
         """select * from inspections where mode <> 'form' and ai_checked_at is null
-             and coalesce(ai_status, '') not in ('failed', 'over_budget') and submitted_at > now() - interval '2 days'
+             and coalesce(ai_status, '') not in ('failed') and submitted_at > now() - interval '2 days'
              and submitted_at < now() - interval '1 minute' order by submitted_at limit %s""",
         (limit,),
     )

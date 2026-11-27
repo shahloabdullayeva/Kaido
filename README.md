@@ -32,7 +32,7 @@ for any truck and any driver, including ones from outside the company.
 - **Where to send it**: nearby truck shops from OpenStreetMap with address, phone,
   a Call button, a Google Maps link and Claude's pick.
 - **Claude** explains fault codes in plain words, suggests the oil from the engine
-  read off the VIN, and answers questions about any truck — under a hard daily cap.
+  read off the VIN, and answers questions about any truck.
 - **Daily follow-up** on Telegram: open breakdowns, overdue service, work that was
   due, reminders, new faults, papers expiring. Reminders can be set on any record except work orders.
 - **Fuel**: manual entry and EFS Transaction Report import, matched to trucks by unit number
@@ -307,9 +307,9 @@ but the data above — no invented hours, prices or reviews — and past invoice
 this fleet outrank everything else. Without the key the list works exactly the
 same, minus those lines.
 
-Spending is capped. Every call is priced and written to `ai_usage`; once the day's
-total reaches `AI_DAILY_USD` (20 cents) the notes stop until tomorrow and the list
-carries on without them. Answers are also cached for seven days, so opening the
+Every call is priced and written to `ai_usage`. There is no daily cap any more (removed 27 Nov,
+her request): AI pauses only when Anthropic answers "credit balance is too low", and comes back on
+the first successful call after a top-up (`advisor.over_budget` = `credit_problem`). Answers are also cached for seven days, so opening the
 same truck in the same place again costs nothing. A lookup is about a quarter of a
 cent.
 
@@ -388,8 +388,7 @@ defect needs a photo and a note, and N/A is only allowed on coupling.
 
 Claude (`AI_PHOTO_MODEL`, Opus 5.5 by default) checks every photo in the background
 job and flags any that do not show what the item asks for: about 1.5 to 4 cents a
-PTI, under the same `AI_DAILY_USD` cap as the rest. Checks past the cap wait for
-the next day.
+PTI. If the Anthropic credit runs out, checks wait until it is topped up.
 
 A defect sends a Telegram alert. An admin signs it off (repaired or not needed) and
 the next driver has to confirm they read it. Photos and videos are deleted after 92 days

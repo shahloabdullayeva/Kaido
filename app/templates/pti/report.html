@@ -140,7 +140,7 @@
         <td>{{ finding.note }}</td></tr>
     {% endfor %}</tbody>
   </table></div>
-  {% elif item.ai_status == 'over_budget' %}<p class="empty">Today's AI spending cap is used up. Try again tomorrow.</p>
+  {% elif item.ai_status == 'over_budget' %}<p class="empty">The Anthropic credit has run out. Top it up, then press AI check again.</p>
   {% elif item.ai_status == 'failed' %}<p class="empty">The AI check could not run on these photos.</p>
   {% elif item.ai_status in ('no_photos', 'no_key') %}<p class="empty">No photos to check.</p>
   {% else %}<p class="empty">Not checked.</p>{% endif %}

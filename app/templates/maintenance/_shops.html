@@ -77,6 +77,6 @@
   {% if saved_count %}<a href="/maintenance/saved-shops">{{ saved_count }} saved shop{{ 's' if saved_count != 1 }}</a> within 100 mi are included.{% endif %}
   {% if fleet_average %}Your average oil service is {{ fleet_average|money }}.{% endif %}
   {% if ai_on and not ai_paused and found %}<button type="button" class="btn small" data-shop-ai>Ask Claude which shop</button>{% endif %}
-  <span id="shop-ai-state">{% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.{% elif ai_paused %}AI notes are paused — today's budget is spent. They come back tomorrow.{% endif %}</span></p>
+  <span id="shop-ai-state">{% if not ai_on %}AI notes are off — no ANTHROPIC_API_KEY set.{% elif ai_paused %}AI notes are paused — the Anthropic credit has run out.{% endif %}</span></p>
   {% endif %}
 {% endif %}

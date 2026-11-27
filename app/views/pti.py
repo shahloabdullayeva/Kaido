@@ -188,7 +188,7 @@ def ai_check(inspection_id):
     if not item:
         return render_template("errors/404.html"), 404
     if pti_ai.over_budget():
-        flash("Today's AI spending cap is used up, so the check cannot run again until tomorrow.", "bad")
+        flash("The Anthropic credit has run out. Top it up and press the button again.", "bad")
         return redirect(f"/pti/report/{inspection_id}")
     execute("update inspections set ai_checked_at = null, ai_status = null where id = %s", (inspection_id,))
     fresh = one("select * from inspections where id = %s", (inspection_id,))
