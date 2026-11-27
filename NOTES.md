@@ -321,3 +321,4 @@ rather than an empty map.
 - 27 Nov 2026: walkaround is pre-trip only, has no Skip button and no driver list (the public link no longer shows the company's driver names); the driver types a name.
 - 27 Nov 2026: walkaround languages changed to English, Russian and Uzbek (Latin), her request; Spanish and French removed. Many phones have no Uzbek text-to-speech voice, so Uzbek is shown but not spoken there.
 - 27 Nov 2026: removed the "old form" link from the walkaround page, her request. The form route stays.
+- 27 Nov 2026: walkaround start screen restyled, her request ("looks vibe coded"): neutral dark, 8px corners, segmented language switch, numbered step list, gallery upload as a text link.

@@ -1,7 +1,7 @@
 (() => {
   const root = document.querySelector('[data-walk]');
   const T = {
-    en: { start: 'Start walkaround', upload: 'Upload from gallery', pre: 'Pre-trip', post: 'Post-trip', who: 'Driver',
+    en: { pti: 'Pre-trip inspection', start: 'Start walkaround', upload: 'Upload from gallery', pre: 'Pre-trip', post: 'Post-trip', who: 'Driver',
       someone: 'Someone else', name: 'Your name', step: 'Step', of: 'of', looking: 'Looking…', got: 'Got it',
       skip: 'Skip', wrong: 'Anything wrong?', wrongHint: 'Something the camera can\'t see, like an air leak?',
       hold: 'Hold to record a voice note', recording: 'Recording… let go to stop', allGood: 'No, all good',
@@ -12,7 +12,7 @@
       pick: 'Pick photos or one video of the truck', working: 'Preparing your files…', noFiles: 'Pick at least one photo or video.',
       oldForm: 'Use the old form', redo: 'Your last inspection was rejected:', speakOn: 'Voice on', speakOff: 'Voice off',
       possible: 'Possible problem:', heard: 'Heard:' },
-    ru: { start: 'Начать осмотр', upload: 'Загрузить из галереи', pre: 'Перед рейсом', post: 'После рейса', who: 'Водитель',
+    ru: { pti: 'Предрейсовый осмотр', start: 'Начать осмотр', upload: 'Загрузить из галереи', pre: 'Перед рейсом', post: 'После рейса', who: 'Водитель',
       someone: 'Другой', name: 'Ваше имя', step: 'Шаг', of: 'из', looking: 'Ищу…', got: 'Готово',
       skip: 'Пропустить', wrong: 'Есть проблема?', wrongHint: 'То, что камера не видит, например утечка воздуха?',
       hold: 'Удерживайте, чтобы записать голос', recording: 'Запись… отпустите, чтобы остановить', allGood: 'Нет, всё в порядке',
@@ -23,7 +23,7 @@
       pick: 'Выберите фото или одно видео грузовика', working: 'Подготовка файлов…', noFiles: 'Выберите хотя бы одно фото или видео.',
       oldForm: 'Старая форма', redo: 'Ваш прошлый осмотр отклонён:', speakOn: 'Голос вкл.', speakOff: 'Голос выкл.',
       possible: 'Возможная проблема:', heard: 'Распознано:' },
-    uz: { start: "Ko'rikni boshlash", upload: 'Galereyadan yuklash', pre: 'Reysdan oldin', post: 'Reysdan keyin', who: 'Haydovchi',
+    uz: { pti: "Reys oldi ko'rigi", start: "Ko'rikni boshlash", upload: 'Galereyadan yuklash', pre: 'Reysdan oldin', post: 'Reysdan keyin', who: 'Haydovchi',
       someone: 'Boshqa', name: 'Ismingiz', step: 'Qadam', of: '/', looking: 'Qidirilmoqda…', got: 'Tayyor',
       skip: "O'tkazib yuborish", wrong: 'Muammo bormi?', wrongHint: "Kamera ko'rmaydigan narsa, masalan havo oqishi?",
       hold: 'Ovozli xabar yozish uchun bosib turing', recording: "Yozilmoqda… to'xtatish uchun qo'yib yuboring", allGood: "Yo'q, hammasi joyida",
@@ -164,6 +164,14 @@
     root.querySelectorAll('[data-t]').forEach((el) => { el.textContent = t(el.dataset.t); });
     root.querySelectorAll('[data-lang]').forEach((el) => el.classList.toggle('on', el.dataset.lang === lang));
     document.documentElement.lang = lang;
+    const plan = root.querySelector('[data-plan]');
+    if (plan) {
+      plan.replaceChildren(...steps.map((st) => {
+        const li = document.createElement('li');
+        li.textContent = st.title[lang] || st.title.en;
+        return li;
+      }));
+    }
     const nameBox = root.querySelector('[data-driver-name]');
     if (nameBox) nameBox.placeholder = t('name');
   };

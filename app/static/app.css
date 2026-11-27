@@ -878,34 +878,47 @@ th .sortlink:hover { text-decoration: underline; }
 }
 .lamp { width: 44px; height: 44px; vertical-align: middle; border-radius: 6px; }
 .learn-body td:first-child .lamp { display: block; margin-bottom: 4px; }
-.walk-body { margin: 0; background: #10131c; color: #f2f3f7; font-family: var(--sans); min-height: 100vh; }
+.walk-body { margin: 0; background: #0f1012; color: #ececee; font-family: var(--sans); min-height: 100vh; -webkit-font-smoothing: antialiased; }
 .walk { min-height: 100vh; min-height: 100dvh; }
 .walk [hidden] { display: none !important; }
-.walk-intro { max-width: 440px; margin: 0 auto; padding: 20px 18px 32px; display: grid; gap: 14px; align-content: start; min-height: 100dvh; box-sizing: border-box; }
-.walk-brand { height: 28px; } .walk-brand svg, .walk-brand img { height: 28px; width: auto; }
-.walk-intro h1 { margin: 8px 0 0; font-size: 30px; letter-spacing: -.01em; }
-.walk-intro h2 { margin: 0; font-size: 20px; text-align: center; }
-.walk-sub { margin: 0; color: #a7acba; font-size: 15px; }
-.walk-langs { position: absolute; top: 18px; right: 18px; display: flex; gap: 4px; }
-.walk-langs button, .walk-toggle button { border: 1px solid #2c3242; background: transparent; color: #c9cdd8; border-radius: 8px; padding: 6px 10px; font: inherit; font-size: 13px; }
-.walk-langs button.on, .walk-toggle button.on { background: #f2f3f7; color: #10131c; border-color: #f2f3f7; }
+.walk-intro { max-width: 440px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); display: grid; gap: 16px; align-content: start; min-height: 100dvh; box-sizing: border-box; }
+.walk-home { grid-template-rows: auto auto auto 1fr auto; align-content: stretch; gap: 20px; }
+.walk-head { display: flex; align-items: center; justify-content: space-between; }
+.walk-brand { height: 22px; } .walk-brand svg, .walk-brand img { height: 22px; width: auto; display: block; }
+.walk-intro h1 { margin: 8px 0 0; font-size: 28px; font-weight: 650; letter-spacing: -.02em; }
+.walk-intro h2 { margin: 0; font-size: 19px; font-weight: 600; text-align: center; }
+.walk-unit h1 { margin: 2px 0 6px; font-size: 34px; line-height: 1.1; }
+.walk-eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #8b8e96; }
+.walk-meta { font-size: 15px; line-height: 1.45; color: #a3a6ad; }
+.walk-sub { margin: 0; color: #a3a6ad; font-size: 15px; line-height: 1.45; }
+.walk-langs { display: inline-flex; border: 1px solid #2a2c31; border-radius: 7px; overflow: hidden; }
+.walk-langs button { border: 0; border-left: 1px solid #2a2c31; background: transparent; color: #a3a6ad; padding: 6px 11px; font: inherit; font-size: 12px; font-weight: 600; letter-spacing: .03em; }
+.walk-langs button:first-child { border-left: 0; }
+.walk-langs button.on { background: #24262b; color: #fff; }
+.walk-plan { margin: 0; padding: 0; list-style: none; counter-reset: walk; border-top: 1px solid #222428; align-self: start; }
+.walk-plan li { counter-increment: walk; display: flex; gap: 14px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid #222428; font-size: 15px; color: #d4d5d9; }
+.walk-plan li::before { content: counter(walk, decimal-leading-zero); font-size: 12px; font-variant-numeric: tabular-nums; color: #6c6f77; min-width: 18px; }
+.walk-actions { display: grid; gap: 10px; }
 .walk-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.walk-toggle button { padding: 12px; font-size: 15px; font-weight: 600; border-radius: 12px; }
-.walk-field { display: grid; gap: 6px; font-size: 13px; color: #a7acba; }
-.walk-field select, .walk-field input { font: inherit; font-size: 16px; padding: 12px; border-radius: 12px; border: 1px solid #2c3242; background: #181c27; color: #f2f3f7; }
-.walk-go { display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 16px; padding: 20px; font: inherit; font-size: 19px; font-weight: 700; background: #3b6cff; color: #fff; margin-top: 6px; }
-.walk-go:active { transform: scale(.98); }
-.walk-cam { width: 22px; height: 16px; border: 2.5px solid #fff; border-radius: 4px; position: relative; }
-.walk-cam::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border: 2px solid #fff; border-radius: 50%; }
-.walk-alt { border: 1px solid #2c3242; border-radius: 14px; padding: 15px; font: inherit; font-size: 16px; font-weight: 600; background: #181c27; color: #f2f3f7; }
+.walk-toggle button { border: 1px solid #2a2c31; background: transparent; color: #c9cbd0; padding: 12px; font: inherit; font-size: 15px; font-weight: 600; border-radius: 8px; }
+.walk-toggle button.on { background: #ececee; color: #0f1012; border-color: #ececee; }
+.walk-field { display: grid; gap: 6px; font-size: 13px; color: #8b8e96; }
+.walk-field select, .walk-field input { font: inherit; font-size: 16px; padding: 12px 13px; border-radius: 8px; border: 1px solid #2a2c31; background: #16171a; color: #ececee; outline: none; }
+.walk-field input:focus { border-color: #4a6fe8; }
+.walk-go { display: flex; align-items: center; justify-content: center; gap: 10px; border: 0; border-radius: 8px; padding: 16px; font: inherit; font-size: 17px; font-weight: 600; background: #3d63dd; color: #fff; }
+.walk-go:active { background: #3556c4; }
+.walk-cam { width: 18px; height: 13px; border: 2px solid #fff; border-radius: 3px; position: relative; }
+.walk-cam::after { content: ""; position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px; border: 1.5px solid #fff; border-radius: 50%; box-sizing: border-box; }
+.walk-alt { border: 1px solid #2a2c31; border-radius: 8px; padding: 14px; font: inherit; font-size: 16px; font-weight: 600; background: transparent; color: #ececee; }
+.walk-link { border: 0; background: none; color: #a3a6ad; font: inherit; font-size: 15px; padding: 8px; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #4a4c52; }
 .walk-old { color: #7f8597; font-size: 13px; text-align: center; margin-top: 8px; }
-.walk-note { padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.4; }
-.walk-note.bad { background: #3a1916; color: #ffb4a8; } .walk-note.warn { background: #33270f; color: #f5c46b; }
+.walk-note { padding: 10px 12px; border-radius: 8px; font-size: 14px; line-height: 1.4; }
+.walk-note.bad { background: #2a1513; color: #f2a89c; border: 1px solid #4a2420; } .walk-note.warn { background: #2a210f; color: #e9bf6a; border: 1px solid #483817; }
 .walk-camera { position: fixed; inset: 0; background: #000; overflow: hidden; }
 .walk-camera video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .walk-top { position: absolute; left: 0; right: 0; top: 0; padding: max(14px, env(safe-area-inset-top)) 16px 26px; background: linear-gradient(#000c, #0000); }
 .walk-bar { height: 4px; border-radius: 4px; background: #ffffff33; overflow: hidden; margin-bottom: 10px; }
-.walk-bar span { display: block; height: 100%; background: #3b6cff; transition: width .4s; }
+.walk-bar span { display: block; height: 100%; background: #fff; transition: width .4s; }
 .walk-count { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #c9cdd8; }
 .walk-top h2 { margin: 2px 0 0; font-size: 24px; text-shadow: 0 1px 4px #000; }
 .walk-arrow { position: absolute; left: 50%; top: 44%; transform: translate(-50%, -50%); font-size: 120px; line-height: 1; color: #fff; text-shadow: 0 2px 14px #0009; opacity: .9; animation: walk-nudge 1.2s ease-in-out infinite; pointer-events: none; }
@@ -918,11 +931,11 @@ th .sortlink:hover { text-decoration: underline; }
 .walk-row { display: flex; align-items: center; gap: 8px; }
 .walk-status { flex: 1; font-size: 15px; color: #c9cdd8; }
 .walk-status.ok { color: #6fe39a; font-weight: 700; }
-.walk-skip { border: 1px solid #ffffff55; background: #0006; color: #fff; border-radius: 10px; padding: 8px 12px; font: inherit; font-size: 13px; }
-.walk-problem { background: #33270fe6; color: #f5c46b; padding: 8px 10px; border-radius: 10px; font-size: 14px; }
+.walk-skip { border: 1px solid #ffffff55; background: #0006; color: #fff; border-radius: 7px; padding: 8px 12px; font: inherit; font-size: 13px; }
+.walk-problem { background: #2a210fe6; color: #e9bf6a; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
 .walk-hold { margin: 20px auto 6px; width: 210px; height: 210px; border-radius: 50%; border: 0; background: #e0261b; color: #fff; font: inherit; font-size: 17px; font-weight: 700; padding: 30px; user-select: none; -webkit-user-select: none; touch-action: none; box-shadow: 0 0 0 10px #e0261b33; }
 .walk-hold.on { background: #ff4b3e; box-shadow: 0 0 0 22px #e0261b44; }
-.walk-heard { background: #181c27; padding: 10px 12px; border-radius: 10px; font-size: 15px; }
+.walk-heard { background: #16171a; border: 1px solid #2a2c31; padding: 10px 12px; border-radius: 10px; font-size: 15px; }
 .walk-voice-actions { display: grid; gap: 8px; }
 .walk-check { width: 84px; height: 84px; border-radius: 50%; background: #17703a; margin: 40px auto 0; position: relative; }
 .walk-check::after { content: ""; position: absolute; left: 30px; top: 18px; width: 18px; height: 36px; border: solid #fff; border-width: 0 6px 6px 0; transform: rotate(45deg); }
@@ -931,9 +944,8 @@ th .sortlink:hover { text-decoration: underline; }
 .walk-queue { text-align: center; font-size: 15px; color: #f5c46b; }
 .walk-queue.ok { color: #6fe39a; }
 .walk-small { color: #7f8597; font-size: 13px; line-height: 1.4; margin: 0; }
-.walk-spin { width: 46px; height: 46px; border-radius: 50%; border: 4px solid #2c3242; border-top-color: #3b6cff; margin: 60px auto 10px; animation: walk-spin 1s linear infinite; }
+.walk-spin { width: 46px; height: 46px; border-radius: 50%; border: 4px solid #2c3242; border-top-color: #ececee; margin: 60px auto 10px; animation: walk-spin 1s linear infinite; }
 @keyframes walk-spin { to { transform: rotate(360deg); } }
-.walk-intro { position: relative; }
 .walk-frames { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; padding: 4px 16px 16px; }
 .walk-frame { margin: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--paper); }
 .walk-frame.bad { border-color: var(--bad); }

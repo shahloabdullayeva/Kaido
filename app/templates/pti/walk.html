@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#10131c">
+<meta name="theme-color" content="#0f1012">
 <title>{{ title }} · Kaido</title>
 <link rel="stylesheet" href="/static/app.css?v={{ cat_version }}">
 <link rel="icon" href="/static/favicon.svg?v=3">
@@ -13,18 +13,26 @@
 <main class="walk" data-walk data-token="{{ token }}" data-ai="{{ '1' if ai_on else '0' }}">
 <script type="application/json" id="walk-steps">{{ steps|tojson }}</script>
 
-<section class="walk-intro" data-screen="intro">
-  <div class="walk-brand">{% include "_logo.html" %}</div>
-  <div class="walk-langs"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button><button type="button" data-lang="uz">UZ</button></div>
-  <h1>Unit {{ truck.unit_number }}</h1>
-  <p class="walk-sub">{{ truck.company_name }}{% if truck.year or truck.make %} · {{ truck.year or '' }} {{ truck.make or '' }}{% endif %}</p>
+<section class="walk-intro walk-home" data-screen="intro">
+  <header class="walk-head">
+    <div class="walk-brand">{% include "_logo.html" %}</div>
+    <div class="walk-langs" role="group"><button type="button" data-lang="en">EN</button><button type="button" data-lang="ru">RU</button><button type="button" data-lang="uz">UZ</button></div>
+  </header>
+  <div class="walk-unit">
+    <div class="walk-eyebrow" data-t="pti"></div>
+    <h1>Unit {{ truck.unit_number }}</h1>
+    <div class="walk-meta">{{ truck.company_name }}{% if truck.year or truck.make %}<br>{{ truck.year or '' }} {{ truck.make or '' }}{% endif %}</div>
+  </div>
   {% if redo %}<div class="walk-note bad"><span data-t="redo"></span> {{ redo.review_note }}</div>{% endif %}
   <div class="walk-note warn" data-telegram hidden data-t="telegram"></div>
-  <label class="walk-field"><span data-t="name"></span>
-    <input data-driver-name maxlength="120" autocomplete="name"></label>
-  <div class="walk-note bad" data-intro-error hidden></div>
-  <button type="button" class="walk-go" data-start><span class="walk-cam"></span><span data-t="start"></span></button>
-  <button type="button" class="walk-alt" data-upload data-t="upload"></button>
+  <ol class="walk-plan" data-plan></ol>
+  <div class="walk-actions">
+    <div class="walk-note bad" data-intro-error hidden></div>
+    <label class="walk-field"><span data-t="name"></span>
+      <input data-driver-name maxlength="120" autocomplete="name"></label>
+    <button type="button" class="walk-go" data-start><span class="walk-cam"></span><span data-t="start"></span></button>
+    <button type="button" class="walk-link" data-upload data-t="upload"></button>
+  </div>
   <input type="file" accept="image/*,video/*" multiple hidden data-gallery>
 </section>
 

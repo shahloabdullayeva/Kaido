@@ -1007,7 +1007,7 @@ The PTI link and QR sticker (`/pti/<token>`) now open a guided camera walkaround
 walkaround, and the phone camera opens. Each step (`app/walkaround.py` DEFAULT_STEPS: front with lights, left steer,
 left side and drives, left trailer tires, rear with lights, right side, right steer, dash with the engine running) shows a
 big arrow and short text and is spoken by the browser in English, Russian or Uzbek (Latin script; picked from the phone language,
-EN/RU/UZ switch on the first screen; a phone with no Uzbek or Russian voice shows the text without speaking it). About every two seconds a 768px frame goes to `/walk/check`, where Claude
+EN/RU/UZ switch on the first screen, which also lists the steps; a phone with no Uzbek or Russian voice shows the text without speaking it). About every two seconds a 768px frame goes to `/walk/check`, where Claude
 (`AI_PHOTO_MODEL`, Sonnet 5.5) says whether the step's part is in frame and names any obvious problem; the step moves
 on when it is confirmed, or after about 9 seconds (5 without AI). There is no Skip button. At most 4 checks per step, 60 per walkaround.
 Upload from gallery takes several photos or one or two videos: the phone cuts each video into frames and reads the
